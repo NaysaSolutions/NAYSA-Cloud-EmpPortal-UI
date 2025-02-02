@@ -25,43 +25,43 @@
 //  export default App;
 
 
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Login from './Authentication/Login';
-import Register from './Authentication/Register';
-import Layout from './Layout'; 
-import Dashboard from './Components/Dashboard';
-import ForgotPassword from './Authentication/ForgotPassword';
-import Clients from './Components/Clients'; 
-import AddClients from './Components/AddClient';
+// import React from 'react';
+// import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+// import Login from './Authentication/Login';
+// import Register from './Authentication/Register';
+// import Layout from './Layout'; 
+// import Dashboard from './Components/Dashboard';
+// import ForgotPassword from './Authentication/ForgotPassword';
+// import Clients from './Components/Clients'; 
+// import AddClients from './Components/AddClient';
 
-function App() {
-  return (
-    <Router>
-      <Routes>
-        {/* Route for Login */}
-        <Route path="/" element={<Login />} />
+// function App() {
+//   return (
+//     <Router>
+//       <Routes>
+//         {/* Route for Login */}
+//         <Route path="/" element={<Login />} />
         
-        {/* Route for Register */}
-        <Route path="/register" element={<Register />} />
+//         {/* Route for Register */}
+//         <Route path="/register" element={<Register />} />
 
-        {/* Route for Forgot Password */}
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+//         {/* Route for Forgot Password */}
+//         <Route path="/forgot-password" element={<ForgotPassword />} />
 
-        {/* Route for Dashboard inside Layout */}
-        <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
+//         {/* Route for Dashboard inside Layout */}
+//         <Route path="/dashboard" element={<Layout><Dashboard /></Layout>} />
 
-        {/* Route for Clients inside Layout */}
-        <Route path="/clients" element={<Layout><Clients /></Layout>} />
+//         {/* Route for Clients inside Layout */}
+//         <Route path="/clients" element={<Layout><Clients /></Layout>} />
 
-        {/* Route for Add Clients inside Layout */}
-        <Route path="/Addclients" element={<Layout><AddClients /></Layout>} />
-      </Routes>
-    </Router>
-  );
-}
+//         {/* Route for Add Clients inside Layout */}
+//         <Route path="/Addclients" element={<Layout><AddClients /></Layout>} />
+//       </Routes>
+//     </Router>
+//   );
+// }
 
-export default App;
+// export default App;
 
 
 
@@ -121,43 +121,43 @@ export default App;
 
 
 
-// import React from "react";
-// import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-// import { AuthProvider, useAuth } from "./EMPLOYEE PORTAL/AuthContext";
-// import Sidebar from "./EMPLOYEE PORTAL/Sidebar";
-// import Navbar from "./EMPLOYEE PORTAL/Navbar";
-// import Dashboard from "./EMPLOYEE PORTAL/Dashboard";
-// import LoginPortal from "./EMPLOYEE PORTAL/LoginPortal";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { AuthProvider, useAuth } from "./EMPLOYEE PORTAL/AuthContext";
+import Sidebar from "./EMPLOYEE PORTAL/Sidebar";
+import Navbar from "./EMPLOYEE PORTAL/Navbar";
+import Dashboard from "./EMPLOYEE PORTAL/Dashboard";
+import LoginPortal from "./EMPLOYEE PORTAL/LoginPortal";
 
-// const App = () => {
-//   return (
-//     <AuthProvider>
-//       <Router>
-//         <Routes>
-//           <Route path="/" element={<LoginPortal />} />
-//           <Route path="/dashboard" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
-//         </Routes>
-//       </Router>
-//     </AuthProvider>
-//   );
-// };
+const App = () => {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<LoginPortal />} />
+          <Route path="/dashboard" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
+};
 
-// const MainApp = () => (
-//   <div className="flex">
-//     <Sidebar />
-//     <div className="flex-grow">
-//       <Navbar />
-//       <Dashboard />
-//     </div>
-//   </div>
-// );
+const MainApp = () => (
+  <div className="flex">
+    <Sidebar />
+    <div className="flex-grow">
+      <Navbar />
+      <Dashboard />
+    </div>
+  </div>
+);
 
-// const ProtectedRoute = ({ children }) => {
-//   const { user } = useAuth();
-//   return user ? children : <Navigate to="/" />;
-// };
+const ProtectedRoute = ({ children }) => {
+  const { user } = useAuth();
+  return user ? children : <Navigate to="/" />;
+};
 
-// export default App;
+export default App;
 
 
 
