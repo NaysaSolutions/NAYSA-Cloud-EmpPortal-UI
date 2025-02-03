@@ -13,6 +13,8 @@ const Dashboard = () => {
   const [breakTime, setBreakTime] = useState(3600); // Default break time in seconds (1 hour)
   const [isCounting, setIsCounting] = useState(false); // Tracks whether the countdown is active
   const [dailyTimeRecord, setDailyTimeRecord] = useState([]); // Store Daily Time Record
+  const [leaveCredit, setLeaveCredit] = useState([]); // Store Daily Time Record
+  const [loanBalance, setLoanBalance] = useState([]); // Store Daily Time Record
   const [error, setError] = useState(null); // Error state
   const { user } = useAuth(); // Get user data from AuthContext
 
@@ -43,16 +45,46 @@ const Dashboard = () => {
         if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
           // The 'result' field is a string, so we need to parse it
           const parsedData = JSON.parse(result.data[0].result);
-          console.log("Parsed Daily Time Records:", parsedData);
-    
-          // Check if dailyTimeRecord exists and is an array
-          const dailyRecords = parsedData[0]?.dailyTimeRecord;
-    
+       
+
+          console.log("Parsed Employee Summary:", parsedData);
+        
+
+
+          // Check if dailyTimeRecord exists and is an array    
+          console.log("Daily Time Record:", parsedData[0].dailyTimeRecord);       
+          const dailyRecords = parsedData[0]?.dailyTimeRecord; 
           if (dailyRecords && Array.isArray(dailyRecords)) {
             setDailyTimeRecord(dailyRecords);
           } else {
             setError("No daily time records found.");
           }
+
+
+          
+          // Check if Leave Credit exists and is an array 
+          console.log("Leave Credit:", parsedData[0].leaveCredit);       
+          const leaveCredits = parsedData[0]?.leaveCredit; 
+          if (leaveCredits && Array.isArray(leaveCredits)) {
+            setLeaveCredit(leaveCredits);
+          } else {
+            setError("No leave Credit records found.");
+          }
+
+
+          
+          
+          // Check if Loan Balance exists and is an array 
+          console.log("Loan Balance:", parsedData[0].loanBalance);       
+          const loanBalances = parsedData[0]?.loanBalance; 
+          if (loanBalances && Array.isArray(loanBalances)) {
+            setLoanBalance(loanBalances);
+          } else {
+            setError("No loan balance records found.");
+          }
+
+
+
         } else {
           setError("API response format is incorrect or no data found.");
         }
