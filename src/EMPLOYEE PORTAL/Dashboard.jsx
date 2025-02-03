@@ -139,33 +139,33 @@ const Dashboard = () => {
       <div className="flex justify-between mb-5">
         <div className="space-x-2">
           <button
-            className="bg-green-500 px-4 py-2 text-white rounded"
+            className="bg-[#4c84f5] px-4 py-2 text-white rounded"
             onClick={handleTimeIn}
           >
             Time In
           </button>
-          <button className="bg-green-500 px-4 py-2 text-white rounded"
+          <button className="bg-[#4c84f5] px-4 py-2 text-white rounded"
           onClick={handleBreakIn}>
             Break In
           </button>
         </div>
-        <div className="space-x-2">
-          <button className="bg-red-500 px-4 py-2 text-white rounded">
+        <div className="space-x-2 mr-5">
+          <button className="bg-[#d14c69] px-4 py-2 text-white rounded">
             Time Out
           </button>
-          <button className="bg-red-500 px-4 py-2 text-white rounded">
+          <button className="bg-[#d14c69] px-4 py-2 text-white rounded">
             Break Out
           </button>
         </div>
       </div>
 
       {/* Header */}
-      <div className="flex justify-between items-start w-[1000px]">
+      <div className="flex justify-between items-start w-[1130px]">
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white flex justify-between items-center mb-6 w-full shadow-lg">
           <div>
-            <p className="text-sm font-light mb-1 text-[#424554]">Today</p>
-            <h1 className="text-4xl font-extrabold text-[#424554]">
-              {currentDate.format("DD MMMM YYYY")}
+            <p className="text-md font-light mb-1 text-[#424554]"><span className="kanit-text">Today</span></p>
+            <h1 className="text-4xl font-extrabold text-[#495057]">
+              {currentDate.format("MMMM DD, YYYY")}
             </h1>
           </div>
           {/* Entry Time and Break Time Count */}
@@ -216,7 +216,7 @@ const Dashboard = () => {
               <p className="text-sm text-gray-600 mt-4">No records found.</p>
             )}
         </div>
-  <div className="flex justify-end mt-auto items-center">
+  <div className="flex justify-end mt-5 items-center">
     <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center">
       View All
       <span className="ml-1">→</span> 
@@ -242,7 +242,7 @@ const Dashboard = () => {
         <div className="w-32 text-sm">{leave.type}</div>
         <div className="flex-grow bg-gray-200 h-3 rounded-lg overflow-hidden">
           <div
-            className={`bg-red-400 h-full`}
+            className={`bg-[#4e86ed] h-full`}
             style={{ width: `${(leave.value / 10) * 100}%` }}
           ></div>
         </div>

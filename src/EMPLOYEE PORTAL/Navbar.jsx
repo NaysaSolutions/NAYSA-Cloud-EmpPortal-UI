@@ -4,7 +4,7 @@ const Navbar = () => {
   return (
     <>
       {/* Top Navbar */}
-      <div className="flex justify-center items-center bg-gray-800 text-white p-3 fixed top-0 left-0 w-full h-[30px] z-20">
+      <div className="flex justify-center items-center bg-[#162e3a] text-white p-3 fixed top-0 left-0 w-full h-[30px] z-20">
   {/* Centered Content */}
   <span className="font-bold text-lg">
     NEW NEMAR DEVELOPMENT CORPORATION
@@ -24,7 +24,7 @@ const Navbar = () => {
         </div>
 
         {/* Navigation Links */}
-        <div className="flex space-x-[45px] ml-[500px]">
+        <div className="flex space-x-[45px] ml-[450px]">
           <a href="#" className="text-blue-700 hover:font-bold">
             Inquiry
           </a>
