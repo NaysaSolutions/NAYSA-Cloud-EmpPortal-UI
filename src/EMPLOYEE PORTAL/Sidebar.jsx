@@ -58,7 +58,8 @@ const Sidebar = () => {
           className="w-[130px] h-[130px] rounded-full object-cover mb-4"
         />
         <h2 className="text-lg font-semibold text-[#1c394e] text-center">
-          Welcome Back, <br /> {user.empNo  || "Employee"}!
+          {/* Welcome Back, <br /> {user.empNo  || "Employee"}! */}
+          Welcome Back, <br /> ALDAY, RAYMOND CASAS!
         </h2>
       </div>
 <hr />

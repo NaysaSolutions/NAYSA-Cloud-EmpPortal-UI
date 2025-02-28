@@ -32,33 +32,14 @@ function LoginPortal() {
       
               console.log("User set:", userData); // Verify user data in console
       
-              // Show success message with SweetAlert
-              await Swal.fire({
-                title: "Login successful!",
-                icon: "success",
-                timer: 2000,
-                confirmButtonText: "OK",
-              });
       
               // Redirect to the dashboard after a successful login
               navigate("/dashboard");
             } else {
-              // Handle case where the result is empty or invalid
-              Swal.fire({
-                title: "Login failed!",
-                text: "Invalid response data.",
-                icon: "error",
-                confirmButtonText: "OK",
-              });
+              
             }
           } else {
-            // Handle unsuccessful login, display the error message
-            Swal.fire({
-              title: "Login failed!",
-              text: response.data.message || "Invalid credentials.",
-              icon: "error",
-              confirmButtonText: "OK",
-            });
+            
           }
         } catch (error) {
           // Handle network or server errors
@@ -80,8 +61,8 @@ function LoginPortal() {
             <div className="relative px-20 py-10 rounded-3xl  shadow-md border border-[#457b9d]" style={{ width: '530px', height: '565px', position: 'relative' }}>
                 <div className="absolute inset-0 rounded-3xl " style={{ backgroundColor: '#5882C1', opacity: 0.5, zIndex: 0 }}></div>
                 <div className="relative z-10">
-                    <img src="public/naysa LOGO.png" alt="Logo" className="w-200 h-20 mb-3" />
-                    <h2 className="text-white m-1" style={{ fontFamily: 'SF Pro Rounded, sans-serif' }}>NAYSA Databridge</h2>
+                    <img src="/naysa_logo.png" alt="Logo" className="w-200 h-20 mb-3" />
+                    <h2 className="text-white m-1" style={{ fontFamily: 'SF Pro Rounded, sans-serif' }}>NAYSA Employee Portal</h2>
                     <h2 className="text-4xl font-bold mb-5 text-white" style={{ fontFamily: 'SF Pro Rounded, sans-serif' }}>Welcome Back!</h2>
                     <form onSubmit={handleSubmit}>
                         <div className="mb-4">

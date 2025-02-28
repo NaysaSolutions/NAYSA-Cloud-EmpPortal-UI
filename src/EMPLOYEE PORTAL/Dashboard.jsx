@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext"; // Import AuthContext
+import { useNavigate } from "react-router-dom";
 
 dayjs.extend(advancedFormat);
 
@@ -15,9 +16,50 @@ const Dashboard = () => {
   const [dailyTimeRecord, setDailyTimeRecord] = useState([]); // Store Daily Time Record
   const [leaveCredit, setLeaveCredit] = useState([]); // Store Daily Time Record
   const [loanBalance, setLoanBalance] = useState([]); // Store Daily Time Record
+  const [leaveApplication, setLeaveApplication] = useState([]); // Store Leave Applications
+  const [otApplication, setOtApplication] = useState([]); // Store Overtime Applications
+  const [officialBusinessApplication, setOfficialBusinessApplication] = useState([]); // Store OB Applications
+  const [otApproval, setOtApproval] = useState([]); // Store Overtime Approvals
+  const [leaveApproval, setLeaveApproval] = useState([]); // Store Leave Approvals
+  const [officialBusinessApproval, setOfficialBusinessApproval] = useState([]); // Store OB Approvals
+  const [message, setMessage] = useState(""); // New state for messages
+  const [time, setTime] = useState("");
   const [error, setError] = useState(null); // Error state
   const { user } = useAuth(); // Get user data from AuthContext
+  const navigate = useNavigate();
 
+
+  const defaultLeaveTypes = [
+    { description: "Vacation Leave", balance: 0 },
+    { description: "Sick Leave", balance: 0 },
+    { description: "Personal Leave", balance: 0 },
+    { description: "Emergency Leave", balance: 0 },
+    { description: "Maternity Leave", balance: 0 },
+    { description: "Paternity Leave", balance: 0 },
+    { description: "Bereavement Leave", balance: 0 },
+    { description: "Birthday Leave", balance: 0 }
+  ];
+  
+
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+      const options = {
+        timeZone: "Asia/Manila",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      };
+      setTime(new Intl.DateTimeFormat("en-US", options).format(now));
+    };
+
+    updateTime(); // Set initial time
+    const interval = setInterval(updateTime, 1000); // Update every second
+
+    return () => clearInterval(interval); // Cleanup on unmount
+  }, []);
   // If no user is logged in, return an empty container
   if (!user) {
     return <div className="p-6">Loading...</div>;
@@ -35,56 +77,44 @@ const Dashboard = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ EMP_NO: user.empNo }),
         });
-    
+  
         const result = await response.json();
-    
-        // Log the raw API response to verify it
         console.log("Raw API Response:", result);
-    
-        // Check if we have valid data and parse the 'result' field
+  
         if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
-          // The 'result' field is a string, so we need to parse it
           const parsedData = JSON.parse(result.data[0].result);
-       
-
           console.log("Parsed Employee Summary:", parsedData);
-        
 
+          let apiLeaveCredits = parsedData[0]?.leaveCredit || [];
 
-          // Check if dailyTimeRecord exists and is an array    
-          console.log("Daily Time Record:", parsedData[0].dailyTimeRecord);       
-          const dailyRecords = parsedData[0]?.dailyTimeRecord; 
-          if (dailyRecords && Array.isArray(dailyRecords)) {
-            setDailyTimeRecord(dailyRecords);
-          } else {
-            setError("No daily time records found.");
-          }
+        // Merge API leave credits with default leave types
+        const mergedLeaveCredits = defaultLeaveTypes.map((defaultLeave) => {
+          const foundLeave = apiLeaveCredits.find(
+            (apiLeave) => apiLeave.description === defaultLeave.description
+          );
+          return foundLeave ? foundLeave : defaultLeave;
+        });
 
+          setLeaveCredit(mergedLeaveCredits);
+  
+          setDailyTimeRecord(parsedData[0]?.dailyTimeRecord || []);
+          setLeaveCredit(parsedData[0]?.leaveCredit || []);
+          setLoanBalance(parsedData[0]?.loanBalance || []);
+          setOtApproval(parsedData[0]?.otApproval || []);
+          setLeaveApproval(parsedData[0]?.leaveApproval || []);
+          setOfficialBusinessApproval(parsedData[0]?.officialBusinessApproval || []);
+  
+          // ✅ Extract Leave Applications
+          console.log("Leave Applications:", parsedData[0].leaveApplication);
+          setLeaveApplication(parsedData[0]?.leaveApplication || []);
+  
+          // ✅ Extract Overtime Applications
+          console.log("Overtime Applications:", parsedData[0].otApplication);
+          setOtApplication(parsedData[0]?.otApplication || []);
 
-          
-          // Check if Leave Credit exists and is an array 
-          console.log("Leave Credit:", parsedData[0].leaveCredit);       
-          const leaveCredits = parsedData[0]?.leaveCredit; 
-          if (leaveCredits && Array.isArray(leaveCredits)) {
-            setLeaveCredit(leaveCredits);
-          } else {
-            setError("No leave Credit records found.");
-          }
-
-
-          
-          
-          // Check if Loan Balance exists and is an array 
-          console.log("Loan Balance:", parsedData[0].loanBalance);       
-          const loanBalances = parsedData[0]?.loanBalance; 
-          if (loanBalances && Array.isArray(loanBalances)) {
-            setLoanBalance(loanBalances);
-          } else {
-            setError("No loan balance records found.");
-          }
-
-
-
+          // ✅ Extract Official Business Applications
+        console.log("Official Business Applications:", parsedData[0]?.officialBusinessApplication);
+        setOfficialBusinessApplication(parsedData[0]?.officialBusinessApplication || []);
         } else {
           setError("API response format is incorrect or no data found.");
         }
@@ -93,9 +123,9 @@ const Dashboard = () => {
         setError("An error occurred while fetching the records.");
       }
     };
-    
+  
     fetchDailyRecords();
-  }, [user.empNo]);  // This effect depends on user.empNo
+  }, [user.empNo]); // Dependency on user.empNo
   
   // Current Date and Time
   useEffect(() => {
@@ -121,13 +151,7 @@ const Dashboard = () => {
     return () => clearInterval(countdown);
   }, [isCounting, breakTime]);
 
-  const handleTimeIn = () => {
-    setEntryTime(dayjs().format("hh:mm A"));
-  };
-
-  const handleBreakIn = () => {
-    setIsCounting(true);
-  };
+ 
 
   // Convert seconds to HH:MM:SS
   const formatTime = (seconds) => {
@@ -167,32 +191,9 @@ const Dashboard = () => {
 
   return (
     <div className="ml-80 mt-[120px] p-6 bg-gray-100 min-h-screen">
-      {/* Controls */}
-      <div className="flex justify-between mb-5">
-        <div className="space-x-2">
-          <button
-            className="bg-[#4c84f5] px-4 py-2 text-white rounded"
-            onClick={handleTimeIn}
-          >
-            Time In
-          </button>
-          <button className="bg-[#4c84f5] px-4 py-2 text-white rounded"
-          onClick={handleBreakIn}>
-            Break In
-          </button>
-        </div>
-        <div className="space-x-2 mr-5">
-          <button className="bg-[#d14c69] px-4 py-2 text-white rounded">
-            Time Out
-          </button>
-          <button className="bg-[#d14c69] px-4 py-2 text-white rounded">
-            Break Out
-          </button>
-        </div>
-      </div>
-
+      
       {/* Header */}
-      <div className="flex justify-between items-start w-[1130px]">
+      <div className="flex justify-between items-start w-[1140px]">
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white flex justify-between items-center mb-6 w-full shadow-lg">
           <div>
             <p className="text-md font-light mb-1 text-[#424554]"><span className="kanit-text">Today</span></p>
@@ -202,12 +203,10 @@ const Dashboard = () => {
           </div>
           {/* Entry Time and Break Time Count */}
           <div className="flex space-x-10">
-            <div>
-              <p className="text-sm font-medium">Entry Time:</p>
-              <p className="text-4xl font-bold">
-                {entryTime || "00:00 PM"} {/* Display Entry Time  */}
-              </p>
-            </div>
+          <div>
+      <p className="text-sm font-medium">Philippine Standard Time:</p>
+      <p className="text-4xl font-bold">{time || "00:00 PM"}</p>
+    </div>
             <div>
               <p className="text-sm font-medium">Break Time Count:</p>
               <p className="text-4xl font-bold">
@@ -221,11 +220,9 @@ const Dashboard = () => {
       {/* Main Content */}
       <div className="grid grid-cols-3 gap-5">
         {/* Daily Time Record Section */}
-        <div className="bg-white p-4 rounded-lg shadow h-[360px] w-[350px] flex flex-col">
+        <div className="bg-white p-4 rounded-lg shadow h-[380px] w-[350px] flex flex-col">
           <h2 className="text-lg font-semibold">Daily Time Record</h2>
           <span className="text-gray-500 text-sm font-normal mt-4">Recent Transactions</span>
-
-          {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
 
           {/* Display Daily Time Records */}
           <div className="space-y-4 mt-5 flex-grow overflow-y-auto">
@@ -249,49 +246,56 @@ const Dashboard = () => {
             )}
         </div>
   <div className="flex justify-end mt-5 items-center">
-    <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center">
+    <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center"
+    onClick={() => navigate("/timekeeping")}>
       View All
       <span className="ml-1">→</span> 
     </span>
   </div>
 </div>
-
 
         {/* Leave Credit */}
-<div className="bg-white p-4 rounded-lg shadow h-[360px] w-[350px] flex flex-col">
+        <div className="bg-white p-4 rounded-lg shadow h-[380px] w-[350px] flex flex-col">
   <h2 className="text-xl font-semibold">Leave Credit</h2>
-  <span className="text-gray-500 cursor-pointer text-sm font-normal mt-4">Recent Transactions</span>
+  <span className="text-gray-500 text-sm font-normal mt-4">Recent Transactions</span>
+
   <div className="space-y-2 mt-5 flex-grow">
-    {[
-      { type: "Vacation Leave", value: 12 },
-      { type: "Sick Leave", value: 12 },
-      { type: "Personal Leave", value: 6 },
-      { type: "Emergency Leave", value: 4.87 },
-      { type: "Maternity Leave", value: 1 },
-      { type: "Paternity Leave", value: 1 },
-    ].map((leave, index) => (
-      <div key={index} className="flex items-center">
-        <div className="w-32 text-sm">{leave.type}</div>
-        <div className="flex-grow bg-gray-200 h-3 rounded-lg overflow-hidden">
-          <div
-            className={`bg-[#4e86ed] h-full`}
-            style={{ width: `${(leave.value / 10) * 100}%` }}
-          ></div>
+    {leaveCredit.length > 0 ? (
+      leaveCredit.map((leave, index) => (
+        <div key={index} className="flex items-center">
+          <div className="w-32 text-sm">{leave.description}</div>
+          <div className="flex-grow bg-gray-200 h-3 rounded-lg overflow-hidden">
+            <div
+              className={`bg-[#4e86ed] h-full`}
+              style={{ width: `${leave.balance > 0 ? (leave.balance / 10) * 100 : 2}%` }}
+            ></div>
+          </div>
+          <div className="w-8 text-sm text-right">{leave.balance}</div>
         </div>
-        <div className="w-8 text-sm text-right">{leave.value}</div>
+      ))
+    ) : (
+      // ✅ Centered message when no data is found
+      <div className="flex justify-center items-center h-full">
+        <p className="text-gray-500">No leave credits found.</p>
       </div>
-    ))}
+    )}
   </div>
-  <div className="flex justify-end mt-auto items-center">
-    <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center">
-      View All
-      <span className="ml-1">→</span> 
-    </span>
-  </div>
+
+  {/* Conditionally Render "View All" Button */}
+  {leaveCredit.length > 0 && (
+    <div className="flex justify-end mt-auto items-center">
+      <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center">
+        View All
+        <span className="ml-1">→</span> 
+      </span>
+    </div>
+  )}
 </div>
 
+
+
         {/* Personal Calendar */}
-        <div className="bg-white p-4 rounded-lg shadow h-[360px] w-[350px]">
+        <div className="bg-white p-4 rounded-lg shadow h-[400px] w-[360px]">
           <h2 className="text-xl font-semibold mb-4 text-center">Personal Calendar</h2>
           <div className="flex justify-between items-center mb-2">
             <button onClick={handlePrevMonth} className="text-gray-400">◀</button>
@@ -321,195 +325,355 @@ const Dashboard = () => {
         </div>
       </div>
       <hr className="mt-6 mb-6" />
-      <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
-        {/* Overtime Applications */}
-        <div className="bg-white p-4 rounded-lg shadow w-[550px]">
-          <h2 className="text-xl font-semibold mb-4">My Overtime Applications</h2>
-          <table className="w-full text-sm text-left">
-            <thead className="text-[#747474]">
-              <tr>
-                <th className="py-2">Date of Application</th>
-                <th className="py-2">Application Type</th>
-                <th className="py-2">Duration</th>
-                <th className="py-2">Status</th>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-screen">
+  {/* Overtime Applications */}
+  <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
+    <h2 className="text-xl font-semibold mb-4 text-gray-800">My Overtime Applications</h2>
+
+    {/* Responsive Table Wrapper */}
+    <div className="overflow-x-auto flex-grow">
+      <table className="min-w-full border border-gray-200 rounded-lg h-full">
+        <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
+          <tr>
+            <th className="py-3 px-4 text-left">Date Applied</th>
+            <th className="py-3 px-4 text-left">Application Type</th>
+            <th className="py-3 px-4 text-left">Duration</th>
+            <th className="py-3 px-4 text-left">Status</th>
+          </tr>
+        </thead>
+        <tbody className="text-gray-700 text-sm h-full">
+          {otApplication.length > 0 ? (
+            otApplication.slice(0, 5).map((ot, index) => (
+              <tr key={index} className="border-b hover:bg-gray-50">
+                <td className="py-3 px-4">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
+                <td className="py-3 px-4">{ot.ottype}</td>
+                <td className="py-3 px-4">{ot.duration}</td>
+                <td className="py-3 px-4">
+                  <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
+                    ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                    ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
+                    "bg-red-100 text-red-600"}`}>
+                    {ot.otstatus}
+                  </span>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b">
-                <td className="py-2">03/07/2021</td>
-                <td>Year-End Process</td>
-                <td>3 HRS</td>
-                <td className="min-w-[80px] bg-yellow-100 text-yellow-500 px-3 py-1 rounded-full text-center">Pending</td>
-              </tr>
-              <tr>
-                <td className="py-2">01/07/2022</td>
-                <td>Late Entry</td>
-                <td>1 HRS</td>
-                <td className="min-w-[80px] bg-red-100 text-red-500 px-3 py-1 rounded-full text-center">Rejected</td>
-              </tr>
-            </tbody>
-          </table>
-          <div className="flex justify-between items-center mt-4">
-            <span className="text-sm text-gray-500">Recent Transaction</span>
-            <span className="text-sm text-gray-500 flex items-center cursor-pointer">
-              View All <span className="ml-1">→</span>
-            </span>
-          </div>
-        </div>
+            ))
+          ) : (
+            <tr className="h-full">
+              <td colSpan="4">
+                <div className="h-[400px] flex justify-center items-center text-gray-500">
+                  No overtime applications found.
+                </div>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+
+    {/* View All Button */}
+    {otApplication.length > 0 && (
+      <div className="flex justify-end mt-4">
+        <button 
+          onClick={() => navigate("/overtime")} 
+          className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+        >
+          View All <span className="ml-1">→</span>
+        </button>
+      </div>
+    )}
+  </div>
+
+
+
+
 
         {/* Leave Applications */}
-        <div className="bg-white p-4 rounded-lg shadow w-[550px]">
-          <h2 className="text-xl font-semibold mb-4">My Leave Applications</h2>
-          <table className="w-full text-sm text-left">
-            <thead className="text-[#747474]">
-              <tr>
-                <th className="py-2">Date of Application</th>
-                <th className="py-2">Application Type</th>
-                <th className="py-2">Duration</th>
-                <th className="py-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b">
-                <td className="py-2">03/07/2021</td>
-                <td>Casual Leave</td>
-                <td>02 Days</td>
-                <td className="min-w-[80px] bg-yellow-100 text-yellow-500 px-3 py-1 rounded-full text-center">Pending</td>
-              </tr>
-              <tr>
-                <td className="py-2">01/07/2022</td>
-                <td>Late Entry</td>
-                <td>01 Days</td>
-                <td className="min-w-[80px] bg-red-100 text-red-500 px-3 py-1 rounded-full text-center">Rejected</td>
-              </tr>
-            </tbody>
-          </table>
-          <div className="flex justify-between items-center mt-4">
-            <span className="text-sm text-gray-500">Recent Transaction</span>
-            <span className="text-sm text-gray-500 flex items-center cursor-pointer">
-              View All <span className="ml-1">→</span>
-            </span>
-          </div>
-        </div>
+<div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
+  <h2 className="text-xl font-semibold mb-4 text-gray-800">My Leave Applications</h2>
+
+  {/* Responsive Table */}
+  <div className="overflow-x-auto">
+    <table className="min-w-full border border-gray-200 rounded-lg">
+      <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
+        <tr>
+          <th className="py-3 px-4 text-left">Date Applied</th>
+          <th className="py-3 px-4 text-left">Application Type</th>
+          <th className="py-3 px-4 text-left">Duration</th>
+          <th className="py-3 px-4 text-left">Status</th>
+        </tr>
+      </thead>
+      <tbody className="text-gray-700 text-sm">
+        {leaveApplication.length > 0 ? (
+          leaveApplication.slice(0, 5).map((leave, index) => (
+            <tr key={index} className="border-b hover:bg-gray-50">
+              <td className="py-3 px-4">{dayjs(leave.dateapplied).format("MM/DD/YYYY")}</td>
+              <td className="py-3 px-4">{leave.leavetype}</td>
+              <td className="py-3 px-4">{leave.duration}</td>
+              <td className="py-3 px-4">
+                <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-sm font-medium
+                  ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                  leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
+                  "bg-red-100 text-red-600"}`}>
+                  {leave.leavestatus}
+                </span>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="4">
+              <div className="flex justify-center items-center h-[150px] text-gray-500">
+                No leave applications found.
+              </div>
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  {/* View All Button */}
+  {leaveApplication.length > 0 && (
+    <div className="flex justify-end mt-4">
+      <button 
+        onClick={() => navigate("/leave")} 
+        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+      >
+        View All <span className="ml-1">→</span>
+      </button>
+    </div>
+  )}
+</div>
+
 
         {/* Official Business Applications */}
-        <div className="bg-white p-4 rounded-lg shadow w-[550px]">
-          <h2 className="text-xl font-semibold mb-4">My Official Business Applications</h2>
-          <table className="w-full text-sm text-left">
-            <thead className="text-text-[#747474]">
-              <tr>
-                <th className="py-2">Date of Application</th>
-                <th className="py-2">Application Type</th>
-                <th className="py-2">Duration</th>
-                <th className="py-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b">
-                <td className="py-2">03/07/2021</td>
-                <td>Client Onsite</td>
-                <td>02 Days</td>
-                <td className="min-w-[80px] bg-yellow-100 text-yellow-500 px-3 py-1 rounded-full text-center">Pending</td>
-              </tr>
-              <tr>
-                <td className="py-2">01/07/2022</td>
-                <td>Late Entry</td>
-                <td>01 Days</td>
-                <td className="min-w-[80px] bg-red-100 text-red-500 px-3 py-1 rounded-full text-center">Rejected</td>
-              </tr>
-            </tbody>
-          </table>
-          <div className="flex justify-between items-center mt-4">
-            <span className="text-sm text-gray-500">Recent Transaction</span>
-            <span className="text-sm text-gray-500 flex items-center cursor-pointer">
-              View All <span className="ml-1">→</span>
-            </span>
-          </div>
-        </div>
+        <div className="bg-white p-4 rounded-lg shadow w-[560px] flex flex-col h-[320px]">
+  <h2 className="text-xl font-semibold mb-4">My Official Business Applications</h2>
+  
+  <div className="flex-grow">
+    <table className="w-full text-sm text-left">
+      <thead className="text-[#747474]">
+        <tr>
+          <th className="py-2">Date Applied</th>
+          <th className="py-2">Application Type</th>
+          <th className="py-2">Duration</th>
+          <th className="py-2">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {officialBusinessApplication.length > 0 ? (
+          officialBusinessApplication.slice(0, 5).map((ob, index) => (
+            <tr key={index} className="border-b">
+              <td className="py-2">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
+              <td>{ob.obtype}</td>
+              <td>{ob.duration}</td>
+              <td>
+                <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center
+                  ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-500" : 
+                  ob.obstatus === "Approved" ? "bg-green-100 text-green-500" : 
+                  "bg-red-100 text-red-500"}`}>
+                  {ob.obstatus}
+                </span>
+              </td>
+            </tr>
+          ))
+        ) : (
+          // Centered message when no data is found
+          <tr>
+            <td colSpan="4">
+              <div className="flex justify-center items-center h-[200px] text-gray-500">
+                No official business applications found.
+              </div>
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  {/* Conditionally Render "View All" Button */}
+  {officialBusinessApplication.length > 0 && (
+    <div className="flex justify-start mt-auto items-center">
+      <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center">
+        View All
+        <span className="ml-1">→</span> 
+      </span>
+    </div>
+  )}
+</div>
 
         {/* Loan Balance Inquiry */}
-        <div className="bg-white p-4 rounded-lg shadow w-[550px]">
-          <h2 className="text-xl font-semibold mb-4">Loan Balance Inquiry</h2>
-          <span className="text-sm text-gray-500">Recent Transaction</span>
-          <div className="mt-4">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-semibold">SSS Loan</span>
-              <span className="text-lg font-semibold">₱90,000</span>
-            </div>
-            <p className="text-gray-500 text-sm">₱10,000 (Monthly Deduction)</p>
-          </div>
-          <div className="flex justify-between items-center mt-4">
-            <span></span>
-            <span className="text-sm text-gray-500 flex items-center cursor-pointer">
-              View All <span className="ml-1">→</span>
-            </span>
-          </div>
-    </div>
-    
-    <div className="grid grid-cols-2 lg:grid-cols-2 gap-4">
-  {/* Overtime Approval */}
-  <div className="bg-white p-4 rounded-lg shadow w-[550px]">
-    <h2 className="text-xl font-semibold mb-4">Overtime for Approval</h2>
+        <div className="bg-white p-4 rounded-lg shadow w-[560px] flex flex-col h-[320px]">
+  <h2 className="text-xl font-semibold mb-4">Loan Balance Inquiry</h2>
+
+  {/* Error Handling */}
+  {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
+
+  <div className="flex-grow">
     <table className="w-full text-sm text-left">
       <thead className="text-[#747474]">
         <tr>
-          <th className="py-2">Date of Application</th>
-          <th className="py-2">Application Type</th>
-          <th className="py-2">Duration</th>
-          <th className="py-2">Employee</th>
-          <th className="py-2">Status</th>
+          <th className="py-2">Loan Type</th>
+          <th className="py-2">Balance</th>
         </tr>
       </thead>
       <tbody>
-        <tr className="border-b">
-          <td className="py-2">03/07/2021</td>
-          <td>Year-End Process</td>
-          <td>3 HRS</td>
-          <td>Jomel Mendoza</td>
-          <td className="min-w-[80px] bg-yellow-100 text-yellow-500 px-3 py-1 rounded-full text-center">Pending</td>
-        </tr>
-        <tr> 
-          <td className="py-2">01/07/2022</td>
-          <td>Late Entry</td>
-          <td>1 HRS</td>
-          <td>Gerard Mendoza</td>
-          <td className="min-w-[80px] bg-green-100 text-green-500 px-3 py-1 rounded-full text-center">Approved</td>
-        </tr>
+        {loanBalance.length > 0 ? (
+          loanBalance.slice(0, 5).map((loan, index) => (
+            <tr key={index} className="border-b">
+              <td className="py-2">{loan.loantype}</td>
+              <td className="py-2">{loan.balance}</td>
+            </tr>
+          ))
+        ) : (
+          // Centered message when no data is found
+          <tr>
+            <td colSpan="2">
+              <div className="flex justify-center items-center h-[200px] text-gray-500">
+                No loan balances found.
+              </div>
+            </td>
+          </tr>
+        )}
       </tbody>
     </table>
   </div>
 
-  {/* Leave Approval */}
-  <div className="bg-white p-4 ml-[290px] rounded-lg shadow w-[550px]">
-    <h2 className="text-xl font-semibold mb-4">Leave for Approval</h2>
-    <table className="w-full text-sm text-left">
-      <thead className="text-[#747474]">
+  {/* Conditionally Render "View All" Button */}
+  {loanBalance.length > 0 && (
+    <div className="flex justify-start mt-auto items-center">
+      <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center">
+        View All
+        <span className="ml-1">→</span> 
+      </span>
+    </div>
+  )}
+</div>
+
+
+    
+<div className="bg-white p-6 rounded-lg shadow-md w-[570px] flex flex-col h-[500px]">
+  <h2 className="text-xl font-semibold mb-4 text-gray-800">Overtime for Approval</h2>
+
+  {/* Responsive Table Wrapper */}
+  <div className="flex-grow overflow-y-auto">
+    <table className="min-w-full border border-gray-200 rounded-lg">
+      <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
         <tr>
-          <th className="py-2">Date of Application</th>
-          <th className="py-2">Application Type</th>
-          <th className="py-2">Duration</th>
-          <th className="py-2">Employee</th>
-          <th className="py-2">Status</th>
+          <th className="py-3 px-4 text-left">Date Applied</th>
+          <th className="py-3 px-4 text-left">Application Type</th>
+          <th className="py-3 px-4 text-left">Duration</th>
+          <th className="py-3 px-4 text-left">Employee</th>
+          <th className="py-3 px-4 text-left">Status</th>
         </tr>
       </thead>
-      <tbody>
-        <tr className="border-b">
-          <td className="py-2">02/15/2023</td>
-          <td>Project Deadline</td>
-          <td>2 HRS</td>
-          <td>Jomel Mendoza</td>
-          <td className="min-w-[80px] bg-yellow-100 text-yellow-500 px-3 py-1 rounded-full text-center">Pending</td>
-        </tr>
-        <tr>
-          <td className="py-2">04/12/2023</td>
-          <td>Extra Hours</td>
-          <td>1.5 HRS</td>
-          <td>Gerard Mendoza</td>
-          <td className="min-w-[80px] bg-green-100 text-green-500 px-3 py-1 rounded-full text-center">Approved</td>
-        </tr>
+      <tbody className="text-gray-700 text-sm">
+        {otApproval.length > 0 ? (
+          otApproval.slice(0, 5).map((ot, index) => (
+            <tr key={index} className="border-b hover:bg-gray-50">
+              <td className="py-3 px-4">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
+              <td className="py-3 px-4">{ot.ottype}</td>
+              <td className="py-3 px-4">{ot.duration}</td>
+              <td className="py-3 px-4">{ot.empname}</td>
+              <td className="py-3 px-4">
+                <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
+                  ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                  ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
+                  "bg-red-100 text-red-600"}`}>
+                  {ot.otstatus}
+                </span>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="5">
+              <div className="flex justify-center items-center h-[150px] text-gray-500">
+                No overtime approvals found.
+              </div>
+            </td>
+          </tr>
+        )}
       </tbody>
     </table>
   </div>
+
+  {/* View All Button */}
+  {otApproval.length > 0 && (
+    <div className="flex justify-end mt-4">
+      <button 
+        onClick={() => navigate("/overtimeApproval")} 
+        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+      >
+        View All <span className="ml-1">→</span>
+      </button>
+    </div>
+  )}
+</div>
+
+
+
+  {/* Leave Approval */}
+  <div className="bg-white p-6 rounded-lg shadow-md w-[570px] flex flex-col h-[500px]">
+  <h2 className="text-xl font-semibold mb-4 text-gray-800">Leave for Approval</h2>
+
+  {/* Responsive Table Wrapper */}
+  <div className="flex-grow overflow-y-auto">
+    <table className="min-w-full border border-gray-200 rounded-lg">
+      <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
+        <tr>
+          <th className="py-3 px-4 text-left">Date Applied</th>
+          <th className="py-3 px-4 text-left">Application Type</th>
+          <th className="py-3 px-4 text-left">Duration</th>
+          <th className="py-3 px-4 text-left">Employee</th>
+          <th className="py-3 px-4 text-left">Status</th>
+        </tr>
+      </thead>
+      <tbody className="text-gray-700 text-sm">
+        {leaveApproval.length > 0 ? (
+          leaveApproval.slice(0, 5).map((leave, index) => (
+            <tr key={index} className="border-b hover:bg-gray-50">
+              <td className="py-3 px-4">{dayjs(leave.dateapplied).format("MM/DD/YYYY")}</td>
+              <td className="py-3 px-4">{leave.leavetype}</td>
+              <td className="py-3 px-4">{leave.duration}</td>
+              <td className="py-3 px-4">{leave.empname}</td>
+              <td className="py-3 px-4">
+                <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
+                  ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                  leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
+                  "bg-red-100 text-red-600"}`}>
+                  {leave.leavestatus}
+                </span>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="5">
+              <div className="flex justify-center items-center h-[150px] text-gray-500">
+                No leave approvals found.
+              </div>
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  {/* View All Button */}
+  {leaveApproval.length > 0 && (
+    <div className="flex justify-end mt-4">
+      <button 
+        onClick={() => navigate("/leaveApproval")} 
+        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+      >
+        View All <span className="ml-1">→</span>
+      </button>
+    </div>
+  )}
+</div>
+
 
   {/* Official Business Approval */}
   <div className="bg-white p-4 rounded-lg shadow w-[550px]">
@@ -517,7 +681,7 @@ const Dashboard = () => {
     <table className="w-full text-sm text-left">
       <thead className="text-[#747474]">
         <tr>
-          <th className="py-2">Date of Application</th>
+          <th className="py-2">Date Applied</th>
           <th className="py-2">Leave Type</th>
           <th className="py-2">Duration</th>
           <th className="py-2">Employee</th>
@@ -530,21 +694,28 @@ const Dashboard = () => {
           <td>Project Deadline</td>
           <td>2 HRS</td>
           <td>Jomel Mendoza</td>
-          <td className="min-w-[80px] bg-yellow-100 text-yellow-500 px-3 py-1 rounded-full text-center">Pending</td>
+          <td className="inline-block w-[80px] bg-yellow-100 text-yellow-500 text-xs font-medium px-3 py-1 rounded-full text-center">Pending</td>
         </tr>
         <tr>
           <td className="py-2">04/12/2023</td>
           <td>Extra Hours</td>
           <td>1.5 HRS</td>
           <td>Gerard Mendoza</td>
-          <td className="min-w-[80px] bg-green-100 text-green-500 px-3 py-1 rounded-full text-center">Approved</td>
+          <td className="inline-block w-[80px] bg-green-100 text-green-500 text-xs font-medium px-3 py-1 rounded-full text-center">Approved</td>
         </tr>
       </tbody>
     </table>
+    <div className="flex justify-end mt-2 items-center">
+    <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center"
+    onClick={() => navigate("/officialBusiness")}>
+      View All
+      <span className="ml-1">→</span> 
+    </span>
+  </div>
   </div>
 </div>            
     </div>
-    </div>
+    
   );
 };
 

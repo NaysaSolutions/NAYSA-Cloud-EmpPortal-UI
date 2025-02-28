@@ -128,6 +128,14 @@ import Sidebar from "./EMPLOYEE PORTAL/Sidebar";
 import Navbar from "./EMPLOYEE PORTAL/Navbar";
 import Dashboard from "./EMPLOYEE PORTAL/Dashboard";
 import LoginPortal from "./EMPLOYEE PORTAL/LoginPortal";
+import Timekeeping from "./EMPLOYEE PORTAL/Timekeeping";
+import Leave from "./EMPLOYEE PORTAL/Leave";
+import Overtime from "./EMPLOYEE PORTAL/Overtime";
+import LeaveApproval from "./EMPLOYEE PORTAL/LeaveApproval";
+import LeaveReview from "./EMPLOYEE PORTAL/LeaveReview";
+import OvertimeApproval from "./EMPLOYEE PORTAL/OvertimeApproval";
+import OvertimeReview from "./EMPLOYEE PORTAL/OvertimeReview";
+import OfficialBusiness from "./EMPLOYEE PORTAL/OfficialBusiness";
 
 const App = () => {
   return (
@@ -135,29 +143,40 @@ const App = () => {
       <Router>
         <Routes>
           <Route path="/" element={<LoginPortal />} />
-          <Route path="/dashboard" element={<ProtectedRoute><MainApp /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
+          <Route path="/timekeeping" element={<ProtectedRoute><Layout><Timekeeping /></Layout></ProtectedRoute>} />
+          <Route path="/leave" element={<ProtectedRoute><Layout><Leave /></Layout></ProtectedRoute>} />
+          <Route path="/overtime" element={<ProtectedRoute><Layout><Overtime /></Layout></ProtectedRoute>} />
+          <Route path="/overtimeApproval" element={<ProtectedRoute><Layout><OvertimeApproval /></Layout></ProtectedRoute>} />
+          <Route path="/overtime-review" element={<ProtectedRoute><Layout><OvertimeReview /></Layout></ProtectedRoute>} />
+          <Route path="/leaveApproval" element={<ProtectedRoute><Layout><LeaveApproval /></Layout></ProtectedRoute>} />
+          <Route path="/leave-review" element={<ProtectedRoute><Layout><LeaveReview /></Layout></ProtectedRoute>} />
+          <Route path="/official-business" element={<ProtectedRoute><Layout><OfficialBusiness /></Layout></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>
   );
 };
 
-const MainApp = () => (
+// Layout Component for pages with Sidebar & Navbar
+const Layout = ({ children }) => (
   <div className="flex">
     <Sidebar />
     <div className="flex-grow">
       <Navbar />
-      <Dashboard />
+      {children}
     </div>
   </div>
 );
 
+// ProtectedRoute to prevent unauthorized access
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
   return user ? children : <Navigate to="/" />;
 };
 
 export default App;
+
 
 
 
