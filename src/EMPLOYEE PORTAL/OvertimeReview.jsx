@@ -1,8 +1,130 @@
 import React from "react";
 import { AiOutlineClose } from "react-icons/ai"; // ✅ Import X (close) icon from React Icons
+import { X } from "lucide-react";
+
 
 const OvertimeReview = ({ overtimeData, onClose }) => {
   if (!overtimeData) return null;
+
+  const formatDate = (date) => {
+    if (!date) return ""; // Ensure it's not null/undefined
+    const d = new Date(date);
+    return d.toISOString().split("T")[0]; // Convert to YYYY-MM-DD format
+  };
+  
+  //  const [formData, setFormData] = useState({
+  //   empNo: otData.empNo || "",
+  // empName: overtimeData.empName || "",
+  //   department: otData.department || "N/A",
+  //   otDate: formatDate(otData.otDate), // ✅ Convert date format
+  //   otDays: otData.otDays || "",
+  //   otHrs: otData.otHrs || "",
+  //   otType: otData.otType || "",
+  //   otRemarks: otData.otRemarks || "",
+  //   approverRemarks: otData.approverRemarks || "",
+  //   approvedDays: otData.approvedDays || "",
+  //   approvedHrs: otData.approvedHrs || "",
+  //   otStamp: otData.otStamp || "", // ✅ Include lvStamp
+  //  });
+  
+  // Handle input change
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleApprove = async () => {
+    try {
+      if (!formData.otStamp) {
+        console.error("Error: otStamp is missing!");
+        alert("Error: otStamp is missing. Please try again.");
+        return;
+      }
+  
+      // Correct JSON format: wrapping json_data around the actual approval details
+      const payload = {
+        json_data: JSON.stringify({
+          json_data: {
+            empNo: formData.empNo,
+            appRemarks: formData.approverRemarks,
+            appDays: parseFloat(formData.approvedDays) || 0,
+            appHrs: parseFloat(formData.approvedHrs) || 0,
+            otStamp: formData.otStamp, // ✅ Ensure lvStamp is included
+            appStat: 1, // Status for approved
+          }
+        }),
+      };
+  
+      console.log("Sending approval data:", payload);
+  
+      const response = await fetch("http://127.0.0.1:8000/api/approvalOT", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+  
+      const result = await response.json();
+  
+      if (response.ok) {
+        alert("Approval successful!");
+        onClose();
+      } else {
+        alert(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Approval failed:", error);
+      alert("Failed to send approval. Please try again.");
+    }
+  };
+  
+  
+  const handleDisapprove = async () => {
+    try {
+      if (!formData.otStamp) {
+        console.error("Error: otStamp is missing!");
+        alert("Error: otStamp is missing. Please try again.");
+        return;
+      }
+  
+      const payload = {
+        json_data: JSON.stringify({
+          json_data: {
+            empNo: formData.empNo,
+            appRemarks: formData.approverRemarks,
+            otStamp: formData.otStamp, // Ensure lvStamp is included
+            appStat: 0, // Status for disapproved
+          }
+        }),
+      };
+  
+      console.log("Sending disapproval data:", payload);
+  
+      const response = await fetch("http://127.0.0.1:8000/api/approvalOT", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+  
+      const result = await response.json();
+  
+      if (response.ok) {
+        alert("Leave disapproved successfully!");
+        onClose();
+      } else {
+        alert(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Disapproval failed:", error);
+      alert("Failed to send disapproval. Please try again.");
+    }
+  };
+
+
+
+
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
@@ -30,19 +152,46 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
           <div>
             <label className="block text-gray-700">Hours</label>
             <input className="border p-2 w-full" value={overtimeData.otHrs || ""} readOnly />
+            
           </div>
         </div>
 
         {/* ✅ Approver Remarks (Editable) */}
         <div className="mt-4">
+          <label className="block text-gray-700">Approved Hours</label>
+          <input
+              type="number"
+              name="approvedDays"
+              // value={formData.approvedDays}
+              // onChange={handleChange}
+              className="w-full border rounded p-2"
+            />
+          {/* <input className="border p-2 w-full" value={overtimeData.otHrs || ""}  /> */}
           <label className="block text-gray-700">Approver's Remarks</label>
           <textarea className="border p-2 w-full h-20"></textarea> 
         </div>
 
-        <div className="flex justify-end space-x-4 mt-6">
+        {/* <div className="flex justify-end space-x-4 mt-6">
           <button className="bg-green-500 text-white px-4 py-2 rounded">Approve</button>
-          <button className="bg-red-500 text-white px-4 py-2 rounded">Reject</button>
+          <button className="bg-red-500 text-white px-4 py-2 rounded">Disapprove</button>
+        </div> */}
+
+{/* Buttons */}
+<div className="flex justify-end mt-4 space-x-2">
+          <button
+            className="bg-red-500 text-white px-4 py-2 rounded"
+            onClick={handleDisapprove}
+          >
+            Disapprove
+          </button>
+          <button
+            className="bg-green-500 text-white px-4 py-2 rounded"
+            onClick={handleApprove}
+          >
+            Approve
+          </button>
         </div>
+
       </div>
     </div>
   );

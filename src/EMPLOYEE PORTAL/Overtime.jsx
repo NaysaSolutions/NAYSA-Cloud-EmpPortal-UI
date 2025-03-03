@@ -49,7 +49,7 @@ const OvertimeApplication = () => {
         const today = dayjs().format("YYYY-MM-DD"); // Getting the current date in "YYYY-MM-DD" format.
         const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD"); // Calculating the date one year ago for filtering applications.
         
-        const response = await fetch("http://213.35.106.144:81/api/getOTApprInq", { 
+        const response = await fetch("http://127.0.0.1:8000/api/getOTApprInq", { 
           method: "POST", 
           headers: { "Content-Type": "application/json" }, 
           body: JSON.stringify({ 
@@ -164,20 +164,45 @@ const OvertimeApplication = () => {
 
   const handleSubmit = async () => {
 
+    // const OvertimeData = {
+    //   json_data: {
+    //     empNo: user.empNo,
+    //     detail: [
+    //       {
+    //         otDate: otDate,
+    //         otDay: otDay,
+    //         otHrs: parseFloat(overtimeHours) || 0,
+    //         otRemarks: remarks,
+    //         otType: otType,
+    //       },
+    //     ],
+    //   },
+    // };
+
+  // Check if any required fields are empty
+      if (!otDate || !otDay || !otType || !remarks.trim()) {
+        Swal.fire({
+            title: "Incomplete Form",
+            text: "Please fill in all required fields before submitting.",
+            icon: "warning",
+            confirmButtonText: "OK",
+        });
+        return; // Stop execution to prevent API call
+    }
     const OvertimeData = {
       json_data: {
-        empNo: user.empNo,
-        detail: [
-          {
-            otDate: otDate,
-            otDay: otDay,
-            otHrs: parseFloat(overtimeHours) || 0,
-            otRemarks: remarks,
-            otType: otType,
-          },
-        ],
+          empNo: user.empNo,
+          detail: [
+              {
+                otDate: otDate,
+                otDay: otDay,
+                otType: otType,
+                otRemarks: remarks,
+                otHrs: overtimeHours ? parseFloat(overtimeHours) : 0,
+              },
+          ],
       },
-    };
+  };
   
     console.log("Sending Overtime Data:", JSON.stringify(OvertimeData, null, 2));
   
@@ -203,6 +228,8 @@ const OvertimeApplication = () => {
         setOvertimeHours(""); // Reset input field
         setRemarks("");
         setOtType(""); // Reset default type
+        
+        fetchOvertimeApplications(); // Refresh leave applications list
       });
     } else {
         Swal.fire({
@@ -293,8 +320,8 @@ useEffect(() => {
                 className="w-full p-2 border rounded"
               >
                 <option value="REG">Regular Overtime</option>
-                <option>Vacation Leave</option>
-                <option>Emergency Leave</option>
+                <option>Holiday</option>
+                <option>Rest Day</option>
               </select>
             </div>
           </div>

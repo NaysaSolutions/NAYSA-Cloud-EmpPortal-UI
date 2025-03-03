@@ -11,6 +11,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
   };
   
   const [formData, setFormData] = useState({
+    empNo: leaveData.empNo || "",
     empName: leaveData.empName || "",
     department: leaveData.department || "N/A",
     leaveStart: formatDate(leaveData.leaveStart), // ✅ Convert date format
@@ -42,11 +43,12 @@ const LeaveReview = ({ leaveData, onClose }) => {
       const payload = {
         json_data: JSON.stringify({
           json_data: {
-            empNo: formData.empName,
+            empNo: formData.empNo,
             appRemarks: formData.approverRemarks,
             appDays: parseFloat(formData.approvedDays) || 0,
             appHrs: parseFloat(formData.approvedHrs) || 0,
             lvStamp: formData.lvStamp, // ✅ Ensure lvStamp is included
+            appStat: 1, // Status for approved
           }
         }),
       };
@@ -76,7 +78,48 @@ const LeaveReview = ({ leaveData, onClose }) => {
   };
   
   
+  const handleDisapprove = async () => {
+    try {
+      if (!formData.lvStamp) {
+        console.error("Error: lvStamp is missing!");
+        alert("Error: lvStamp is missing. Please try again.");
+        return;
+      }
   
+      const payload = {
+        json_data: JSON.stringify({
+          json_data: {
+            empNo: formData.empNo,
+            appRemarks: formData.approverRemarks,
+            lvStamp: formData.lvStamp, // Ensure lvStamp is included
+            appStat: 0, // Status for disapproved
+          }
+        }),
+      };
+  
+      console.log("Sending disapproval data:", payload);
+  
+      const response = await fetch("http://127.0.0.1:8000/api/approvalLV", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+  
+      const result = await response.json();
+  
+      if (response.ok) {
+        alert("Leave disapproved successfully!");
+        onClose();
+      } else {
+        alert(`Error: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Disapproval failed:", error);
+      alert("Failed to send disapproval. Please try again.");
+    }
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-[9999]">
@@ -170,6 +213,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
             onChange={handleChange}
             className="w-full border rounded p-2"
             disabled
+            required
           />
         </div>
         <hr  className="mt-5 mb-5"/>
@@ -213,6 +257,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
         <div className="flex justify-end mt-4 space-x-2">
           <button
             className="bg-red-500 text-white px-4 py-2 rounded"
+            onClick={handleDisapprove}
           >
             Disapprove
           </button>

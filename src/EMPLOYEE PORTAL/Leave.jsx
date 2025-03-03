@@ -163,7 +163,7 @@ const Leave = () => {
     console.log("Sending Leave Data:", JSON.stringify(leaveData, null, 2));
 
     try {
-        const response = await fetch("http://127.0.0.1:8000/api/getLVApprInq", {
+        const response = await fetch("http://127.0.0.1:8000/api/upsertLV", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(leaveData),

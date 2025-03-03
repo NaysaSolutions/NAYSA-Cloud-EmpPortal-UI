@@ -72,14 +72,14 @@ const Navbar = () => {
           >
             Official Business
           </span>
-          <span 
+          {/* <span 
             onClick={() => navigate("/adjustment")} 
             className={`cursor-pointer hover:font-bold ${
               isActive("/adjustment") ? "text-blue-900 font-bold border-b-2 border-blue-900" : "text-blue-700"
             }`}
           >
             Adjustment
-          </span>
+          </span> */}
         </div>
       </div>
     </>
