@@ -66,7 +66,7 @@ function LoginPortal() {
                     <h2 className="text-4xl font-bold mb-5 text-white" style={{ fontFamily: 'SF Pro Rounded, sans-serif' }}>Welcome Back!</h2>
                     <form onSubmit={handleSubmit}>
                         <div className="mb-4">
-                            <label className="block text-base font-normal text-[#162e3a]">Employee Number</label>
+                            <label className="block text-base font-normal text-[#162e3a]">Employee No.</label>
                             <input
                                 type="text"
                                 name="empNo"

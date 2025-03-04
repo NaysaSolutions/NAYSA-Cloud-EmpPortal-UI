@@ -4,6 +4,7 @@ import advancedFormat from "dayjs/plugin/advancedFormat";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext"; // Import AuthContext
 import { useNavigate } from "react-router-dom";
+import LeaveCreditModal from "./LeaveCreditModal";
 
 dayjs.extend(advancedFormat);
 
@@ -24,6 +25,7 @@ const Dashboard = () => {
   const [officialBusinessApproval, setOfficialBusinessApproval] = useState([]); // Store OB Approvals
   const [message, setMessage] = useState(""); // New state for messages
   const [time, setTime] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState(null); // Error state
   const { user } = useAuth(); // Get user data from AuthContext
   const navigate = useNavigate();
@@ -220,83 +222,111 @@ const Dashboard = () => {
       {/* Main Content */}
       <div className="grid grid-cols-3 gap-5">
         {/* Daily Time Record Section */}
-        <div className="bg-white p-4 rounded-lg shadow h-[380px] w-[350px] flex flex-col">
-          <h2 className="text-lg font-semibold">Daily Time Record</h2>
-          <span className="text-gray-500 text-sm font-normal mt-4">Recent Transactions</span>
-
-          {/* Display Daily Time Records */}
-          <div className="space-y-4 mt-5 flex-grow overflow-y-auto">
+        <div className="bg-white p-4 rounded-lg shadow-lg w-full max-w-lg mx-auto">
+      <h2 className="text-lg font-semibold uppercase">Daily Time Record</h2>
+      <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
+      
+      {/* Table Structure */}
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-200 text-gray-700 text-sm uppercase">
+              <th className="p-2 text-left">Date</th>
+              <th className="p-2 text-center">Time In</th>
+              <th className="p-2 text-center">Time Out</th>
+            </tr>
+          </thead>
+          <tbody>
             {dailyTimeRecord.length > 0 ? (
               dailyTimeRecord.map((record, index) => (
-                <div key={index} className="flex justify-between items-center border-b pb-2">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
-                    <div>
-                      <p className="text-sm font-semibold">
-                        {dayjs(record.trandate).format("MMMM D, YYYY")}
-                      </p>
-                      <p className="text-xs">Time In: {record.time_in ? dayjs(record.time_in).format("hh:mm A") : "N/A"}</p>
-                      <p className="text-xs">Time Out: {record.time_out ? dayjs(record.time_out).format("hh:mm A") : "N/A"}</p>
-                    </div>
-                  </div>
-                </div>
+                <tr key={index} className="border-b hover:bg-gray-100">
+                  <td className="p-2 text-left text-sm">
+                    {dayjs(record.trandate).format("MM/DD/YYYY")}
+                  </td>
+                  <td className="p-2 text-center text-sm">
+                    {record.time_in ? dayjs(record.time_in).format("hh:mm A") : "N/A"}
+                  </td>
+                  <td className="p-2 text-center text-sm">
+                    {record.time_out ? dayjs(record.time_out).format("hh:mm A") : "N/A"}
+                  </td>
+                </tr>
               ))
             ) : (
-              <p className="text-sm text-gray-600 mt-4">No records found.</p>
+              <tr>
+                <td colSpan="3" className="p-4 text-center text-gray-600 text-sm">
+                  No records found.
+                </td>
+              </tr>
             )}
-        </div>
-  <div className="flex justify-end mt-5 items-center">
-    <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center"
-    onClick={() => navigate("/timekeeping")}>
-      View All
-      <span className="ml-1">→</span> 
-    </span>
-  </div>
+          </tbody>
+        </table>
+      </div>
+      
+      {/* View All Button */}
+      <div className="flex justify-end mt-20">
+        <button className="text-blue-500 text-sm font-medium hover:underline" onClick={() => navigate("/timekeeping")}>
+          View All →
+        </button>
+      </div>
 </div>
 
         {/* Leave Credit */}
-        <div className="bg-white p-4 rounded-lg shadow h-[380px] w-[350px] flex flex-col">
-  <h2 className="text-xl font-semibold">Leave Credit</h2>
-  <span className="text-gray-500 text-sm font-normal mt-4">Recent Transactions</span>
-
-  <div className="space-y-2 mt-5 flex-grow">
-    {leaveCredit.length > 0 ? (
-      leaveCredit.map((leave, index) => (
-        <div key={index} className="flex items-center">
-          <div className="w-32 text-sm">{leave.description}</div>
-          <div className="flex-grow bg-gray-200 h-3 rounded-lg overflow-hidden">
-            <div
-              className={`bg-[#4e86ed] h-full`}
-              style={{ width: `${leave.balance > 0 ? (leave.balance / 10) * 100 : 2}%` }}
-            ></div>
-          </div>
-          <div className="w-8 text-sm text-right">{leave.balance}</div>
-        </div>
-      ))
-    ) : (
-      // ✅ Centered message when no data is found
-      <div className="flex justify-center items-center h-full">
-        <p className="text-gray-500">No leave credits found.</p>
+        <div className="bg-white p-4 rounded-lg shadow-lg w-full max-w-lg mx-auto">
+      <h2 className="text-lg font-semibold uppercase">Leave Credit</h2>
+      <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
+      
+      {/* Table Structure */}
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-gray-200 text-gray-700 text-sm uppercase">
+              <th className="p-2 text-left">Leave Type</th>
+              <th className="p-2 text-center">Credit</th>
+              <th className="p-2 text-center">Used</th>
+              <th className="p-2 text-center">Actual Balance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leaveCredit.length > 0 ? (
+              leaveCredit.map((leave, index) => (
+                <tr key={index} className="border-b hover:bg-gray-100">
+                  <td className="p-2 text-left text-sm">{leave.description}</td>
+                  <td className="p-2 text-center text-sm">{leave.credit}</td>
+                  <td className="p-2 text-center text-sm">{leave.availed}</td>
+                  <td className="p-2 text-center text-sm">{leave.balance}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="6" className="p-4 text-center text-gray-600 text-sm">
+                  No leave credits found.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
-    )}
-  </div>
 
   {/* Conditionally Render "View All" Button */}
   {leaveCredit.length > 0 && (
-    <div className="flex justify-end mt-auto items-center">
-      <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center">
-        View All
-        <span className="ml-1">→</span> 
-      </span>
-    </div>
+    <div className="flex justify-end mt-20">
+          <button className="text-blue-500 text-sm font-medium hover:underline"
+           onClick={() => setIsModalOpen(true)}>
+            View All →
+          </button>
+        </div>
   )}
+   {/* Leave Credit Modal */}
+   <LeaveCreditModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        leaveCredit={leaveCredit} 
+      />
 </div>
-
-
 
         {/* Personal Calendar */}
         <div className="bg-white p-4 rounded-lg shadow h-[400px] w-[360px]">
-          <h2 className="text-xl font-semibold mb-4 text-center">Personal Calendar</h2>
+          <h2 className="text-lg font-semibold mb-4 text-center uppercase">Personal Calendar</h2>
           <div className="flex justify-between items-center mb-2">
             <button onClick={handlePrevMonth} className="text-gray-400">◀</button>
             <h3 className="text-lg font-semibold">{currentMonth.format("MMMM YYYY")}</h3>
@@ -328,14 +358,14 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-screen">
   {/* Overtime Applications */}
   <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
-    <h2 className="text-xl font-semibold mb-4 text-gray-800">My Overtime Applications</h2>
+    <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Overtime Applications</h2>
 
     {/* Responsive Table Wrapper */}
     <div className="overflow-x-auto flex-grow">
       <table className="min-w-full border border-gray-200 rounded-lg h-full">
         <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
           <tr>
-            <th className="py-3 px-4 text-left">Date Applied</th>
+            <th className="py-3 px-4 text-left">Date</th>
             <th className="py-3 px-4 text-left">Application Type</th>
             <th className="py-3 px-4 text-left">Duration</th>
             <th className="py-3 px-4 text-left">Status</th>
@@ -390,14 +420,14 @@ const Dashboard = () => {
 
         {/* Leave Applications */}
 <div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
-  <h2 className="text-xl font-semibold mb-4 text-gray-800">My Leave Applications</h2>
+  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Leave Applications</h2>
 
   {/* Responsive Table */}
   <div className="overflow-x-auto">
     <table className="min-w-full border border-gray-200 rounded-lg">
       <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
         <tr>
-          <th className="py-3 px-4 text-left">Date Applied</th>
+          <th className="py-3 px-4 text-left">Date</th>
           <th className="py-3 px-4 text-left">Application Type</th>
           <th className="py-3 px-4 text-left">Duration</th>
           <th className="py-3 px-4 text-left">Status</th>
@@ -449,13 +479,13 @@ const Dashboard = () => {
 
         {/* Official Business Applications */}
         <div className="bg-white p-4 rounded-lg shadow w-[560px] flex flex-col h-[320px]">
-  <h2 className="text-xl font-semibold mb-4">My Official Business Applications</h2>
+  <h2 className="text-lg font-semibold mb-4 uppercase">My Official Business Applications</h2>
   
   <div className="flex-grow">
     <table className="w-full text-sm text-left">
-      <thead className="text-[#747474]">
+      <thead className="text-[#747474] uppercase">
         <tr>
-          <th className="py-2">Date Applied</th>
+          <th className="py-2">Date</th>
           <th className="py-2">Application Type</th>
           <th className="py-2">Duration</th>
           <th className="py-2">Status</th>
@@ -505,7 +535,7 @@ const Dashboard = () => {
 
         {/* Loan Balance Inquiry */}
         <div className="bg-white p-4 rounded-lg shadow w-[560px] flex flex-col h-[320px]">
-  <h2 className="text-xl font-semibold mb-4">Loan Balance Inquiry</h2>
+  <h2 className="text-lg font-semibold mb-4 uppercase">Loan Balance Inquiry</h2>
 
   {/* Error Handling */}
   {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
@@ -514,8 +544,8 @@ const Dashboard = () => {
     <table className="w-full text-sm text-left">
       <thead className="text-[#747474]">
         <tr>
-          <th className="py-2">Loan Type</th>
-          <th className="py-2">Balance</th>
+          <th className="py-2 uppercase">Loan Type</th>
+          <th className="py-2 uppercase">Balance</th>
         </tr>
       </thead>
       <tbody>
@@ -554,14 +584,14 @@ const Dashboard = () => {
 
     
 <div className="bg-white p-6 rounded-lg shadow-md w-[570px] flex flex-col h-[500px]">
-  <h2 className="text-xl font-semibold mb-4 text-gray-800">Overtime for Approval</h2>
+  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">Overtime for Approval</h2>
 
   {/* Responsive Table Wrapper */}
   <div className="flex-grow overflow-y-auto">
     <table className="min-w-full border border-gray-200 rounded-lg">
       <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
         <tr>
-          <th className="py-3 px-4 text-left">Date Applied</th>
+          <th className="py-3 px-4 text-left">Date</th>
           <th className="py-3 px-4 text-left">Application Type</th>
           <th className="py-3 px-4 text-left">Duration</th>
           <th className="py-3 px-4 text-left">Employee</th>
@@ -616,14 +646,14 @@ const Dashboard = () => {
 
   {/* Leave Approval */}
   <div className="bg-white p-6 rounded-lg shadow-md w-[570px] flex flex-col h-[500px]">
-  <h2 className="text-xl font-semibold mb-4 text-gray-800">Leave for Approval</h2>
+  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">Leave for Approval</h2>
 
   {/* Responsive Table Wrapper */}
   <div className="flex-grow overflow-y-auto">
     <table className="min-w-full border border-gray-200 rounded-lg">
       <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
         <tr>
-          <th className="py-3 px-4 text-left">Date Applied</th>
+          <th className="py-3 px-4 text-left">Date</th>
           <th className="py-3 px-4 text-left">Application Type</th>
           <th className="py-3 px-4 text-left">Duration</th>
           <th className="py-3 px-4 text-left">Employee</th>
@@ -677,11 +707,11 @@ const Dashboard = () => {
 
   {/* Official Business Approval */}
   <div className="bg-white p-4 rounded-lg shadow w-[550px]">
-    <h2 className="text-xl font-semibold mb-4">Official Business for Approval</h2>
-    <table className="w-full text-sm text-left">
+    <h2 className="text-lg font-semibold mb-4 uppercase">Official Business for Approval</h2>
+    <table className="w-full text-sm text-left uppercase">
       <thead className="text-[#747474]">
         <tr>
-          <th className="py-2">Date Applied</th>
+          <th className="py-2">Date</th>
           <th className="py-2">Leave Type</th>
           <th className="py-2">Duration</th>
           <th className="py-2">Employee</th>

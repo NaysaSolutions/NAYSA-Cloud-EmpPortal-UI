@@ -264,14 +264,14 @@ useEffect(() => {
       <div className="max-w-[1150px] mx-auto">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
-          <h1 className="text-3xl font-semibold">My Overtime Applications</h1>
+          <h1 className="text-3xl font-semibold uppercase">My Overtime Applications</h1>
         </div>
 
         {/* Overtime Details Section */}
         <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
           <div className="grid grid-cols-3 gap-6">
           <div>
-      <span className="block font-semibold mb-1">Date of Application</span>
+      <span className="block font-semibold mb-1 uppercase">Date</span>
       <input 
         type="date" 
         className="w-full p-2 border rounded" 
@@ -281,7 +281,7 @@ useEffect(() => {
     </div>
 
 <div>
-  <span className="block font-semibold mb-1">Date of Overtime</span>
+  <span className="block font-semibold mb-1 uppercase">Date of Overtime</span>
   <input 
     value={otDate} 
     onChange={(e) => setOTDate(e.target.value)}
@@ -290,7 +290,7 @@ useEffect(() => {
   />
 </div>
 <div>
-  <span className="block font-semibold mb-1">Overtime Day</span>
+  <span className="block font-semibold mb-1 uppercase">Number of Days</span>
   <input 
     type="text"
     className="w-full p-2 border rounded bg-gray-100"
@@ -300,7 +300,7 @@ useEffect(() => {
 </div>
 
 <div>
-  <span className="block font-semibold mb-1">Overtime Hours</span>
+  <span className="block font-semibold mb-1 uppercase">Number of Hours</span>
   <input 
     type="number" 
     className="w-full p-2 border rounded"
@@ -313,7 +313,7 @@ useEffect(() => {
 </div>
 
             <div>
-              <span className="block font-semibold mb-1">Overtime Type</span>
+              <span className="block font-semibold mb-1 uppercase">Overtime Type</span>
               <select
                 value={otType} 
                 onChange={(e) => setOtType(e.target.value)}
@@ -328,7 +328,7 @@ useEffect(() => {
 
           {/* Remarks Section */}
           <div className="mt-6">
-            <span className="block font-semibold mb-1">Remarks</span>
+            <span className="block font-semibold mb-1 uppercase">Remarks</span>
             <textarea
             value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
@@ -350,13 +350,13 @@ useEffect(() => {
 
         {/* Overtime History Table */}
         <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-          <h2 className="text-lg font-semibold mb-4">Overtime Application History</h2>
+          <h2 className="text-lg font-semibold mb-4 uppercase">Overtime Application History</h2>
 
           {error && <p className="text-red-500 text-center">{error}</p>}
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
-              <thead className="text-gray-700 uppercase bg-gray-100">
+              <thead className="text-gray-700 uppercase bg-gray-100 ">
                 <tr>
                   {[
                     { key: "date", label: "Date of Application" },

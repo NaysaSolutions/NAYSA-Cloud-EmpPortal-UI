@@ -128,14 +128,14 @@ const LeaveReview = ({ leaveData, onClose }) => {
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-600 hover:text-gray-900">
           <X size={24} />
         </button>
-    <h2 className="text-2xl font-bold mb-5">Leave Review</h2>
+    <h2 className="text-2xl font-bold mb-5 uppercase">Leave Review</h2>
 
         {/* Grid Layout for Inputs */}
         <div className="grid grid-cols-2 gap-4">
           {/* Left Column */}
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium">Employee Name:</label>
+              <label className="block text-sm font-medium uppercase">Employee Name:</label>
               <input
                 type="text"
                 name="empName"
@@ -146,7 +146,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium">Department:</label>
+              <label className="block text-sm font-medium uppercase">Department:</label>
               <input
                 type="text"
                 name="department"
@@ -157,7 +157,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium">Leave Start:</label>
+              <label className="block text-sm font-medium uppercase">Leave Start:</label>
               <input
                 type="date"
                 name="leaveStart"
@@ -171,7 +171,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
           {/* Right Column */}
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium">Duration (Days):</label>
+              <label className="block text-sm font-medium uppercase">Number of Days:</label>
               <input
                 type="number"
                 name="leaveDays"
@@ -182,7 +182,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium">Duration (Hours):</label>
+              <label className="block text-sm font-medium uppercase">Number of Hours:</label>
               <input
                 type="number"
                 name="leaveHrs"
@@ -192,7 +192,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium">Leave End:</label>
+              <label className="block text-sm font-medium uppercase">Leave End:</label>
               <input
                 type="date"
                 name="leaveEnd"
@@ -206,7 +206,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
 
         {/* Full-Width Text Areas */}
         <div className="mt-4">
-          <label className="block text-sm font-medium">Remarks:</label>
+          <label className="block text-sm font-medium uppercase">Remarks:</label>
           <textarea
             name="leaveRemarks"
             value={formData.leaveRemarks}
@@ -221,7 +221,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
         {/* Approved Days & Approved Hours (Side by Side) */}
         <div className="grid grid-cols-2 gap-4 mt-3">
           <div>
-            <label className="block text-sm font-medium">Approved Days:</label>
+            <label className="block text-sm font-medium uppercase">Approved Days:</label>
             <input
               type="number"
               name="approvedDays"
@@ -232,7 +232,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium">Approved Hours:</label>
+            <label className="block text-sm font-medium uppercase">Approved Hours:</label>
             <input
               type="number"
               name="approvedHrs"
@@ -243,7 +243,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
           </div>
         </div>
         <div className="mt-3">
-          <label className="block text-sm font-medium">Approver Remarks:</label>
+          <label className="block text-sm font-medium uppercase">Approver Remarks:</label>
           <textarea
             name="approverRemarks"
             value={formData.approverRemarks}

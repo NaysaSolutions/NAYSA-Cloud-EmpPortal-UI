@@ -50,6 +50,20 @@ const Timekeeping = () => {
       break_in: "",
       break_out: ""
     });
+    
+    const formatDateTime = (dateTime) => {
+      return dateTime
+        ? new Date(dateTime).toLocaleString("en-US", {
+            month: "2-digit",
+            day: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })
+        : "N/A";
+    };
+    
   
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -186,31 +200,30 @@ const Timekeeping = () => {
   };
 
   // Sorting Function
-    const sortData = (key) => {
-      let direction = "asc";
-      if (sortConfig.key === key && sortConfig.direction === "asc") {
-        direction = "desc";
+  const sortData = (key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  
+    const sortedData = [...fetchRecords].sort((a, b) => {
+      const valA = a[key] || "";
+      const valB = b[key] || "";
+  
+      if (key === "trandate") {
+        // Ensure proper date parsing
+        return direction === "asc"
+          ? dayjs(valA, "YYYY-MM-DD").unix() - dayjs(valB, "YYYY-MM-DD").unix()
+          : dayjs(valB, "YYYY-MM-DD").unix() - dayjs(valA, "YYYY-MM-DD").unix();
+      } else {
+        return direction === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
       }
-      setSortConfig({ key, direction });
+    });
   
-      const sortedData = [...filteredApplications].sort((a, b) => {
-        if (key === "leaveStart" || key === "leaveEnd") {
-          return direction === "asc"
-            ? dayjs(a[key]).unix() - dayjs(b[key]).unix()
-            : dayjs(b[key]).unix() - dayjs(a[key]).unix();
-        } else if (key === "leaveDays") {
-          return direction === "asc"
-            ? parseFloat(a[key]) - parseFloat(b[key])
-            : parseFloat(b[key]) - parseFloat(a[key]);
-        } else {
-          return direction === "asc"
-            ? a[key]?.toString().localeCompare(b[key]?.toString())
-            : b[key]?.toString().localeCompare(a[key]?.toString());
-        }
-      });
+    setFetchRecords(sortedData);
+  };
   
-      setFilteredApplications(sortedData);
-    };
   
     // Search Function
     const handleSearchChange = (e, key) => {
@@ -430,24 +443,25 @@ const Timekeeping = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {fetchRecords.length > 0 ? (
-                        fetchRecords.map((record, index) => (
-                          <tr key={index} className="bg-white hover:bg-gray-100 text-gray-700 transition">
-                            <td className="px-4 py-2 border">{dayjs(record.date || "N/A").format("MM/DD/YYYY")}</td>
-                            <td className="px-4 py-2 border">{record.time_in || "N/A"}</td>
-                            <td className="px-4 py-2 border">{record.time_out || "N/A"} </td>
-                            <td className="px-4 py-2 border">{record.break_in || "N/A"}</td>
-                            <td className="px-4 py-2 border">{record.break_out || "N/A"}</td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
-                            No Daily Time Record found.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
+  {fetchRecords.length > 0 ? (
+    fetchRecords.map((record, index) => (
+      <tr key={index} className="bg-white hover:bg-gray-100 text-gray-700 transition">
+        <td className="px-4 py-2 border">{dayjs(record.trandate).format("MM/DD/YYYY")}</td>
+        <td className="px-4 py-2 border">{formatDateTime(record.time_in)}</td>
+<td className="px-4 py-2 border">{formatDateTime(record.time_out)}</td>
+<td className="px-4 py-2 border">{formatDateTime(record.break_in)}</td>
+<td className="px-4 py-2 border">{formatDateTime(record.break_out)}</td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
+        No Daily Time Record found.
+      </td>
+    </tr>
+  )}
+</tbody>
+
                   </table>
                 </div>
       

@@ -65,7 +65,7 @@ const Sidebar = () => {
       {/* Employee Details Section */}
       <div className="mt-7 text-md text-gray-600">
         <p className="mb-2">
-          <span className="font-semibold">Employee Number:</span> {employeeInfo ? employeeInfo.empNo : "Loading..."}
+          <span className="font-semibold">Employee No.:</span> {employeeInfo ? employeeInfo.empNo : "Loading..."}
         </p>
         <p className="mb-2">
           <span className="font-semibold">Branch:</span> {employeeInfo ? employeeInfo.branchName : "Loading..."}

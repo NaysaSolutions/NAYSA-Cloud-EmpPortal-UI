@@ -221,7 +221,7 @@ const Leave = () => {
         <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
           <div className="grid grid-cols-3 gap-6">
           <div>
-      <span className="block font-semibold mb-1">Date of Application</span>
+      <span className="block font-semibold mb-1 uppercase">Date</span>
       <input
         type="date"
         className="w-full p-2 border rounded"
@@ -231,7 +231,7 @@ const Leave = () => {
     </div>
 
 <div>
-  <span className="block font-semibold mb-1">Start Date</span>
+  <span className="block font-semibold mb-1 uppercase">Start Date</span>
   <input 
   type="date" 
   className="w-full p-2 border rounded" 
@@ -241,7 +241,7 @@ const Leave = () => {
 </div>
 
 <div>
-  <span className="block font-semibold mb-1">End Date</span>
+  <span className="block font-semibold mb-1 uppercase">End Date</span>
   <input 
   type="date" 
   className="w-full p-2 border rounded" 
@@ -252,7 +252,7 @@ const Leave = () => {
 
 
             <div>
-              <span className="block font-semibold mb-1">Application Type</span>
+              <span className="block font-semibold mb-1 uppercase">Application Type</span>
               <select
   className="w-full p-2 border rounded"
   value={leaveType}
@@ -267,7 +267,7 @@ const Leave = () => {
             </div>
 
             <div>
-              <span className="block font-semibold mb-1">Leave Hours</span>
+              <span className="block font-semibold mb-1 uppercase">Number of Hours</span>
               <input 
   type="number" 
   className="w-full p-2 border rounded" 
@@ -280,7 +280,7 @@ const Leave = () => {
             </div>
 
             <div>
-              <span className="block font-semibold mb-1">Leave Days</span>
+              <span className="block font-semibold mb-1 uppercase">Number of Days</span>
               <input 
   type="number" 
   className="w-full p-2 border rounded" 
@@ -293,7 +293,7 @@ const Leave = () => {
 
           {/* Remarks Section */}
           <div className="mt-6">
-            <span className="block font-semibold mb-1">Remarks</span>
+            <span className="block font-semibold mb-1 uppercase">Remarks</span>
             <textarea
               onChange={(e) => setRemarks(e.target.value)}
               rows="4"
@@ -315,7 +315,7 @@ const Leave = () => {
 
         {/* Leave History Table */}
         <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-          <h2 className="text-lg font-semibold mb-4">History</h2>
+          <h2 className="text-lg font-semibold mb-4 uppercase">History</h2>
 
           {error && <p className="text-red-500 text-center">{error}</p>}
 
