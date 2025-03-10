@@ -60,8 +60,8 @@ const OvertimeApproval = () => {
   };
 
   return (
-    <div className="ml-80 mt-[120px] p-6 bg-gray-100 min-h-screen">
-      <div className="w-[1150px]">
+    <div className="ml-[260px] mt-[120px] p-6 bg-gray-100 min-h-screen">
+      <div className="max-w-[1150px] mx-auto">
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
           <h1 className="text-3xl font-semibold">Overtime Approval</h1>
         </div>
@@ -71,15 +71,15 @@ const OvertimeApproval = () => {
           {error && <p className="text-red-500 text-center">{error}</p>}
 
           <table className="w-full table-auto border border-gray-200 rounded-lg text-center">
-            <thead className="bg-gray-100 text-gray-700 uppercase">
+            <thead className="bg-gray-100 text-gray-700 propercase">
               <tr className="border-b border-gray-200">
-                <th className="p-3">EMPLOYEE NAME</th>
-                <th className="p-3">DEPARTMENT</th>
-                <th className="p-3">APPLICATION DATE</th>
-                <th className="p-3">DURATION (Days)</th>
-                <th className="p-3">DURATION (Hours)</th>
-                <th className="p-3">APPLICATION TYPE</th>
-                <th className="p-3">STATUS</th>
+              <th className="p-3">Employee Name</th>
+                <th className="p-3">Department</th>
+                <th className="p-3">OT Date</th>
+                {/* <th className="p-3">DURATION (Days)</th> */}
+                <th className="p-3">No. of Hours</th>
+                <th className="p-3">OT Type</th>
+                <th className="p-3">Status</th>
                 <th className="p-3">ACTION</th>
               </tr>
             </thead>
@@ -90,7 +90,7 @@ const OvertimeApproval = () => {
                     <td className="p-3 whitespace-nowrap">{overtime.empName}</td>
                     <td className="p-3 whitespace-nowrap">{overtime.department || "N/A"}</td>
                     <td className="p-3 whitespace-nowrap">{dayjs(overtime.otDate).format("MM/DD/YYYY")}</td>
-                    <td className="p-3 whitespace-nowrap">{overtime.otDay}</td>
+                    {/* <td className="p-3 whitespace-nowrap">{overtime.otDay}</td> */}
                     <td className="p-3 whitespace-nowrap">{overtime.otHrs} HRS</td>
                     <td className="p-3 whitespace-nowrap">{overtime.otDesc}</td>
                     <td className="p-3 text-orange-500 font-bold whitespace-nowrap">{overtime.otStatus}</td>
@@ -118,15 +118,15 @@ const OvertimeApproval = () => {
         <div className="mt-6 bg-white p-4 shadow-lg rounded-lg overflow-x-auto">
           <h2 className="text-lg font-bold mb-4">Overtime Approval History</h2>
           <table className="w-full table-auto border border-gray-200 rounded-lg text-center">
-            <thead className="bg-gray-100 text-gray-700 uppercase">
+            <thead className="bg-gray-100 text-gray-700 propercase">
               <tr className="border-b border-gray-200">
-                <th className="p-3">EMPLOYEE NAME</th>
-                <th className="p-3">DEPARTMENT</th>
-                <th className="p-3">APPLICATION DATE</th>
-                <th className="p-3">DURATION (Days)</th>
-                <th className="p-3">DURATION (Hours)</th>
-                <th className="p-3">APPLICATION TYPE</th>
-                <th className="p-3">STATUS</th>
+                <th className="p-3">Employee Name</th>
+                <th className="p-3">Department</th>
+                <th className="p-3">OT Date</th>
+                {/* <th className="p-3">DURATION (Days)</th> */}
+                <th className="p-3">No. of Hours</th>
+                <th className="p-3">OT Type</th>
+                <th className="p-3">Status</th>
               </tr>
             </thead>
             <tbody>
@@ -136,7 +136,7 @@ const OvertimeApproval = () => {
                     <td className="p-3 whitespace-nowrap">{record.empName}</td>
                     <td className="p-3 whitespace-nowrap">{record.department || "N/A"}</td>
                     <td className="p-3 whitespace-nowrap">{dayjs(record.otDate).format("MM/DD/YYYY")}</td>
-                    <td className="p-3 whitespace-nowrap">{record.otDay}</td>
+                    {/* <td className="p-3 whitespace-nowrap">{record.otDay}</td> */}
                     <td className="p-3 whitespace-nowrap">{record.otHrs} HRS</td>
                     <td className="p-3 whitespace-nowrap">{record.otDesc}</td>
                     <td className={`p-3 font-bold whitespace-nowrap ${record.otStatus === "Approved" ? "text-green-500" : "text-red-500"}`}>{record.otStatus}</td>

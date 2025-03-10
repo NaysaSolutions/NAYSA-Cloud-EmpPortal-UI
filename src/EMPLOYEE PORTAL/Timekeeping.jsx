@@ -243,10 +243,11 @@ const Timekeeping = () => {
       return sortConfig.direction === "asc" ? "↑" : "↓";
     };
   
-  return (
-    <div className="ml-80 mt-[120px] p-6 bg-gray-100 min-h-screen">
+  return (    
+  <div className="ml-[260px] mt-[120px] p-6 bg-gray-100 min-h-screen">
+     
       {/* Header */}
-      <div className="flex justify-between items-start w-[1130px]">
+      <div className="max-w-[1150px] mx-auto">
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white flex justify-between items-center mb-6 w-full shadow-lg">
           <div>
             <p className="text-md font-light mb-1 text-[#424554]">Today</p>
@@ -410,7 +411,7 @@ const Timekeeping = () => {
       
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
-                    <thead className="text-gray-700 uppercase bg-gray-100">
+                    <thead className="text-gray-700 propercase bg-gray-100">
                       <tr>
                         {[
                           { key: "trandate", label: "Date" },

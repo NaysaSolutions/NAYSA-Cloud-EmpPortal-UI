@@ -84,6 +84,8 @@ const Leave = () => {
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
     setApplicationDate(today);
+    setSelectedStartDate(today);
+    setSelectedEndDate(today);
   }, []);
 
   // Sorting Function
@@ -210,7 +212,7 @@ const Leave = () => {
 
 
   return (
-    <div className="ml-80 mt-[120px] p-6 bg-gray-100 min-h-screen">
+    <div className="ml-[260px] mt-[120px] p-6 bg-gray-100 min-h-screen">
       <div className="max-w-[1150px] mx-auto">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
@@ -221,7 +223,7 @@ const Leave = () => {
         <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
           <div className="grid grid-cols-3 gap-6">
           <div>
-      <span className="block font-semibold mb-1 uppercase">Date</span>
+      <span className="block font-semibold mb-1 propercase">Date</span>
       <input
         type="date"
         className="w-full p-2 border rounded"
@@ -231,7 +233,7 @@ const Leave = () => {
     </div>
 
 <div>
-  <span className="block font-semibold mb-1 uppercase">Start Date</span>
+  <span className="block font-semibold mb-1 propercase">Start Date</span>
   <input 
   type="date" 
   className="w-full p-2 border rounded" 
@@ -241,7 +243,7 @@ const Leave = () => {
 </div>
 
 <div>
-  <span className="block font-semibold mb-1 uppercase">End Date</span>
+  <span className="block font-semibold mb-1 propercase">End Date</span>
   <input 
   type="date" 
   className="w-full p-2 border rounded" 
@@ -252,7 +254,7 @@ const Leave = () => {
 
 
             <div>
-              <span className="block font-semibold mb-1 uppercase">Application Type</span>
+              <span className="block font-semibold mb-1 propercase">Application Type</span>
               <select
   className="w-full p-2 border rounded"
   value={leaveType}
@@ -261,13 +263,14 @@ const Leave = () => {
   <option value="">Select Leave Type</option>
   <option value="SL">Sick Leave</option>
   <option value="VL">Vacation Leave</option>
+  <option value="VL">Emergency Leave</option>
   <option value="Maternity Leave">Maternity Leave</option>
 </select>
 
             </div>
 
             <div>
-              <span className="block font-semibold mb-1 uppercase">Number of Hours</span>
+              <span className="block font-semibold mb-1 propercase">Number of Hours</span>
               <input 
   type="number" 
   className="w-full p-2 border rounded" 
@@ -280,7 +283,7 @@ const Leave = () => {
             </div>
 
             <div>
-              <span className="block font-semibold mb-1 uppercase">Number of Days</span>
+              <span className="block font-semibold mb-1 propercase">Number of Days</span>
               <input 
   type="number" 
   className="w-full p-2 border rounded" 
@@ -293,7 +296,7 @@ const Leave = () => {
 
           {/* Remarks Section */}
           <div className="mt-6">
-            <span className="block font-semibold mb-1 uppercase">Remarks</span>
+            <span className="block font-semibold mb-1 propercase">Remarks</span>
             <textarea
               onChange={(e) => setRemarks(e.target.value)}
               rows="4"
@@ -321,7 +324,7 @@ const Leave = () => {
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
-              <thead className="text-gray-700 uppercase bg-gray-100">
+              <thead className="text-gray-700 propercase bg-gray-100">
                 <tr>
                   {[
                     { key: "leaveStart", label: "Start Date" },

@@ -18,7 +18,7 @@ const OvertimeApplication = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" }); // State to manage sorting configuration, tracking which key is sorted and in what direction.
   const [searchFields, setSearchFields] = useState({ 
     date: "",
-    durationDays: "",
+    // durationDays: "",
     durationHours: "",
     type: "",
     remark: "",
@@ -36,6 +36,8 @@ const OvertimeApplication = () => {
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
     setApplicationDate(today);
+    setOTDate(today);
+    setOtType("REG");
   }, []);
   
   useEffect(() => { 
@@ -260,7 +262,7 @@ useEffect(() => {
 
 
   return (
-    <div className="ml-80 mt-[120px] p-6 bg-gray-100 min-h-screen">
+    <div className="ml-[260px] mt-[120px] p-6 bg-gray-100 min-h-screen">
       <div className="max-w-[1150px] mx-auto">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
@@ -271,7 +273,7 @@ useEffect(() => {
         <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
           <div className="grid grid-cols-3 gap-6">
           <div>
-      <span className="block font-semibold mb-1 uppercase">Date</span>
+      <span className="block font-semibold mb-1 propercase">Date</span>
       <input 
         type="date" 
         className="w-full p-2 border rounded" 
@@ -281,7 +283,7 @@ useEffect(() => {
     </div>
 
 <div>
-  <span className="block font-semibold mb-1 uppercase">Date of Overtime</span>
+  <span className="block font-semibold mb-1 propercase">Date of Overtime</span>
   <input 
     value={otDate} 
     onChange={(e) => setOTDate(e.target.value)}
@@ -289,18 +291,18 @@ useEffect(() => {
     className="w-full p-2 border rounded"
   />
 </div>
-<div>
-  <span className="block font-semibold mb-1 uppercase">Number of Days</span>
+{/* <div>
+  <span className="block font-semibold mb-1 propercase">Number of Days</span>
   <input 
     type="text"
     className="w-full p-2 border rounded bg-gray-100"
     value={otDay}
     readOnly
   />
-</div>
+</div> */}
 
 <div>
-  <span className="block font-semibold mb-1 uppercase">Number of Hours</span>
+  <span className="block font-semibold mb-1 propercase">Number of Hours</span>
   <input 
     type="number" 
     className="w-full p-2 border rounded"
@@ -328,7 +330,7 @@ useEffect(() => {
 
           {/* Remarks Section */}
           <div className="mt-6">
-            <span className="block font-semibold mb-1 uppercase">Remarks</span>
+            <span className="block font-semibold mb-1 propercase">Remarks</span>
             <textarea
             value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
@@ -356,11 +358,11 @@ useEffect(() => {
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
-              <thead className="text-gray-700 uppercase bg-gray-100 ">
+              <thead className="text-gray-700 propercase bg-gray-100 ">
                 <tr>
                   {[
-                    { key: "date", label: "Date of Application" },
-                    { key: "durationDays", label: "Duration (Days)" },
+                    { key: "date", label: "OT Date" },
+                    // { key: "durationDays", label: "Duration (Days)" },
                     { key: "durationHours", label: "Duration (Hours)" },
                     { key: "type", label: "Overtime Type" },
                     { key: "remark", label: "Remarks" },
@@ -394,7 +396,7 @@ useEffect(() => {
                   currentRecords.map((entry, index) => (
                     <tr key={index} className="bg-white hover:bg-gray-100 transition">
                       <td className="px-4 py-2 border">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
-                      <td className="px-4 py-2 border">{entry.otDay}</td>
+                      {/* <td className="px-4 py-2 border">{entry.otDay}</td> */}
                       <td className="px-4 py-2 border">{entry.otHrs}</td>
                       <td className="px-4 py-2 border">{entry.otDesc}</td>
                       <td className="px-4 py-2 border">{entry.otRemarks || "N/A"}</td>

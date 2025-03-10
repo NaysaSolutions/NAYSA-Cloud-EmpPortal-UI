@@ -59,8 +59,8 @@ const LeaveApproval = () => {
   }, [user]);
 
   return (
-    <div className="ml-80 mt-[120px] p-6 bg-gray-100 min-h-screen">
-      <div className="w-[1150px]">
+    <div className="ml-[220px] mt-[120px] p-6 bg-gray-100 min-h-screen">
+      <div className="max-w-[1150px] mx-auto">
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
           <h1 className="text-3xl font-semibold">Leave Approval</h1>
         </div>
@@ -72,16 +72,16 @@ const LeaveApproval = () => {
           <table className="w-full border-collapse text-center">
             <thead className="bg-gray-100">
               <tr className="border-b">
-                <th className="p-2">EMPLOYEE NAME</th>
-                <th className="p-2">DEPARTMENT</th>
-                <th className="p-2">LEAVE START</th>
-                <th className="p-2">LEAVE END</th>
-                <th className="p-2">DURATION (Days)</th>
-                <th className="p-2">DURATION (Hours)</th>
-                <th className="p-2">APPLICATION TYPE</th>
-                <th className="p-2">REMARKS</th>
-                <th className="p-2">STATUS</th>
-                <th className="p-2">ACTION</th>
+              <th className="p-3">Employee Name</th>
+              <th className="p-3">Department</th>
+                <th className="p-2">Leave Start</th>
+                <th className="p-2">Leave End</th>
+                <th className="p-2">Duration (Days)</th>
+                <th className="p-2">Duration (Hours)</th>
+                <th className="p-2">Leave Type</th>
+                <th className="p-2">Remarks</th>
+                <th className="p-2">Status</th>
+                <th className="p-2">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -126,15 +126,15 @@ const LeaveApproval = () => {
           <table className="w-full border-collapse text-center">
             <thead className="bg-gray-100">
               <tr className="border-b">
-                <th className="p-2">EMPLOYEE NAME</th>
-                <th className="p-2">DEPARTMENT</th>
-                <th className="p-2">LEAVE START</th>
-                <th className="p-2">LEAVE END</th>
-                <th className="p-2">DURATION (Days)</th>
-                <th className="p-2">DURATION (Hours)</th>
-                <th className="p-2">APPLICATION TYPE</th>
-                <th className="p-2">REMARKS</th>
-                <th className="p-2">STATUS</th>
+              <th className="p-3">Employee Name</th>
+              <th className="p-3">Department</th>
+                <th className="p-2">Leave Start</th>
+                <th className="p-2">Leave End</th>
+                <th className="p-2">Duration (Days)</th>
+                <th className="p-2">Duration (Hours)</th>
+                <th className="p-2">Leave Type</th>
+                <th className="p-2">Remarks</th>
+                <th className="p-2">Status</th>
               </tr>
             </thead>
             <tbody>

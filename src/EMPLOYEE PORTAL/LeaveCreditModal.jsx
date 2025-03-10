@@ -36,7 +36,7 @@ export default function LeaveCreditModal({ isOpen, onClose, leaveCredit }) {
                     <td className="px-4 py-2 border">{leave.credit}</td>
                     <td className="px-4 py-2 border">{leave.applied}</td>
                     <td className="px-4 py-2 border">{leave.availed}</td>
-                    <td className="px-4 py-2 border">{leave.remaining_balance}</td>
+                    <td className="px-4 py-2 border">{leave.rembal}</td>
                     <td className="px-4 py-2 border">{leave.balance}</td>
                   </tr>
                 ))

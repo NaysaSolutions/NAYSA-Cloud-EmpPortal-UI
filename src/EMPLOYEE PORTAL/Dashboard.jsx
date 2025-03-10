@@ -19,10 +19,10 @@ const Dashboard = () => {
   const [loanBalance, setLoanBalance] = useState([]); // Store Daily Time Record
   const [leaveApplication, setLeaveApplication] = useState([]); // Store Leave Applications
   const [otApplication, setOtApplication] = useState([]); // Store Overtime Applications
-  const [officialBusinessApplication, setOfficialBusinessApplication] = useState([]); // Store OB Applications
+  const [obApplication, setOfficialBusinessApplication] = useState([]); // Store OB Applications
   const [otApproval, setOtApproval] = useState([]); // Store Overtime Approvals
   const [leaveApproval, setLeaveApproval] = useState([]); // Store Leave Approvals
-  const [officialBusinessApproval, setOfficialBusinessApproval] = useState([]); // Store OB Approvals
+  const [obApproval, setOfficialBusinessApproval] = useState([]); // Store OB Approvals
   const [message, setMessage] = useState(""); // New state for messages
   const [time, setTime] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -104,7 +104,7 @@ const Dashboard = () => {
           setLoanBalance(parsedData[0]?.loanBalance || []);
           setOtApproval(parsedData[0]?.otApproval || []);
           setLeaveApproval(parsedData[0]?.leaveApproval || []);
-          setOfficialBusinessApproval(parsedData[0]?.officialBusinessApproval || []);
+          setOfficialBusinessApproval(parsedData[0]?.obApproval || []);
   
           // ✅ Extract Leave Applications
           console.log("Leave Applications:", parsedData[0].leaveApplication);
@@ -115,8 +115,8 @@ const Dashboard = () => {
           setOtApplication(parsedData[0]?.otApplication || []);
 
           // ✅ Extract Official Business Applications
-        console.log("Official Business Applications:", parsedData[0]?.officialBusinessApplication);
-        setOfficialBusinessApplication(parsedData[0]?.officialBusinessApplication || []);
+        console.log("Official Business Applications:", parsedData[0]?.obApplication);
+        setOfficialBusinessApplication(parsedData[0]?.obApplication || []);
         } else {
           setError("API response format is incorrect or no data found.");
         }
@@ -195,7 +195,7 @@ const Dashboard = () => {
     <div className="ml-[260px] mt-[120px] p-4 bg-gray-100 min-h-screen">
       
       {/* Header */}
-      <div className="flex justify-between items-start w-[1220px]">
+      <div className="flex justify-between items-start w-[1385px]">
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex justify-between items-center mb-4 w-full shadow-lg">
           <div>
             <p className="text-md font-light mb-1 text-[#424554]"><span className="kanit-text">Today</span></p>
@@ -220,7 +220,7 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-4">
         {/* Daily Time Record Section */}
         <div className="bg-white p-4 rounded-lg shadow-lg w-full max-w-lg mx-auto">
       <h2 className="text-lg font-semibold uppercase">Daily Time Record</h2>
@@ -263,11 +263,22 @@ const Dashboard = () => {
       </div>
       
       {/* View All Button */}
-      <div className="flex justify-end mt-20">
-        <button className="text-blue-500 text-sm font-medium hover:underline" onClick={() => navigate("/timekeeping")}>
+      {/* <div className="flex justify-end mt-20">
+        <button className="text-blue-500 text-sm font-medium hover:underline" 
+        onClick={() => navigate("/timekeeping")}>
           View All →
         </button>
-      </div>
+      </div> */}
+
+      <div className="flex justify-end mt-20">
+          <button 
+            onClick={() => navigate("/timekeeping")} 
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+          >
+            View All <span className="ml-1">→</span>
+          </button>
+        </div>
+
 </div>
 
         {/* Leave Credit */}
@@ -298,7 +309,7 @@ const Dashboard = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="6" className="p-4 text-center text-gray-600 text-sm">
+                <td colSpan="3" className="p-4 text-center text-gray-600 text-sm">
                   No leave credits found.
                 </td>
               </tr>
@@ -309,12 +320,21 @@ const Dashboard = () => {
 
   {/* Conditionally Render "View All" Button */}
   {leaveCredit.length > 0 && (
-    <div className="flex justify-end mt-20">
-          <button className="text-blue-500 text-sm font-medium hover:underline"
-           onClick={() => setIsModalOpen(true)}>
-            View All →
+      // <div className="flex justify-end mt-20">
+      //     <button className="text-blue-500 text-sm font-medium hover:underline"
+      //      onClick={() => setIsModalOpen(true)}>
+      //       View All →
+      //     </button>
+      //   </div>
+        <div className="flex justify-end mt-20">
+          <button 
+            onClick={() => setIsModalOpen(true)} 
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+          >
+            View All <span className="ml-1">→</span>
           </button>
         </div>
+        
   )}
    {/* Leave Credit Modal */}
    <LeaveCreditModal 
@@ -325,7 +345,7 @@ const Dashboard = () => {
 </div>
 
         {/* Personal Calendar */}
-        <div className="bg-white p-4 rounded-lg shadow h-[400px] w-[360px]">
+        <div className="bg-white p-4 rounded-lg shadow-lg w-full max-w-lg mx-auto">
           <h2 className="text-lg font-semibold mb-4 text-center uppercase">Personal Calendar</h2>
           <div className="flex justify-between items-center mb-2">
             <button onClick={handlePrevMonth} className="text-gray-400">◀</button>
@@ -375,10 +395,10 @@ const Dashboard = () => {
           {otApplication.length > 0 ? (
             otApplication.slice(0, 5).map((ot, index) => (
               <tr key={index} className="border-b hover:bg-gray-50">
-                <td className="py-2 px-2">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
-                <td className="py-2 px-2">{ot.ottype}</td>
-                <td className="py-2 px-2">{ot.duration}</td>
-                <td className="py-2 px-2">
+                <td className="py-3 px-3 text-left">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
+                <td className="py-3 px-3 text-left">{ot.ottype}</td>
+                <td className="py-3 px-3 text-left">{ot.duration}</td>
+                <td className="py-3 px-3 text-left">
                   <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-sm font-medium
                     ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                     ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
@@ -490,18 +510,18 @@ const Dashboard = () => {
           <th className="py-3 px-3">OB Date</th>
           <th className="py-3 px-3">Start Datetime</th>
           <th className="py-3 px-3">End Datetime</th>
-          <th className="py-3 px-3">No of Hours</th>
+          <th className="py-3 px-3">Duration</th>
           <th className="py-3 px-3">Status</th>
         </tr>
       </thead>        
       <tbody className="text-gray-700 text-sm h-full">
-        {officialBusinessApplication.length > 0 ? (
-          officialBusinessApplication.slice(0, 5).map((ob, index) => (              
+        {obApplication.length > 0 ? (
+          obApplication.slice(0, 5).map((ob, index) => (              
           <tr key={index} className="border-b hover:bg-gray-50">
               <td className="py-2 px-2">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
-              <td className="py-2 px-2">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm")}</td>
-              <td className="py-2 px-2">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm")}</td>
-                <td className="py-2 px-2">{ob.duration}</td>
+              <td className="py-2 px-2">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm a")}</td>
+              <td className="py-2 px-2">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm a")}</td>
+                <td className="py-2 px-2 text-right">{ob.duration}</td>               
                 <td className="py-2 px-2">
                 <span className={`inline-block w-[100px] px-2 py-1 rounded-full text-center text-sm font-medium
                     ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
@@ -517,7 +537,7 @@ const Dashboard = () => {
 
  // Centered message when no data is found
 <tr className="h-full">
-              <td colSpan="4">
+              <td colSpan="6">
                 <div className="h-[400px] flex justify-center items-center text-gray-500">
                   No official business applications found.
                 </div>
@@ -530,14 +550,16 @@ const Dashboard = () => {
 
 
   {/* Conditionally Render "View All" Button */}
-  {officialBusinessApplication.length > 0 && (
-    <div className="flex justify-start mt-auto items-center">
-      <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center">
-        View All
-        <span className="ml-1">→</span> 
-      </span>
-    </div>
-  )}
+  {obApplication.length > 0 && (
+    <div className="flex justify-end mt-4">
+    <button 
+      onClick={() => navigate("/official-business")} 
+      className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+    >
+      View All <span className="ml-1">→</span>
+    </button>
+  </div>
+)}
 </div>
 
         {/* Loan Balance Inquiry */}
@@ -643,7 +665,7 @@ const Dashboard = () => {
           ))
         ) : (
           <tr className="h-full">
-            <td colSpan="4">
+            <td colSpan="6">
               <div className="h-[400px] flex justify-center items-center text-gray-500">
                 No overtime approvals found.
               </div>
@@ -706,7 +728,7 @@ const Dashboard = () => {
           ))
         ) : (
           <tr className="h-full">
-              <td colSpan="4">
+              <td colSpan="6">
                 <div className="h-[400px] flex justify-center items-center text-gray-500">
                   No leave approvals found found.
                 </div>
@@ -748,18 +770,20 @@ const Dashboard = () => {
         </tr>
       </thead>        
       <tbody className="text-gray-700 text-sm h-full">
-        {officialBusinessApplication.length > 0 ? (
-          officialBusinessApplication.slice(0, 5).map((ob, index) => (              
-          <tr key={index} className="border-b hover:bg-gray-50">
+        {obApproval.length > 0 ? (
+          obApproval.slice(0, 5).map((ob, index) => (              
+          <tr key={index} className="border-b hover:bg-gray-50 propercase">
               <td className="py-3 px-3">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
-                <td className="py-3 px-3">{ob.ottype}</td>
-                <td className="py-3 px-3">{ob.duration}</td>
+              <td className="py-2 px-2">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm a")}</td>
+              <td className="py-2 px-2">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm a")}</td>
+                <td className="py-3 px-3 text-right">{ob.duration}</td>
+                <td className="py-3 px-3">{ob.empname}</td>
                 <td className="py-3 px-3">
                 <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
-                    ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                    ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
+                    ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                      ob.obstatus === "Approved" ? "bg-green-100 text-green-600" : 
                     "bg-red-100 text-red-600"}`}>
-                    {ot.otstatus}
+                    {ob.obstatus}
                   </span>
                 </td>
               </tr>
@@ -782,15 +806,18 @@ const Dashboard = () => {
 
 
   {/* Conditionally Render "View All" Button */}
-  {officialBusinessApplication.length > 0 && (
-    <div className="flex justify-start mt-auto items-center">
-      <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center">
-        View All
-        <span className="ml-1">→</span> 
-      </span>
-    </div>
+  {obApproval.length > 0 && (
+    <div className="flex justify-end mt-4">
+    <button 
+      onClick={() => navigate("/obApproval")} 
+      className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+    >
+      View All <span className="ml-1">→</span>
+    </button>
+  </div>
   )}
-</div>       
+</div>     
+
     </div>
     </div>
     

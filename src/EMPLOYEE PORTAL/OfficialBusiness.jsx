@@ -20,14 +20,18 @@ const officialBusiness = () => {
     const [applicationDate, setApplicationDate] = useState("");
     const [selectedStartDate, setSelectedStartDate] = useState("");
     const [selectedEndDate, setSelectedEndDate] = useState("");
-    const [obDate, setOBDate] = useState("");
     const [obHrs, setOBHrs] = useState("");
     const [remarks, setRemarks] = useState("");
+
+
+    
+
 
 
    // Anj_Search State
     const [searchFields, setSearchFields] = useState({
       obDate: "",
+      // obDay: "",
       obStart: "",
       obEnd: "",
       obHrs: "",
@@ -145,23 +149,35 @@ const officialBusiness = () => {
   
     const handleSubmit = async () => {
       // Check if any required fields are empty
-      if (!selectedStartDate || !selectedEndDate || !remarks.trim()) {
-          Swal.fire({
-              title: "Incomplete Form",
-              text: "Please fill in all required fields before submitting.",
-              icon: "warning",
-              confirmButtonText: "OK",
-          });
-          return; // Stop execution to prevent API call
-      }
+      // if (!obDate || !selectedStartDate || !selectedEndDate || !remarks.trim()) {
+      //     Swal.fire({
+      //         title: "Incomplete Form",
+      //         text: "Please fill in all required fields before submitting.",
+      //         icon: "warning",
+      //         confirmButtonText: "OK",
+      //     });
+      //      return; // Stop execution to prevent API call
+      // }
   
+      // const convertToISO = (dateString) => {
+      //   // Example input: "03/10/2025 14:30"
+      //   const [datePart, timePart] = dateString.split(" ");
+      //   const [month, day, year] = datePart.split("/");
+      //   // Ensure month and day are two digits
+      //   const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${timePart}`;
+      //   return isoDate;
+      // };
+
       const obData = {
           json_data: {
               empNo: user.empNo,
               detail: [
                   {
+                    obDate: applicationDate,
+                    // obStart: selectedStartDate ? convertToISO(selectedStartDate) : null,
+                    // obEnd: selectedEndDate ? convertToISO(selectedEndDate) : null,
                     obStart: selectedStartDate,
-                    obEnd: selectedEndDate,
+                    obEnd: selectedEndDate ,
                     obRemarks: remarks,
                     obHrs: obHrs ? parseFloat(obHrs) : 0,
                   },
@@ -189,6 +205,7 @@ const officialBusiness = () => {
                   confirmButtonText: "OK",
               }).then(() => {
                   // Reset all input fields after successful submission
+                  setApplicationDate("");
                   setSelectedStartDate("");
                   setSelectedEndDate("");
                   setRemarks("");  // Ensure remarks are cleared
@@ -217,8 +234,8 @@ const officialBusiness = () => {
   
   
     return (
-      <div className="ml-80 mt-[120px] p-6 bg-gray-100 min-h-screen">
-        <div className="max-w-[1150px] mx-auto">
+      <div className="ml-[260px] mt-[120px] p-6 bg-gray-100 min-h-screen">
+      <div className="max-w-[1150px] mx-auto">
           {/* Header Section */}
           <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
             <h1 className="text-3xl font-semibold">My Official Business Applications</h1>
@@ -228,7 +245,7 @@ const officialBusiness = () => {
           <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
             <div className="grid grid-cols-3 gap-6">
             <div>
-        <span className="block font-semibold mb-1 uppercase">Date</span>
+        <span className="block font-semibold mb-1 propercase">Date</span>
         <input
           type="date"
           className="w-full p-2 border rounded"
@@ -238,7 +255,7 @@ const officialBusiness = () => {
       </div>
   
   <div>
-    <span className="block font-semibold mb-1 uppercase">Start Datetime</span>
+    <span className="block font-semibold mb-1 propercase">Start Datetime</span>
     <input 
     type="datetime-local" 
     className="w-full p-2 border rounded" 
@@ -248,7 +265,7 @@ const officialBusiness = () => {
   </div>
   
   <div>
-    <span className="block font-semibold mb-1 uppercase">End Datetime</span>
+    <span className="block font-semibold mb-1 propercase">End Datetime</span>
     <input 
     type="datetime-local" 
     className="w-full p-2 border rounded" 
@@ -259,7 +276,7 @@ const officialBusiness = () => {
   
   
               <div>
-                <span className="block font-semibold mb-1 uppercase">Number of Hours</span>
+                <span className="block font-semibold mb-1 propercase">Number of Hours</span>
                 <input 
     type="number" 
     className="w-full p-2 border rounded" 
@@ -275,7 +292,7 @@ const officialBusiness = () => {
   
             {/* Remarks Section */}
             <div className="mt-6">
-              <span className="block font-semibold mb-1 uppercase">Remarks</span>
+              <span className="block font-semibold mb-1 propercase">Remarks</span>
               <textarea
                 onChange={(e) => setRemarks(e.target.value)}
                 rows="4"
@@ -304,7 +321,7 @@ const officialBusiness = () => {
   
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
-                <thead className="text-gray-700 uppercase bg-gray-100">
+                <thead className="text-gray-700 propercase bg-gray-100">
                   <tr>
                     {[
                       { key: "obDate", label: "OB Date" },
