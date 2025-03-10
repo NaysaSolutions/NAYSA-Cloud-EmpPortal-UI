@@ -11,7 +11,7 @@ const Navbar = () => {
     <>
       {/* Top Navbar */}
       <div className="flex justify-center items-center bg-[#162e3a] text-white p-3 fixed top-0 left-0 w-full h-[30px] z-20">
-        <span className="font-bold text-lg">NEW NEMAR DEVELOPMENT CORPORATION</span>
+        <span className="font-bold text-lg">NAYSA SOLUTIONS INC.</span>
       </div>
 
       {/* Main Navbar */}

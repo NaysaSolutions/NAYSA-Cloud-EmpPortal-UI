@@ -192,10 +192,10 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="ml-80 mt-[120px] p-6 bg-gray-100 min-h-screen">
+    <div className="ml-80 mt-[120px] p-4 bg-gray-100 min-h-screen">
       
       {/* Header */}
-      <div className="flex justify-between items-start w-[1140px]">
+      <div className="flex justify-between items-start w-[1180px]">
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white flex justify-between items-center mb-6 w-full shadow-lg">
           <div>
             <p className="text-md font-light mb-1 text-[#424554]"><span className="kanit-text">Today</span></p>
@@ -220,7 +220,7 @@ const Dashboard = () => {
       </div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-3 gap-5">
+      <div className="grid grid-cols-3 gap-2">
         {/* Daily Time Record Section */}
         <div className="bg-white p-4 rounded-lg shadow-lg w-full max-w-lg mx-auto">
       <h2 className="text-lg font-semibold uppercase">Daily Time Record</h2>
@@ -230,7 +230,7 @@ const Dashboard = () => {
       <div className="mt-4 overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-gray-200 text-gray-700 text-sm uppercase">
+            <tr className="bg-gray-200 text-gray-700 text-sm propercase">
               <th className="p-2 text-left">Date</th>
               <th className="p-2 text-center">Time In</th>
               <th className="p-2 text-center">Time Out</th>
@@ -279,7 +279,7 @@ const Dashboard = () => {
       <div className="mt-4 overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="bg-gray-200 text-gray-700 text-sm uppercase">
+            <tr className="bg-gray-200 text-gray-700 text-sm propercase">
               <th className="p-2 text-left">Leave Type</th>
               <th className="p-2 text-center">Credit</th>
               <th className="p-2 text-center">Used</th>
@@ -333,7 +333,7 @@ const Dashboard = () => {
             <button onClick={handleNextMonth} className="text-gray-600">▶</button>
           </div>
           <div className="grid grid-cols-7 gap-0 text-center text-gray-600 font-semibold">
-            {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map(day => (
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
               <div key={day}>{day}</div>
             ))}
           </div>
@@ -347,7 +347,7 @@ const Dashboard = () => {
               </div>
             ))}
           </div>
-          <div className="flex justify-between text-xs mt-2">
+          <div className="flex justify-between text-sm mt-2">
             <div className="flex items-center"><span className="w-2 h-2 bg-red-500 inline-block mr-1"></span> Holiday</div>
             <div className="flex items-center"><span className="w-2 h-2 bg-blue-500 inline-block mr-1"></span> Leave</div>
             <div className="flex items-center"><span className="w-2 h-2 bg-yellow-500 inline-block mr-1"></span> Pending for Approval</div>
@@ -363,22 +363,22 @@ const Dashboard = () => {
     {/* Responsive Table Wrapper */}
     <div className="overflow-x-auto flex-grow">
       <table className="min-w-full border border-gray-200 rounded-lg h-full">
-        <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
+        <thead className="bg-gray-200 text-gray-700 text-sm propercase">
           <tr>
-            <th className="py-3 px-4 text-left">Date</th>
-            <th className="py-3 px-4 text-left">Application Type</th>
-            <th className="py-3 px-4 text-left">Duration</th>
-            <th className="py-3 px-4 text-left">Status</th>
+            <th className="py-3 px-3 text-left">OT Date</th>
+            <th className="py-3 px-3 text-left">OT Type</th>
+            <th className="py-3 px-3 text-left">Duration</th>
+            <th className="py-3 px-3 text-left">Status</th>
           </tr>
         </thead>
         <tbody className="text-gray-700 text-sm h-full">
           {otApplication.length > 0 ? (
             otApplication.slice(0, 5).map((ot, index) => (
               <tr key={index} className="border-b hover:bg-gray-50">
-                <td className="py-3 px-4">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
-                <td className="py-3 px-4">{ot.ottype}</td>
-                <td className="py-3 px-4">{ot.duration}</td>
-                <td className="py-3 px-4">
+                <td className="py-3 px-3">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
+                <td className="py-3 px-3">{ot.ottype}</td>
+                <td className="py-3 px-3">{ot.duration}</td>
+                <td className="py-3 px-3">
                   <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
                     ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                     ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
@@ -419,41 +419,42 @@ const Dashboard = () => {
 
 
         {/* Leave Applications */}
-<div className="bg-white p-6 rounded-lg shadow-md overflow-hidden">
+        
+<div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
   <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Leave Applications</h2>
 
   {/* Responsive Table */}
-  <div className="overflow-x-auto">
+  <div className="overflow-x-auto flex-grow">
     <table className="min-w-full border border-gray-200 rounded-lg">
-      <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
+      <thead className="bg-gray-200 text-gray-700 text-sm propercase">
         <tr>
-          <th className="py-3 px-4 text-left">Date</th>
-          <th className="py-3 px-4 text-left">Application Type</th>
-          <th className="py-3 px-4 text-left">Duration</th>
-          <th className="py-3 px-4 text-left">Status</th>
+          <th className="py-3 px-3 text-left">Leave Date</th>
+          <th className="py-3 px-3 text-left">Leave Type</th>
+          <th className="py-3 px-3 text-left">Duration</th>
+          <th className="py-3 px-3 text-left">Status</th>
         </tr>
       </thead>
-      <tbody className="text-gray-700 text-sm">
+      <tbody className="text-gray-700 text-sm h-full">
         {leaveApplication.length > 0 ? (
           leaveApplication.slice(0, 5).map((leave, index) => (
             <tr key={index} className="border-b hover:bg-gray-50">
-              <td className="py-3 px-4">{dayjs(leave.dateapplied).format("MM/DD/YYYY")}</td>
-              <td className="py-3 px-4">{leave.leavetype}</td>
-              <td className="py-3 px-4">{leave.duration}</td>
-              <td className="py-3 px-4">
-                <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-sm font-medium
-                  ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                  leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
-                  "bg-red-100 text-red-600"}`}>
+              <td className="py-3 px-3">{dayjs(leave.dateapplied).format("MM/DD/YYYY")}</td>
+              <td className="py-3 px-3">{leave.leavetype}</td>
+              <td className="py-3 px-3">{leave.duration}</td>
+              <td className="py-3 px-3">
+                  <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
+                    ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                    ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
+                    "bg-red-100 text-red-600"}`}>
                   {leave.leavestatus}
                 </span>
               </td>
             </tr>
           ))
         ) : (
-          <tr>
+          <tr className="h-full">
             <td colSpan="4">
-              <div className="flex justify-center items-center h-[150px] text-gray-500">
+              <div className="h-[400px] flex justify-center items-center text-gray-500">
                 No leave applications found.
               </div>
             </td>
@@ -478,49 +479,53 @@ const Dashboard = () => {
 
 
         {/* Official Business Applications */}
-        <div className="bg-white p-4 rounded-lg shadow w-[560px] flex flex-col h-[320px]">
-  <h2 className="text-lg font-semibold mb-4 uppercase">My Official Business Applications</h2>
+        <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
+  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Official Business Applications</h2>
   
-  <div className="flex-grow">
-    <table className="w-full text-sm text-left">
-      <thead className="text-[#747474] uppercase">
+  <div className="overflow-x-auto flex-grow">      
+    <table className="min-w-full border border-gray-200 rounded-lg h-full">
+  <thead className="bg-gray-200 text-gray-700 text-sm propercase">
         <tr>
-          <th className="py-2">Date</th>
-          <th className="py-2">Application Type</th>
-          <th className="py-2">Duration</th>
-          <th className="py-2">Status</th>
+          <th className="py-3 px-3">OB Date</th>
+          <th className="py-3 px-3">Start Datetime</th>
+          <th className="py-3 px-3">End Datetime</th>
+          <th className="py-3 px-3">No of Hours</th>
+          <th className="py-3 px-3">Status</th>
         </tr>
-      </thead>
-      <tbody>
+      </thead>        
+      <tbody className="text-gray-700 text-sm h-full">
         {officialBusinessApplication.length > 0 ? (
-          officialBusinessApplication.slice(0, 5).map((ob, index) => (
-            <tr key={index} className="border-b">
-              <td className="py-2">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
-              <td>{ob.obtype}</td>
-              <td>{ob.duration}</td>
-              <td>
-                <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center
-                  ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-500" : 
-                  ob.obstatus === "Approved" ? "bg-green-100 text-green-500" : 
-                  "bg-red-100 text-red-500"}`}>
-                  {ob.obstatus}
-                </span>
+          officialBusinessApplication.slice(0, 5).map((ob, index) => (              
+          <tr key={index} className="border-b hover:bg-gray-50">
+              <td className="py-3 px-3">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
+                <td className="py-3 px-3">{ob.ottype}</td>
+                <td className="py-3 px-3">{ob.duration}</td>
+                <td className="py-3 px-3">
+                <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
+                    ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                    ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
+                    "bg-red-100 text-red-600"}`}>
+                    {ot.otstatus}
+                  </span>
+                </td>
+              </tr>
+            ))
+
+        ) : (
+
+ // Centered message when no data is found
+<tr className="h-full">
+              <td colSpan="4">
+                <div className="h-[400px] flex justify-center items-center text-gray-500">
+                  No official business applications found.
+                </div>
               </td>
             </tr>
-          ))
-        ) : (
-          // Centered message when no data is found
-          <tr>
-            <td colSpan="4">
-              <div className="flex justify-center items-center h-[200px] text-gray-500">
-                No official business applications found.
-              </div>
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
+          )}
+        </tbody>
+      </table>
+    </div>
+
 
   {/* Conditionally Render "View All" Button */}
   {officialBusinessApplication.length > 0 && (
@@ -534,71 +539,81 @@ const Dashboard = () => {
 </div>
 
         {/* Loan Balance Inquiry */}
-        <div className="bg-white p-4 rounded-lg shadow w-[560px] flex flex-col h-[320px]">
-  <h2 className="text-lg font-semibold mb-4 uppercase">Loan Balance Inquiry</h2>
+  <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
+  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">Loan Balance Applications</h2>
 
-  {/* Error Handling */}
-  {error && <p className="text-sm text-red-500 mt-4">{error}</p>}
+  {/* Error Handling
+  {error && <p className="text-sm text-red-500 mt-4">{error}</p>} */}
 
-  <div className="flex-grow">
-    <table className="w-full text-sm text-left">
-      <thead className="text-[#747474]">
+  <div className="overflow-x-auto flex-grow">
+      <table className="min-w-full border border-gray-200 rounded-lg h-full">
+        <thead className="bg-gray-200 text-gray-700 text-sm propercase">
         <tr>
-          <th className="py-2 uppercase">Loan Type</th>
-          <th className="py-2 uppercase">Balance</th>
+          <th className="py-3 px-3 text-left">Loan Type</th>
+          <th className="py-3 px-3 text-left">Loan Amount</th>
+          <th className="py-3 px-3 text-left">Balance</th>
+          <th className="py-3 px-3 text-left">Total Paid</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody className="text-gray-700 text-sm h-full">
         {loanBalance.length > 0 ? (
           loanBalance.slice(0, 5).map((loan, index) => (
             <tr key={index} className="border-b">
-              <td className="py-2">{loan.loantype}</td>
-              <td className="py-2">{loan.balance}</td>
+              <td className="py-2 px-3">{loan.loantype}</td>
+              <td className="py-2 px-3 text-right">0.00</td>
+              <td className="py-2 px-3 text-right">{loan.balance}</td>
+              <td className="py-2 px-3 text-right">0.00</td>
             </tr>
           ))
         ) : (
           // Centered message when no data is found
-          <tr>
-            <td colSpan="2">
-              <div className="flex justify-center items-center h-[200px] text-gray-500">
-                No loan balances found.
-              </div>
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
+          <tr className="h-full">
+              <td colSpan="4">
+                <div className="h-[400px] flex justify-center items-center text-gray-500">
+                  No loan balances found.
+                </div>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
 
-  {/* Conditionally Render "View All" Button */}
+
+
+
+  {/* View All Button */}
   {loanBalance.length > 0 && (
-    <div className="flex justify-start mt-auto items-center">
-      <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center">
-        View All
-        <span className="ml-1">→</span> 
-      </span>
+    <div className="flex justify-end mt-4">
+      <button 
+        onClick={() => navigate("/leaveApproval")} 
+        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+      >
+        View All <span className="ml-1">→</span>
+      </button>
     </div>
   )}
 </div>
 
 
-    
-<div className="bg-white p-6 rounded-lg shadow-md w-[570px] flex flex-col h-[500px]">
+   {/* Overtime Approval */}   
+
+  <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
   <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">Overtime for Approval</h2>
 
   {/* Responsive Table Wrapper */}
-  <div className="flex-grow overflow-y-auto">
-    <table className="min-w-full border border-gray-200 rounded-lg">
-      <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
+  <div className="overflow-x-auto flex-grow">
+  <table className="min-w-full border border-gray-200 rounded-lg h-full">
+  <thead className="bg-gray-200 text-gray-700 text-sm propercase">
         <tr>
-          <th className="py-3 px-4 text-left">Date</th>
-          <th className="py-3 px-4 text-left">Application Type</th>
+          <th className="py-3 px-4 text-left">OT Date</th>
+          <th className="py-3 px-4 text-left">OT Type</th>
           <th className="py-3 px-4 text-left">Duration</th>
-          <th className="py-3 px-4 text-left">Employee</th>
-          <th className="py-3 px-4 text-left">Status</th>
+          <th className="py-3 px-4 text-left">Employee Name</th>
+          <th className="py-3 px-4 text-center">Status</th>
         </tr>
       </thead>
-      <tbody className="text-gray-700 text-sm">
+      <tbody className="text-gray-700 text-sm h-full">
         {otApproval.length > 0 ? (
           otApproval.slice(0, 5).map((ot, index) => (
             <tr key={index} className="border-b hover:bg-gray-50">
@@ -607,19 +622,19 @@ const Dashboard = () => {
               <td className="py-3 px-4">{ot.duration}</td>
               <td className="py-3 px-4">{ot.empname}</td>
               <td className="py-3 px-4">
-                <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
-                  ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                  ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
-                  "bg-red-100 text-red-600"}`}>
-                  {ot.otstatus}
-                </span>
-              </td>
+                  <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
+                    ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                    ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
+                    "bg-red-100 text-red-600"}`}>
+                    {ot.otstatus}
+                  </span>
+                </td>
             </tr>
           ))
         ) : (
-          <tr>
-            <td colSpan="5">
-              <div className="flex justify-center items-center h-[150px] text-gray-500">
+          <tr className="h-full">
+            <td colSpan="4">
+              <div className="h-[400px] flex justify-center items-center text-gray-500">
                 No overtime approvals found.
               </div>
             </td>
@@ -645,30 +660,30 @@ const Dashboard = () => {
 
 
   {/* Leave Approval */}
-  <div className="bg-white p-6 rounded-lg shadow-md w-[570px] flex flex-col h-[500px]">
+  <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
   <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">Leave for Approval</h2>
 
   {/* Responsive Table Wrapper */}
-  <div className="flex-grow overflow-y-auto">
-    <table className="min-w-full border border-gray-200 rounded-lg">
-      <thead className="bg-gray-100 text-gray-600 text-sm uppercase">
+  <div className="overflow-x-auto flex-grow">
+      <table className="min-w-full border border-gray-200 rounded-lg h-full">
+        <thead className="bg-gray-200 text-gray-700 text-sm propercase">
         <tr>
-          <th className="py-3 px-4 text-left">Date</th>
-          <th className="py-3 px-4 text-left">Application Type</th>
-          <th className="py-3 px-4 text-left">Duration</th>
-          <th className="py-3 px-4 text-left">Employee</th>
-          <th className="py-3 px-4 text-left">Status</th>
+          <th className="py-3 px-3 text-left">Leave Date</th>
+          <th className="py-3 px-3 text-left">Leave Type</th>
+          <th className="py-3 px-3 text-left">Duration</th>
+          <th className="py-3 px-3 text-left">Employee</th>
+          <th className="py-3 px-3 text-left">Status</th>
         </tr>
       </thead>
-      <tbody className="text-gray-700 text-sm">
+      <tbody className="text-gray-700 text-sm h-full">
         {leaveApproval.length > 0 ? (
           leaveApproval.slice(0, 5).map((leave, index) => (
             <tr key={index} className="border-b hover:bg-gray-50">
-              <td className="py-3 px-4">{dayjs(leave.dateapplied).format("MM/DD/YYYY")}</td>
-              <td className="py-3 px-4">{leave.leavetype}</td>
-              <td className="py-3 px-4">{leave.duration}</td>
-              <td className="py-3 px-4">{leave.empname}</td>
-              <td className="py-3 px-4">
+              <td className="py-3 px-3">{dayjs(leave.dateapplied).format("MM/DD/YYYY")}</td>
+              <td className="py-3 px-3">{leave.leavetype}</td>
+              <td className="py-3 px-3">{leave.duration}</td>
+              <td className="py-3 px-3">{leave.empname}</td>
+              <td className="py-3 px-3">
                 <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
                   ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                   leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
@@ -679,13 +694,13 @@ const Dashboard = () => {
             </tr>
           ))
         ) : (
-          <tr>
-            <td colSpan="5">
-              <div className="flex justify-center items-center h-[150px] text-gray-500">
-                No leave approvals found.
-              </div>
-            </td>
-          </tr>
+          <tr className="h-full">
+              <td colSpan="4">
+                <div className="h-[400px] flex justify-center items-center text-gray-500">
+                  No leave approvals found found.
+                </div>
+              </td>
+            </tr>
         )}
       </tbody>
     </table>
@@ -706,44 +721,66 @@ const Dashboard = () => {
 
 
   {/* Official Business Approval */}
-  <div className="bg-white p-4 rounded-lg shadow w-[550px]">
-    <h2 className="text-lg font-semibold mb-4 uppercase">Official Business for Approval</h2>
-    <table className="w-full text-sm text-left uppercase">
-      <thead className="text-[#747474]">
+    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
+  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">Official Business for approval</h2>
+  
+  <div className="overflow-x-auto flex-grow">      
+    <table className="min-w-full border border-gray-200 rounded-lg h-full">
+  <thead className="bg-gray-200 text-gray-700 text-sm propercase">
         <tr>
-          <th className="py-2">Date</th>
-          <th className="py-2">Leave Type</th>
-          <th className="py-2">Duration</th>
-          <th className="py-2">Employee</th>
-          <th className="py-2">Status</th>
+          <th className="py-3 px-3">OB Date</th>
+          <th className="py-3 px-3">Start Datetime</th>
+          <th className="py-3 px-3">End Datetime</th>
+          <th className="py-3 px-3">Duration</th>
+          <th className="py-3 px-3">Employee</th>
+          <th className="py-3 px-3">Status</th>
         </tr>
-      </thead>
-      <tbody>
-        <tr className="border-b">
-          <td className="py-2">02/15/2023</td>
-          <td>Project Deadline</td>
-          <td>2 HRS</td>
-          <td>Jomel Mendoza</td>
-          <td className="inline-block w-[80px] bg-yellow-100 text-yellow-500 text-xs font-medium px-3 py-1 rounded-full text-center">Pending</td>
-        </tr>
-        <tr>
-          <td className="py-2">04/12/2023</td>
-          <td>Extra Hours</td>
-          <td>1.5 HRS</td>
-          <td>Gerard Mendoza</td>
-          <td className="inline-block w-[80px] bg-green-100 text-green-500 text-xs font-medium px-3 py-1 rounded-full text-center">Approved</td>
-        </tr>
-      </tbody>
-    </table>
-    <div className="flex justify-end mt-2 items-center">
-    <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center"
-    onClick={() => navigate("/officialBusiness")}>
-      View All
-      <span className="ml-1">→</span> 
-    </span>
-  </div>
-  </div>
-</div>            
+      </thead>        
+      <tbody className="text-gray-700 text-sm h-full">
+        {officialBusinessApplication.length > 0 ? (
+          officialBusinessApplication.slice(0, 5).map((ob, index) => (              
+          <tr key={index} className="border-b hover:bg-gray-50">
+              <td className="py-3 px-3">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
+                <td className="py-3 px-3">{ob.ottype}</td>
+                <td className="py-3 px-3">{ob.duration}</td>
+                <td className="py-3 px-3">
+                <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
+                    ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                    ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
+                    "bg-red-100 text-red-600"}`}>
+                    {ot.otstatus}
+                  </span>
+                </td>
+              </tr>
+            ))
+
+        ) : (
+
+ // Centered message when no data is found
+<tr className="h-full">
+              <td colSpan="4">
+                <div className="h-[400px] flex justify-center items-center text-gray-500">
+                  No official business approvals found.
+                </div>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+
+
+  {/* Conditionally Render "View All" Button */}
+  {officialBusinessApplication.length > 0 && (
+    <div className="flex justify-start mt-auto items-center">
+      <span className="text-gray-500 cursor-pointer text-sm font-normal flex items-center">
+        View All
+        <span className="ml-1">→</span> 
+      </span>
+    </div>
+  )}
+</div>       
+    </div>
     </div>
     
   );

@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { AiOutlineClose } from "react-icons/ai"; // ✅ Import X (close) icon from React Icons
 import { X } from "lucide-react";
+import { useAuth } from "./AuthContext"; // Import AuthContext to get logged-in user data
 
 
 const OvertimeReview = ({ overtimeData, onClose }) => {
   if (!overtimeData) return null;
+
+  const { user } = useAuth(); // Get logged-in user data
 
   const formatDate = (date) => {
     if (!date) return ""; // Ensure it's not null/undefined
@@ -12,20 +15,19 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
     return d.toISOString().split("T")[0]; // Convert to YYYY-MM-DD format
   };
   
-  //  const [formData, setFormData] = useState({
-  //   empNo: otData.empNo || "",
-  // empName: overtimeData.empName || "",
-  //   department: otData.department || "N/A",
-  //   otDate: formatDate(otData.otDate), // ✅ Convert date format
-  //   otDays: otData.otDays || "",
-  //   otHrs: otData.otHrs || "",
-  //   otType: otData.otType || "",
-  //   otRemarks: otData.otRemarks || "",
-  //   approverRemarks: otData.approverRemarks || "",
-  //   approvedDays: otData.approvedDays || "",
-  //   approvedHrs: otData.approvedHrs || "",
-  //   otStamp: otData.otStamp || "", // ✅ Include lvStamp
-  //  });
+   const [formData, setFormData] = useState({
+    empNo: overtimeData.empNo || "",
+    empName: overtimeData.empName || "",
+    department: overtimeData.department || "N/A",
+    otDate: formatDate(overtimeData.otDate), // ✅ Convert date format
+    otDays: overtimeData.otDays || "",
+    otHrs: overtimeData.otHrs || "",
+    otType: overtimeData.otType || "",
+    otRemarks: overtimeData.otRemarks || "",
+    approverRemarks: overtimeData.approverRemarks || "",
+    approvedHrs: overtimeData.approvedHrs || "",
+    otStamp: overtimeData.otStamp || "", // ✅ Include lvStamp
+   });
   
   // Handle input change
   const handleChange = (e) => {
@@ -46,10 +48,10 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
           json_data: {
             empNo: formData.empNo,
             appRemarks: formData.approverRemarks,
-            appDays: parseFloat(formData.approvedDays) || 0,
             appHrs: parseFloat(formData.approvedHrs) || 0,
             otStamp: formData.otStamp, // ✅ Ensure lvStamp is included
             appStat: 1, // Status for approved
+            appUser: user.empNo, // Global User
           }
         }),
       };
@@ -90,10 +92,11 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
       const payload = {
         json_data: JSON.stringify({
           json_data: {
-            empNo: formData.empNo,
+            applEmpNo: formData.applEmpNo,
             appRemarks: formData.approverRemarks,
             otStamp: formData.otStamp, // Ensure lvStamp is included
             appStat: 0, // Status for disapproved
+            appuser: formData.empNo, // Global User
           }
         }),
       };
@@ -161,14 +164,19 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
           <label className="block text-gray-700">Approved Hours</label>
           <input
               type="number"
-              name="approvedDays"
-              // value={formData.approvedDays}
-              // onChange={handleChange}
+              name="approvedHrs"
+              value={formData.approvedHrs}
+              onChange={handleChange}
               className="w-full border rounded p-2"
             />
           {/* <input className="border p-2 w-full" value={overtimeData.otHrs || ""}  /> */}
           <label className="block text-gray-700">Approver's Remarks</label>
-          <textarea className="border p-2 w-full h-20"></textarea> 
+          <textarea
+            name="approverRemarks"
+            value={formData.approverRemarks}
+            onChange={handleChange}
+            className="w-full border rounded p-2"
+          />
         </div>
 
         {/* <div className="flex justify-end space-x-4 mt-6">
