@@ -41,7 +41,7 @@ const Sidebar = () => {
   // Render error message if there is an issue
   if (error) {
     return (
-      <div className="h-screen w-80 bg-white shadow-md fixed top-[120px] left-0 p-6">
+      <div className="h-screen w-65 bg-white shadow-md fixed top-[120px] left-0 p-6">
         Error: {error}
       </div>
     );
@@ -49,7 +49,7 @@ const Sidebar = () => {
 
   // Render sidebar with employee details (or empty state if not available)
   return (
-    <div className="h-screen w-80 bg-white shadow-md fixed top-[120px] left-0 p-6">
+    <div className="h-screen w-65 bg-white shadow-md fixed top-[120px] left-0 p-6">
       {/* Profile Section */}
       <div className="flex flex-col items-center">
         <img
@@ -63,27 +63,41 @@ const Sidebar = () => {
       </div>
 <hr />
       {/* Employee Details Section */}
-      <div className="mt-7 text-md text-gray-600">
+      <div className="mt-6 text-md text-gray-700">
         <p className="mb-2">
-          <span className="font-semibold">Employee No.:</span> {employeeInfo ? employeeInfo.empNo : "Loading..."}
+          <span className="font-semibold">Employee No.:</span> 
+          <br/>
+          {employeeInfo ? employeeInfo.empNo : "Loading..."}
         </p>
         <p className="mb-2">
-          <span className="font-semibold">Branch:</span> {employeeInfo ? employeeInfo.branchName : "Loading..."}
+          <span className="font-semibold">Branch:</span> 
+          <br/>
+          {employeeInfo ? employeeInfo.branchName : "Loading..."}
         </p>
         <p className="mb-2">
-          <span className="font-semibold">Payroll Group:</span> {employeeInfo ? employeeInfo.payrollGroup : "Loading..."}
+          <span className="font-semibold">Payroll Group:</span> 
+          <br/>
+          {employeeInfo ? employeeInfo.payrollGroup : "Loading..."}
         </p>
         <p className="mb-2">
-          <span className="font-semibold">Department:</span> {employeeInfo ? employeeInfo.department : "Loading..."}
+          <span className="font-semibold">Department:</span> 
+          <br/>
+          {employeeInfo ? employeeInfo.department : "Loading..."}
         </p>
         <p className="mb-2">
-          <span className="font-semibold">Position:</span> {employeeInfo ? employeeInfo.position : "Loading..."}
+          <span className="font-semibold">Position:</span> 
+          <br/>
+          {employeeInfo ? employeeInfo.position : "Loading..."}
         </p>
         <p className="mb-2">
-          <span className="font-semibold">Employee Status:</span> {employeeInfo ? employeeInfo.employeeStatus : "Loading..."}
+          <span className="font-semibold">Employee Status:</span> 
+          <br/>
+          {employeeInfo ? employeeInfo.employeeStatus : "Loading..."}
         </p>
         <p className="mb-2">
-          <span className="font-semibold">Shift Schedule:</span> {employeeInfo ? employeeInfo.shiftSchedule : "Loading..."}
+          <span className="font-semibold">Shift Schedule:</span> 
+          <br/>
+          {employeeInfo ? employeeInfo.shiftSchedule : "Loading..."}
         </p>
       </div>
     </div>

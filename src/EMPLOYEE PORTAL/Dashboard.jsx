@@ -192,11 +192,11 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="ml-80 mt-[120px] p-4 bg-gray-100 min-h-screen">
+    <div className="ml-[260px] mt-[120px] p-4 bg-gray-100 min-h-screen">
       
       {/* Header */}
-      <div className="flex justify-between items-start w-[1180px]">
-        <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white flex justify-between items-center mb-6 w-full shadow-lg">
+      <div className="flex justify-between items-start w-[1220px]">
+        <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex justify-between items-center mb-4 w-full shadow-lg">
           <div>
             <p className="text-md font-light mb-1 text-[#424554]"><span className="kanit-text">Today</span></p>
             <h1 className="text-4xl font-extrabold text-[#495057]">
@@ -362,7 +362,7 @@ const Dashboard = () => {
 
     {/* Responsive Table Wrapper */}
     <div className="overflow-x-auto flex-grow">
-      <table className="min-w-full border border-gray-200 rounded-lg h-full">
+      <table className="min-w-full border border-gray-200 rounded-lg">
         <thead className="bg-gray-200 text-gray-700 text-sm propercase">
           <tr>
             <th className="py-3 px-3 text-left">OT Date</th>
@@ -375,11 +375,11 @@ const Dashboard = () => {
           {otApplication.length > 0 ? (
             otApplication.slice(0, 5).map((ot, index) => (
               <tr key={index} className="border-b hover:bg-gray-50">
-                <td className="py-3 px-3">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
-                <td className="py-3 px-3">{ot.ottype}</td>
-                <td className="py-3 px-3">{ot.duration}</td>
-                <td className="py-3 px-3">
-                  <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
+                <td className="py-2 px-2">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
+                <td className="py-2 px-2">{ot.ottype}</td>
+                <td className="py-2 px-2">{ot.duration}</td>
+                <td className="py-2 px-2">
+                  <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-sm font-medium
                     ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                     ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
                     "bg-red-100 text-red-600"}`}>
@@ -438,13 +438,14 @@ const Dashboard = () => {
         {leaveApplication.length > 0 ? (
           leaveApplication.slice(0, 5).map((leave, index) => (
             <tr key={index} className="border-b hover:bg-gray-50">
-              <td className="py-3 px-3">{dayjs(leave.dateapplied).format("MM/DD/YYYY")}</td>
-              <td className="py-3 px-3">{leave.leavetype}</td>
-              <td className="py-3 px-3">{leave.duration}</td>
-              <td className="py-3 px-3">
-                  <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
-                    ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                    ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
+              {/* <td className="py-2 px-2">{dayjs(leave.dateapplied).format("MM/DD/YYYY")}</td> */}
+              <td className="py-2 px-2">{leave.dateapplied}</td>
+              <td className="py-2 px-2">{leave.leavetype}</td>
+              <td className="py-2 px-2">{leave.duration}</td>
+              <td className="py-2 px-2">
+                  <span className={`inline-block w-[100px] px-2 py-1 rounded-full text-center text-sm font-medium
+                    ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                      leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
                     "bg-red-100 text-red-600"}`}>
                   {leave.leavestatus}
                 </span>
@@ -483,7 +484,7 @@ const Dashboard = () => {
   <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Official Business Applications</h2>
   
   <div className="overflow-x-auto flex-grow">      
-    <table className="min-w-full border border-gray-200 rounded-lg h-full">
+    <table className="min-w-full border border-gray-200 rounded-lg">
   <thead className="bg-gray-200 text-gray-700 text-sm propercase">
         <tr>
           <th className="py-3 px-3">OB Date</th>
@@ -497,15 +498,16 @@ const Dashboard = () => {
         {officialBusinessApplication.length > 0 ? (
           officialBusinessApplication.slice(0, 5).map((ob, index) => (              
           <tr key={index} className="border-b hover:bg-gray-50">
-              <td className="py-3 px-3">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
-                <td className="py-3 px-3">{ob.ottype}</td>
-                <td className="py-3 px-3">{ob.duration}</td>
-                <td className="py-3 px-3">
-                <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
-                    ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                    ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
+              <td className="py-2 px-2">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
+              <td className="py-2 px-2">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm")}</td>
+              <td className="py-2 px-2">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm")}</td>
+                <td className="py-2 px-2">{ob.duration}</td>
+                <td className="py-2 px-2">
+                <span className={`inline-block w-[100px] px-2 py-1 rounded-full text-center text-sm font-medium
+                    ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                      ob.obstatus === "Approved" ? "bg-green-100 text-green-600" : 
                     "bg-red-100 text-red-600"}`}>
-                    {ot.otstatus}
+                    {ob.obstatus}
                   </span>
                 </td>
               </tr>
@@ -540,29 +542,37 @@ const Dashboard = () => {
 
         {/* Loan Balance Inquiry */}
   <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
-  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">Loan Balance Applications</h2>
+  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Loan Balance</h2>
 
   {/* Error Handling
   {error && <p className="text-sm text-red-500 mt-4">{error}</p>} */}
 
   <div className="overflow-x-auto flex-grow">
-      <table className="min-w-full border border-gray-200 rounded-lg h-full">
+      <table className="min-w-full border border-gray-200 rounded-lg">
         <thead className="bg-gray-200 text-gray-700 text-sm propercase">
         <tr>
           <th className="py-3 px-3 text-left">Loan Type</th>
-          <th className="py-3 px-3 text-left">Loan Amount</th>
-          <th className="py-3 px-3 text-left">Balance</th>
-          <th className="py-3 px-3 text-left">Total Paid</th>
+          <th className="py-3 px-3 text-right">Loan Amount</th>
+          <th className="py-3 px-3 text-right">Balance</th>
+          <th className="py-3 px-3 text-right">Total Paid</th>
         </tr>
       </thead>
       <tbody className="text-gray-700 text-sm h-full">
         {loanBalance.length > 0 ? (
           loanBalance.slice(0, 5).map((loan, index) => (
             <tr key={index} className="border-b">
-              <td className="py-2 px-3">{loan.loantype}</td>
-              <td className="py-2 px-3 text-right">0.00</td>
-              <td className="py-2 px-3 text-right">{loan.balance}</td>
-              <td className="py-2 px-3 text-right">0.00</td>
+              <td className="py-2 px-2">{loan.loantype}</td>
+        <td className="py-2 px-2 text-right">
+          {loan.loanamt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </td>
+        <td className="py-2 px-2 text-right">
+          {loan.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </td>
+        <td className="py-2 px-2 text-right">
+          {loan.totalpaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </td>
+
+
             </tr>
           ))
         ) : (
@@ -603,7 +613,7 @@ const Dashboard = () => {
 
   {/* Responsive Table Wrapper */}
   <div className="overflow-x-auto flex-grow">
-  <table className="min-w-full border border-gray-200 rounded-lg h-full">
+  <table className="min-w-full border border-gray-200 rounded-lg">
   <thead className="bg-gray-200 text-gray-700 text-sm propercase">
         <tr>
           <th className="py-3 px-4 text-left">OT Date</th>
@@ -617,12 +627,12 @@ const Dashboard = () => {
         {otApproval.length > 0 ? (
           otApproval.slice(0, 5).map((ot, index) => (
             <tr key={index} className="border-b hover:bg-gray-50">
-              <td className="py-3 px-4">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
-              <td className="py-3 px-4">{ot.ottype}</td>
-              <td className="py-3 px-4">{ot.duration}</td>
-              <td className="py-3 px-4">{ot.empname}</td>
-              <td className="py-3 px-4">
-                  <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
+              <td className="py-2 px-2">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
+              <td className="py-2 px-2">{ot.ottype}</td>
+              <td className="py-2 px-2">{ot.duration}</td>
+              <td className="py-2 px-2">{ot.empname}</td>
+              <td className="py-2 px-2">
+                  <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-sm font-medium
                     ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                     ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
                     "bg-red-100 text-red-600"}`}>
@@ -665,7 +675,7 @@ const Dashboard = () => {
 
   {/* Responsive Table Wrapper */}
   <div className="overflow-x-auto flex-grow">
-      <table className="min-w-full border border-gray-200 rounded-lg h-full">
+      <table className="min-w-full border border-gray-200 rounded-lg">
         <thead className="bg-gray-200 text-gray-700 text-sm propercase">
         <tr>
           <th className="py-3 px-3 text-left">Leave Date</th>
@@ -679,12 +689,13 @@ const Dashboard = () => {
         {leaveApproval.length > 0 ? (
           leaveApproval.slice(0, 5).map((leave, index) => (
             <tr key={index} className="border-b hover:bg-gray-50">
-              <td className="py-3 px-3">{dayjs(leave.dateapplied).format("MM/DD/YYYY")}</td>
-              <td className="py-3 px-3">{leave.leavetype}</td>
-              <td className="py-3 px-3">{leave.duration}</td>
-              <td className="py-3 px-3">{leave.empname}</td>
-              <td className="py-3 px-3">
-                <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
+              {/* <td className="py-2 px-2">{dayjs(leave.dateapplied).format("MM/DD/YYYY")}</td> */}
+              <td className="py-2 px-2">{leave.dateapplied}</td>
+              <td className="py-2 px-2">{leave.leavetype}</td>
+              <td className="py-2 px-2">{leave.duration}</td>
+              <td className="py-2 px-2">{leave.empname}</td>
+              <td className="py-2 px-2">
+                <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-sm font-medium
                   ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                   leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
                   "bg-red-100 text-red-600"}`}>
@@ -725,7 +736,7 @@ const Dashboard = () => {
   <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">Official Business for approval</h2>
   
   <div className="overflow-x-auto flex-grow">      
-    <table className="min-w-full border border-gray-200 rounded-lg h-full">
+    <table className="min-w-full border border-gray-200 rounded-lg">
   <thead className="bg-gray-200 text-gray-700 text-sm propercase">
         <tr>
           <th className="py-3 px-3">OB Date</th>
@@ -757,8 +768,8 @@ const Dashboard = () => {
         ) : (
 
  // Centered message when no data is found
-<tr className="h-full">
-              <td colSpan="4">
+            <tr className="h-full">
+              <td colSpan="6">
                 <div className="h-[400px] flex justify-center items-center text-gray-500">
                   No official business approvals found.
                 </div>
