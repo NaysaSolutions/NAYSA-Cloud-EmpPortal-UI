@@ -75,7 +75,7 @@ const Timekeeping = () => {
 
     const fetchDTRRecords = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/getDTR", {
+        const response = await fetch("https://api.nemarph.com:81/api/getDTR", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ EMP_NO: user?.empNo }),

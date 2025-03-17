@@ -22,7 +22,7 @@ const OvertimeApproval = () => {
         const today = dayjs().format("YYYY-MM-DD");
         const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
 
-        const pendingResponse = await fetch("http://127.0.0.1:8000/api/getOTApprInq", {
+        const pendingResponse = await fetch("https://api.nemarph.com:81/api/getOTApprInq", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ EMP_NO: user.empNo, STAT: "Pending" }),
@@ -33,7 +33,7 @@ const OvertimeApproval = () => {
           setPendingOvertime(JSON.parse(pendingResult.data[0].result) || []);
         }
 
-        const historyResponse = await fetch("http://127.0.0.1:8000/api/getOTApprHistory", {
+        const historyResponse = await fetch("https://api.nemarph.com:81/api/getOTApprHistory", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: startDate, END_DATE: today }),

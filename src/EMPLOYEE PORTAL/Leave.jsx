@@ -43,7 +43,7 @@ const Leave = () => {
         const today = dayjs().format("YYYY-MM-DD");
         const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
   
-        const response = await fetch("http://127.0.0.1:8000/api/getLVApprInq", {
+        const response = await fetch("https://api.nemarph.com:81/api/getLVApprInq", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

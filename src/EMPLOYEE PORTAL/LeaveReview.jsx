@@ -55,7 +55,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
   
       console.log("Sending approval data:", payload);
   
-      const response = await fetch("http://127.0.0.1:8000/api/approvalLV", {
+      const response = await fetch("https://api.nemarph.com:81/api/approvalLV", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -99,7 +99,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
   
       console.log("Sending disapproval data:", payload);
   
-      const response = await fetch("http://127.0.0.1:8000/api/approvalLV", {
+      const response = await fetch("https://api.nemarph.com:81/api/approvalLV", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

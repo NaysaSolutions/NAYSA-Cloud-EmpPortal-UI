@@ -58,7 +58,7 @@ const officialBusiness = () => {
           const today = dayjs().format("YYYY-MM-DD");
           const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
     
-          const response = await fetch("http://127.0.0.1:8000/api/getOBApprInq", {
+          const response = await fetch("https://api.nemarph.com:81/api/getOBApprInq", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -188,7 +188,7 @@ const officialBusiness = () => {
       console.log("Sending Official Business Data:", JSON.stringify(obData, null, 2));
   
       try {
-          const response = await fetch("http://127.0.0.1:8000/api/upsertOB", {
+          const response = await fetch("https://api.nemarph.com:81/api/upsertOB", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(obData),

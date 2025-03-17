@@ -58,7 +58,7 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
   
       console.log("Sending approval data:", payload);
   
-      const response = await fetch("http://127.0.0.1:8000/api/approvalOT", {
+      const response = await fetch("https://api.nemarph.com:81/api/approvalOT", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -103,7 +103,7 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
   
       console.log("Sending disapproval data:", payload);
   
-      const response = await fetch("http://127.0.0.1:8000/api/approvalOT", {
+      const response = await fetch("https://api.nemarph.com:81/api/approvalOT", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

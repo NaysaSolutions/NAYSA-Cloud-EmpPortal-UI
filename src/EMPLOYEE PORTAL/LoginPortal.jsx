@@ -20,7 +20,7 @@ function LoginPortal() {
       
         try {
           // Send the request to fetch data based on empNo
-          const response = await axios.post("http://127.0.0.1:8000/api/dashBoard", { EMP_NO: empNo });
+          const response = await axios.post("https://api.nemarph.com:81/api/dashBoard", { EMP_NO: empNo });
       
           if (response.data.success) {
             // Ensure that the data is in the expected format and contains user info
