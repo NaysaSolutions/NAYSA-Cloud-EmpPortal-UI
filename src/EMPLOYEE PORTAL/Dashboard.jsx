@@ -174,10 +174,10 @@ const Dashboard = () => {
 
   // Generate Calendar Days
   const generateCalendar = () => {
-    const startDay = currentMonth.startOf("month").day();
+    const startDay = currentMonth.startOf("month").day(); // Day index of 1st day (0=Sun, 6=Sat)
     const daysInMonth = currentMonth.daysInMonth();
     const prevMonthDays = currentMonth.subtract(1, "month").daysInMonth();
-  
+    
     let days = [];
   
     // Convert leaveApplication dates into a set of marked days
@@ -193,221 +193,204 @@ const Dashboard = () => {
       }
     });
   
-    // Previous month's overflow days
+    // Add previous month's overflow days
     for (let i = startDay - 1; i >= 0; i--) {
       days.push({ day: prevMonthDays - i, currentMonth: false });
     }
   
-    // Current month's days
+    // Add current month's days
     for (let i = 1; i <= daysInMonth; i++) {
       days.push({ day: i, currentMonth: true, isLeaveDay: leaveDays.has(i) });
     }
   
-    // Fill the remaining cells with next month's days
-    while (days.length % 7 !== 0) {
-      days.push({ day: days.length % 7 + 1, currentMonth: false });
+    // ✅ FIX: Properly add next month's days until the calendar grid is complete
+    const remainingDays = 7 - (days.length % 7);
+    if (remainingDays < 7) {
+      for (let i = 1; i <= remainingDays; i++) {
+        days.push({ day: i, currentMonth: false }); // Correctly add next month's days
+      }
     }
   
     return days;
   };
   
+  
 
   return (
-    <div className="ml-[260px] mt-[120px] p-4 bg-gray-100 min-h-screen">
+    <div className="ml-[260px] mt-[115px] p-4 bg-gray-100 min-h-screen">
       
       {/* Header */}
-      <div className="flex justify-between items-start w-[1385px]">
-        <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex justify-between items-center mb-4 w-full shadow-lg">
-          <div>
-            <p className="text-md font-light mb-1 text-[#424554]"><span className="kanit-text">Today</span></p>
-            <h1 className="text-4xl font-extrabold text-[#495057]">
-              {currentDate.format("MMMM DD, YYYY")}
-            </h1>
-          </div>
-          {/* Entry Time and Break Time Count */}
-          <div className="flex space-x-10">
-          <div>
-      <p className="text-sm font-medium">Philippine Standard Time:</p>
-      <p className="text-4xl font-bold">{time || "00:00 PM"}</p>
+<div className="flex justify-between items-start w-full max-w-[2000px] mx-auto px-4">
+  <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex flex-wrap justify-between items-center mb-4 w-full shadow-lg">
+    <div>
+      <p className="text-md font-light mb-1 text-[#424554]">
+        <span className="kanit-text">Today</span>
+      </p>
+      <h1 className="text-4xl font-extrabold text-[#495057]">
+        {currentDate.format("MMMM DD, YYYY")}
+      </h1>
     </div>
-            <div>
-              <p className="text-sm font-medium">Break Time Count:</p>
-              <p className="text-4xl font-bold">
-                {formatTime(breakTime)}
-              </p>
-            </div>
-          </div>
-        </div>
+
+    {/* Entry Time and Break Time Count */}
+    <div className="flex flex-wrap sm:flex-col lg:flex-row sm:gap-2 lg:gap-10">
+      <div>
+        <p className="text-sm font-medium">Philippine Standard Time:</p>
+        <p className="text-4xl font-bold">{time || "00:00 PM"}</p>
       </div>
+      <div>
+        <p className="text-sm font-medium">Break Time Count:</p>
+        <p className="text-4xl font-bold">
+          {formatTime(breakTime)}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
 
       {/* Main Content */}
-      <div className="grid grid-cols-3 gap-4">
-        {/* Daily Time Record Section */}
-        <div className="bg-white p-4 rounded-lg shadow-lg w-full max-w-lg mx-auto">
-      <h2 className="text-lg font-semibold uppercase">Daily Time Record</h2>
-      <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
-      
-      {/* Table Structure */}
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-200 text-gray-700 text-sm propercase">
-              <th className="p-2 text-left">Date</th>
-              <th className="p-2 text-center">Time In</th>
-              <th className="p-2 text-center">Time Out</th>
+<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+  {/* Daily Time Record Section */}
+<div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full relative">
+  <h2 className="text-lg font-semibold uppercase">Daily Time Record</h2>
+  <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
+
+  {/* Table Structure */}
+  <div className="mt-4 overflow-x-auto">
+    <table className="w-full border-collapse">
+      <thead>
+        <tr className="bg-gray-200 text-gray-700 text-sm">
+          <th className="p-2 text-left">Date</th>
+          <th className="p-2 text-center">Time In</th>
+          <th className="p-2 text-center">Time Out</th>
+        </tr>
+      </thead>
+      <tbody>
+        {dailyTimeRecord.length > 0 ? (
+          dailyTimeRecord.map((record, index) => (
+            <tr key={index} className="border-b hover:bg-gray-100">
+              <td className="p-2 text-left text-sm">{dayjs(record.trandate).format("MM/DD/YYYY")}</td>
+              <td className="p-2 text-center text-sm">{record.time_in ? dayjs(record.time_in).format("hh:mm A") : "N/A"}</td>
+              <td className="p-2 text-center text-sm">{record.time_out ? dayjs(record.time_out).format("hh:mm A") : "N/A"}</td>
             </tr>
-          </thead>
-          <tbody>
-            {dailyTimeRecord.length > 0 ? (
-              dailyTimeRecord.map((record, index) => (
-                <tr key={index} className="border-b hover:bg-gray-100">
-                  <td className="p-2 text-left text-sm">
-                    {dayjs(record.trandate).format("MM/DD/YYYY")}
-                  </td>
-                  <td className="p-2 text-center text-sm">
-                    {record.time_in ? dayjs(record.time_in).format("hh:mm A") : "N/A"}
-                  </td>
-                  <td className="p-2 text-center text-sm">
-                    {record.time_out ? dayjs(record.time_out).format("hh:mm A") : "N/A"}
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="3" className="p-4 text-center text-gray-600 text-sm">
-                  No records found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-      
-      {/* View All Button */}
-      {/* <div className="flex justify-end mt-20">
-        <button className="text-blue-500 text-sm font-medium hover:underline" 
-        onClick={() => navigate("/timekeeping")}>
-          View All →
-        </button>
-      </div> */}
+          ))
+        ) : (
+          <tr>
+            <td colSpan="3" className="p-4 text-center text-gray-600 text-sm">No records found.</td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
 
-      <div className="flex justify-end mt-20">
-          <button 
-            onClick={() => navigate("/timekeeping")} 
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
-          >
-            View All <span className="ml-1">→</span>
-          </button>
-        </div>
-
+  {/* Fixed View All Button */}
+  <button 
+    onClick={() => navigate("/timekeeping")} 
+    className="absolute bottom-4 right-4 text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+  >
+    View All <span className="ml-1">→</span>
+  </button>
 </div>
 
-        {/* Leave Credit */}
-        <div className="bg-white p-4 rounded-lg shadow-lg w-full max-w-lg mx-auto">
-      <h2 className="text-lg font-semibold uppercase">Leave Credit</h2>
-      <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
-      
-      {/* Table Structure */}
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-gray-200 text-gray-700 text-sm propercase">
-              <th className="p-2 text-left">Leave Type</th>
-              <th className="p-2 text-center">Credit</th>
-              <th className="p-2 text-center">Used</th>
-              <th className="p-2 text-center">Actual Balance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {leaveCredit.length > 0 ? (
-              leaveCredit.map((leave, index) => (
-                <tr key={index} className="border-b hover:bg-gray-100">
-                  <td className="p-2 text-left text-sm">{leave.description}</td>
-                  <td className="p-2 text-center text-sm">{leave.credit}</td>
-                  <td className="p-2 text-center text-sm">{leave.availed}</td>
-                  <td className="p-2 text-center text-sm">{leave.balance}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="3" className="p-4 text-center text-gray-600 text-sm">
-                  No leave credits found.
-                </td>
+  {/* Leave Credit Section */}
+  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full">
+    <h2 className="text-lg font-semibold uppercase">Leave Credit</h2>
+    <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
+
+    {/* Table Structure */}
+    <div className="mt-4 overflow-x-auto">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="bg-gray-200 text-gray-700 text-sm">
+            <th className="p-2 text-left">Leave Type</th>
+            <th className="p-2 text-center">Credit</th>
+            <th className="p-2 text-center">Used</th>
+            <th className="p-2 text-center">Actual Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {leaveCredit.length > 0 ? (
+            leaveCredit.map((leave, index) => (
+              <tr key={index} className="border-b hover:bg-gray-100">
+                <td className="p-2 text-left text-sm">{leave.description}</td>
+                <td className="p-2 text-center text-sm">{leave.credit}</td>
+                <td className="p-2 text-center text-sm">{leave.availed}</td>
+                <td className="p-2 text-center text-sm">{leave.balance}</td>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-  {/* Conditionally Render "View All" Button */}
-  {leaveCredit.length > 0 && (
-      // <div className="flex justify-end mt-20">
-      //     <button className="text-blue-500 text-sm font-medium hover:underline"
-      //      onClick={() => setIsModalOpen(true)}>
-      //       View All →
-      //     </button>
-      //   </div>
-        <div className="flex justify-end mt-20">
-          <button 
-            onClick={() => setIsModalOpen(true)} 
-            className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
-          >
-            View All <span className="ml-1">→</span>
-          </button>
-        </div>
-        
-  )}
-   {/* Leave Credit Modal */}
-   <LeaveCreditModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        leaveCredit={leaveCredit} 
-      />
-</div>
-
-        {/* Personal Calendar */}
-        <div className="bg-white p-4 rounded-lg shadow-lg w-full max-w-lg mx-auto">
-          <h2 className="text-lg font-semibold mb-4 text-center uppercase">Personal Calendar</h2>
-          <div className="flex justify-between items-center mb-2">
-            <button onClick={handlePrevMonth} className="text-gray-400">◀</button>
-            <h3 className="text-lg font-semibold">{currentMonth.format("MMMM YYYY")}</h3>
-            <button onClick={handleNextMonth} className="text-gray-600">▶</button>
-          </div>
-          <div className="grid grid-cols-7 gap-0 text-center text-gray-600 font-semibold">
-            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
-              <div key={day}>{day}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-0 text-center">
-  {generateCalendar().map((item, index) => (
-    <div
-      key={index}
-      className={`p-2 rounded-full ${item.currentMonth ? "text-black" : "text-gray-400"} 
-        ${item.isLeaveDay ? "bg-yellow-500 text-white font-bold" : ""}`}
-    >
-      {item.day}
+            ))
+          ) : (
+            <tr>
+              <td colSpan="4" className="p-4 text-center text-gray-600 text-sm">No leave credits found.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
-  ))}
+
+    {/* View All Button */}
+    {leaveCredit.length > 0 && (
+      <div className="flex justify-end mt-20">
+        <button onClick={() => setIsModalOpen(true)} className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
+          View All <span className="ml-1">→</span>
+        </button>
+      </div>
+    )}
+
+    {/* Leave Credit Modal */}
+    <LeaveCreditModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} leaveCredit={leaveCredit} />
+  </div>
+
+  {/* Personal Calendar */}
+<div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full">
+  <h2 className="text-lg font-semibold mb-4 text-center uppercase">Personal Calendar</h2>
+  
+  {/* Navigation */}
+  <div className="flex justify-between items-center mb-2">
+    <button onClick={handlePrevMonth} className="text-gray-400">◀</button>
+    <h3 className="text-lg font-semibold">{currentMonth.format("MMMM YYYY")}</h3>
+    <button onClick={handleNextMonth} className="text-gray-600">▶</button>
+  </div>
+
+  {/* Weekday Headers */}
+  <div className="grid grid-cols-7 gap-1 text-center text-gray-600 font-semibold">
+    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
+      <div key={day} className="p-2">{day}</div>
+    ))}
+  </div>
+
+  {/* Calendar Grid with Fixed Height */}
+  <div className="grid grid-cols-7 grid-rows-6 gap-1 text-center min-h-[300px]">
+    {generateCalendar().map((item, index) => (
+      <div 
+        key={index} 
+        className={`p-2 rounded-full h-[40px] flex items-center justify-center 
+          ${item.currentMonth ? "text-black" : "text-gray-400"} 
+          ${item.isLeaveDay ? "bg-yellow-500 text-white font-bold" : ""}`}
+      >
+        {item.day}
+      </div>
+    ))}
+  </div>
+
+  {/* Calendar Legend */}
+  <div className="flex justify-between text-sm mt-2">
+    <div className="flex items-center"><span className="w-2 h-2 bg-red-500 inline-block mr-1"></span> Holiday</div>
+    <div className="flex items-center"><span className="w-2 h-2 bg-blue-500 inline-block mr-1"></span> Leave</div>
+    <div className="flex items-center"><span className="w-2 h-2 bg-yellow-500 inline-block mr-1"></span> Pending for Approval</div>
+  </div>
+</div>
 </div>
 
-          <div className="flex justify-between text-sm mt-2">
-            <div className="flex items-center"><span className="w-2 h-2 bg-red-500 inline-block mr-1"></span> Holiday</div>
-            <div className="flex items-center"><span className="w-2 h-2 bg-blue-500 inline-block mr-1"></span> Leave</div>
-            <div className="flex items-center"><span className="w-2 h-2 bg-yellow-500 inline-block mr-1"></span> Pending for Approval</div>
-          </div>
-        </div>
-      </div>
 
       <hr className="mt-6 mb-6" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-screen">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 min-h-screen">
   {/* Overtime Applications */}
-  <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
+  <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow relative">
     <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Overtime Applications</h2>
 
-    {/* Responsive Table Wrapper */}
+    {/* Responsive Table */}
     <div className="overflow-x-auto flex-grow">
       <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="bg-gray-200 text-gray-700 text-sm propercase">
+        <thead className="bg-gray-200 text-gray-700 text-xs sm:text-sm">
           <tr>
             <th className="py-3 px-3 text-left">OT Date</th>
             <th className="py-3 px-3 text-left">OT Type</th>
@@ -415,27 +398,27 @@ const Dashboard = () => {
             <th className="py-3 px-3 text-left">Status</th>
           </tr>
         </thead>
-        <tbody className="text-gray-700 text-sm h-full">
+        <tbody className="text-gray-700 text-xs sm:text-sm">
           {otApplication.length > 0 ? (
             otApplication.slice(0, 5).map((ot, index) => (
               <tr key={index} className="border-b hover:bg-gray-50">
-                <td className="py-3 px-3 text-left">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
-                <td className="py-3 px-3 text-left">{ot.ottype}</td>
-                <td className="py-3 px-3 text-left">{ot.duration}</td>
-                <td className="py-3 px-3 text-left">
-                  <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-sm font-medium
+                <td className="py-3 px-3">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
+                <td className="py-3 px-3">{ot.ottype}</td>
+                <td className="py-3 px-3">{ot.duration}</td>
+                <td className="py-3 px-3">
+                  <span className={`inline-block w-[90px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium
                     ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                    ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
-                    "bg-red-100 text-red-600"}`}>
+                      ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
+                      "bg-red-100 text-red-600"}`}>
                     {ot.otstatus}
                   </span>
                 </td>
               </tr>
             ))
           ) : (
-            <tr className="h-full">
+            <tr>
               <td colSpan="4">
-                <div className="h-[400px] flex justify-center items-center text-gray-500">
+                <div className="h-[300px] flex justify-center items-center text-gray-500 text-xs sm:text-sm">
                   No overtime applications found.
                 </div>
               </td>
@@ -445,32 +428,25 @@ const Dashboard = () => {
       </table>
     </div>
 
-    {/* View All Button */}
+    {/* View All Button - Fixed on Small Screens */}
     {otApplication.length > 0 && (
-      <div className="flex justify-end mt-4">
-        <button 
-          onClick={() => navigate("/overtime")} 
-          className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
-        >
-          View All <span className="ml-1">→</span>
-        </button>
-      </div>
+      <button 
+        onClick={() => navigate("/overtime")} 
+        className="absolute bottom-4 right-4 text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex items-center
+        md:static md:mt-4"
+      >
+        View All <span className="ml-1">→</span>
+      </button>
     )}
   </div>
 
-
-
-
-
-        {/* Leave Applications */}
-        
-<div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
+  <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow relative">
   <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Leave Applications</h2>
 
   {/* Responsive Table */}
   <div className="overflow-x-auto flex-grow">
     <table className="min-w-full border border-gray-200 rounded-lg">
-      <thead className="bg-gray-200 text-gray-700 text-sm propercase">
+      <thead className="bg-gray-200 text-gray-700 text-xs sm:text-sm">
         <tr>
           <th className="py-3 px-3 text-left">Leave Date</th>
           <th className="py-3 px-3 text-left">Leave Type</th>
@@ -478,18 +454,17 @@ const Dashboard = () => {
           <th className="py-3 px-3 text-left">Status</th>
         </tr>
       </thead>
-      <tbody className="text-gray-700 text-sm h-full">
+      <tbody className="text-gray-700 text-xs sm:text-sm">
         {leaveApplication.length > 0 ? (
           leaveApplication.slice(0, 5).map((leave, index) => (
             <tr key={index} className="border-b hover:bg-gray-50">
-              {/* <td className="py-2 px-2">{dayjs(leave.dateapplied).format("MM/DD/YYYY")}</td> */}
               <td className="py-2 px-2">{leave.dateapplied}</td>
               <td className="py-2 px-2">{leave.leavetype}</td>
               <td className="py-2 px-2">{leave.duration}</td>
               <td className="py-2 px-2">
-                  <span className={`inline-block w-[100px] px-2 py-1 rounded-full text-center text-sm font-medium
-                    ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                      leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
+                <span className={`inline-block w-[90px] px-2 py-1 rounded-full text-center text-xs sm:text-sm font-medium
+                  ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                    leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
                     "bg-red-100 text-red-600"}`}>
                   {leave.leavestatus}
                 </span>
@@ -497,9 +472,9 @@ const Dashboard = () => {
             </tr>
           ))
         ) : (
-          <tr className="h-full">
+          <tr>
             <td colSpan="4">
-              <div className="h-[400px] flex justify-center items-center text-gray-500">
+              <div className="h-[300px] flex justify-center items-center text-gray-500 text-xs sm:text-sm">
                 No leave applications found.
               </div>
             </td>
@@ -509,11 +484,72 @@ const Dashboard = () => {
     </table>
   </div>
 
+  {/* View All Button - Fixed on Small Screens */}
+{leaveApplication.length > 0 && (
+  <div className="relative md:static flex justify-end">
+    <button 
+      onClick={() => navigate("/leave")} 
+      className="fixed bottom-4 right-4 md:static text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex items-center md:mt-4 bg-white shadow-md md:shadow-none px-3 py-2 rounded-full md:rounded-none"
+    >
+      View All <span className="ml-1">→</span>
+    </button>
+  </div>
+)}
+
+</div>
+
+      {/* Official Business Applications */}
+<div className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex flex-col flex-grow">
+  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Official Business Applications</h2>
+
+  {/* Responsive Table Container */}
+  <div className="overflow-x-auto flex-grow">
+    <table className="min-w-full table-auto border border-gray-200 rounded-lg">
+      <thead className="bg-gray-200 text-gray-700 text-sm">
+        <tr>
+          <th className="py-3 px-3 text-left">OB Date</th>
+          <th className="py-3 px-3 text-center">Start Datetime</th>
+          <th className="py-3 px-3 text-center">End Datetime</th>
+          <th className="py-3 px-3 text-center">Duration</th>
+          <th className="py-3 px-3 text-center">Status</th>
+        </tr>
+      </thead>
+      <tbody className="text-gray-700 text-sm">
+        {obApplication.length > 0 ? (
+          obApplication.slice(0, 5).map((ob, index) => (
+            <tr key={index} className="border-b hover:bg-gray-50">
+              <td className="py-2 px-2">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
+              <td className="py-2 px-2 text-center">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm A")}</td>
+              <td className="py-2 px-2 text-center">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm A")}</td>
+              <td className="py-2 px-2 text-center">{ob.duration}</td>
+              <td className="py-2 px-2 text-center">
+                <span className={`inline-block w-[100px] px-2 py-1 rounded-full text-sm font-medium
+                  ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                    ob.obstatus === "Approved" ? "bg-green-100 text-green-600" : 
+                    "bg-red-100 text-red-600"}`}>
+                  {ob.obstatus}
+                </span>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="5">
+              <div className="h-40 sm:h-64 flex justify-center items-center text-gray-500">
+                No official business applications found.
+              </div>
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
   {/* View All Button */}
-  {leaveApplication.length > 0 && (
+  {obApplication.length > 0 && (
     <div className="flex justify-end mt-4">
       <button 
-        onClick={() => navigate("/leave")} 
+        onClick={() => navigate("/official-business")} 
         className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
       >
         View All <span className="ml-1">→</span>
@@ -522,80 +558,14 @@ const Dashboard = () => {
   )}
 </div>
 
-
-        {/* Official Business Applications */}
-        <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
-  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Official Business Applications</h2>
-  
-  <div className="overflow-x-auto flex-grow">      
-    <table className="min-w-full border border-gray-200 rounded-lg">
-  <thead className="bg-gray-200 text-gray-700 text-sm propercase">
-        <tr>
-          <th className="py-3 px-3">OB Date</th>
-          <th className="py-3 px-3">Start Datetime</th>
-          <th className="py-3 px-3">End Datetime</th>
-          <th className="py-3 px-3">Duration</th>
-          <th className="py-3 px-3">Status</th>
-        </tr>
-      </thead>        
-      <tbody className="text-gray-700 text-sm h-full">
-        {obApplication.length > 0 ? (
-          obApplication.slice(0, 5).map((ob, index) => (              
-          <tr key={index} className="border-b hover:bg-gray-50">
-              <td className="py-2 px-2">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
-              <td className="py-2 px-2">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm a")}</td>
-              <td className="py-2 px-2">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm a")}</td>
-                <td className="py-2 px-2 text-right">{ob.duration}</td>               
-                <td className="py-2 px-2">
-                <span className={`inline-block w-[100px] px-2 py-1 rounded-full text-center text-sm font-medium
-                    ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                      ob.obstatus === "Approved" ? "bg-green-100 text-green-600" : 
-                    "bg-red-100 text-red-600"}`}>
-                    {ob.obstatus}
-                  </span>
-                </td>
-              </tr>
-            ))
-
-        ) : (
-
- // Centered message when no data is found
-<tr className="h-full">
-              <td colSpan="6">
-                <div className="h-[400px] flex justify-center items-center text-gray-500">
-                  No official business applications found.
-                </div>
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-
-
-  {/* Conditionally Render "View All" Button */}
-  {obApplication.length > 0 && (
-    <div className="flex justify-end mt-4">
-    <button 
-      onClick={() => navigate("/official-business")} 
-      className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
-    >
-      View All <span className="ml-1">→</span>
-    </button>
-  </div>
-)}
-</div>
-
-        {/* Loan Balance Inquiry */}
-  <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
+{/* Loan Balance Inquiry */}
+<div className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex flex-col flex-grow">
   <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Loan Balance</h2>
 
-  {/* Error Handling
-  {error && <p className="text-sm text-red-500 mt-4">{error}</p>} */}
-
+  {/* Responsive Table */}
   <div className="overflow-x-auto flex-grow">
-      <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="bg-gray-200 text-gray-700 text-sm propercase">
+    <table className="min-w-full table-auto border border-gray-200 rounded-lg">
+      <thead className="bg-gray-200 text-gray-700 text-sm">
         <tr>
           <th className="py-3 px-3 text-left">Loan Type</th>
           <th className="py-3 px-3 text-right">Loan Amount</th>
@@ -603,40 +573,34 @@ const Dashboard = () => {
           <th className="py-3 px-3 text-right">Total Paid</th>
         </tr>
       </thead>
-      <tbody className="text-gray-700 text-sm h-full">
+      <tbody className="text-gray-700 text-sm">
         {loanBalance.length > 0 ? (
           loanBalance.slice(0, 5).map((loan, index) => (
-            <tr key={index} className="border-b">
+            <tr key={index} className="border-b hover:bg-gray-50">
               <td className="py-2 px-2">{loan.loantype}</td>
-        <td className="py-2 px-2 text-right">
-          {loan.loanamt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </td>
-        <td className="py-2 px-2 text-right">
-          {loan.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </td>
-        <td className="py-2 px-2 text-right">
-          {loan.totalpaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </td>
-
-
+              <td className="py-2 px-2 text-right">
+                {loan.loanamt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+              <td className="py-2 px-2 text-right">
+                {loan.balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
+              <td className="py-2 px-2 text-right">
+                {loan.totalpaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </td>
             </tr>
           ))
         ) : (
-          // Centered message when no data is found
-          <tr className="h-full">
-              <td colSpan="4">
-                <div className="h-[400px] flex justify-center items-center text-gray-500">
-                  No loan balances found.
-                </div>
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
-
-
-
+          <tr>
+            <td colSpan="4">
+              <div className="h-40 sm:h-64 flex justify-center items-center text-gray-500">
+                No loan balances found.
+              </div>
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
 
   {/* View All Button */}
   {loanBalance.length > 0 && (
@@ -650,6 +614,7 @@ const Dashboard = () => {
     </div>
   )}
 </div>
+
 
 
   

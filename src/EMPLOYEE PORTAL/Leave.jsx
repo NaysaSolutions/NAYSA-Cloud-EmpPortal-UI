@@ -133,6 +133,59 @@ const Leave = () => {
     return sortConfig.direction === "asc" ? "↑" : "↓";
   };
 
+   // List of holidays (Modify this array based on your holidays)
+   const holidays = ["2025-04-01", "2025-05-04"]; // Example holidays (New Year, Christmas, etc.)
+
+
+   // Function to calculate leave days excluding weekends & holidays
+   const calculateLeaveDays = (startDate, endDate) => {
+    if (!startDate || !endDate) return "";
+  
+    let start = new Date(startDate);
+    let end = new Date(endDate);
+    let count = 0;
+  
+    while (start <= end) {
+      const day = start.getDay(); // 0 = Sunday, 6 = Saturday
+      const formattedDate = start.toISOString().split("T")[0]; // Format YYYY-MM-DD
+  
+      if (day !== 0 && day !== 6 && !holidays.includes(formattedDate)) {
+        count++;
+      }
+  
+      start.setDate(start.getDate() + 1); // Move to the next day
+    }
+  
+    return count;
+  };
+  
+    // Update leave days when start or end date changes
+    const handleDateChange = (field, value) => {
+      if (field === "start") setSelectedStartDate(value);
+      if (field === "end") setSelectedEndDate(value);
+  
+      if (selectedStartDate && selectedEndDate) {
+        const days = calculateLeaveDays(
+          field === "start" ? value : selectedStartDate,
+          field === "end" ? value : selectedEndDate
+        );
+        setLeaveDays(days);
+        setLeaveHours(days * 8); // Convert days to hours
+      }
+    };
+  
+      const handleHoursChange = (e) => {
+        const hours = e.target.value;
+        setLeaveHours(hours);
+        setLeaveDays(hours ? (hours / 8).toFixed(2) : ""); // Convert to days
+      };
+    
+      const handleDaysChange = (e) => {
+        const days = e.target.value;
+        setLeaveDays(days);
+        setLeaveHours(days ? days * 8 : ""); // Convert to hours
+      };
+
 
   const handleSubmit = async () => {
     // Check if any required fields are empty
@@ -165,7 +218,7 @@ const Leave = () => {
     console.log("Sending Leave Data:", JSON.stringify(leaveData, null, 2));
 
     try {
-        const response = await fetch("http://127.0.0.1:8000/api/upsertLV", {
+        const response = await fetch("https://api.nemarph.com:81/api/upsertLV", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(leaveData),
@@ -238,7 +291,8 @@ const Leave = () => {
   type="date" 
   className="w-full p-2 border rounded" 
   value={selectedStartDate} 
-  onChange={(e) => setSelectedStartDate(e.target.value)} 
+  // onChange={(e) => setSelectedStartDate(e.target.value)} 
+  onChange={(e) => handleDateChange("start", e.target.value)}
 />
 </div>
 
@@ -248,7 +302,8 @@ const Leave = () => {
   type="date" 
   className="w-full p-2 border rounded" 
   value={selectedEndDate} 
-  onChange={(e) => setSelectedEndDate(e.target.value)} 
+  // onChange={(e) => setSelectedEndDate(e.target.value)} 
+  onChange={(e) => handleDateChange("end", e.target.value)}
 />
 </div>
 
@@ -264,9 +319,24 @@ const Leave = () => {
   <option value="SL">Sick Leave</option>
   <option value="VL">Vacation Leave</option>
   <option value="VL">Emergency Leave</option>
+  <option value="VL">Birthday Leave</option>
   <option value="Maternity Leave">Maternity Leave</option>
 </select>
 
+            </div>
+
+           
+
+            <div>
+              <span className="block font-semibold mb-1 propercase">Number of Days</span>
+              <input 
+  type="number" 
+  className="w-full p-2 border rounded" 
+  value={leaveDays} 
+  placeholder="Enter Leave Days"
+  // onChange={(e) => setLeaveDays(e.target.value)} 
+  onChange={handleDaysChange}
+/>
             </div>
 
             <div>
@@ -278,20 +348,12 @@ const Leave = () => {
   step="0.5"
   placeholder="Enter hours"
   value={leaveHours} 
-  onChange={(e) => setLeaveHours(e.target.value)} 
+  // onChange={(e) => setLeaveHours(e.target.value)} 
+  onChange={handleHoursChange}
+
 />
             </div>
 
-            <div>
-              <span className="block font-semibold mb-1 propercase">Number of Days</span>
-              <input 
-  type="number" 
-  className="w-full p-2 border rounded" 
-  value={leaveDays} 
-  placeholder="Enter Leave Days"
-  onChange={(e) => setLeaveDays(e.target.value)} 
-/>
-            </div>
           </div>
 
           {/* Remarks Section */}

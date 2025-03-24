@@ -49,58 +49,71 @@ const Sidebar = () => {
 
   // Render sidebar with employee details (or empty state if not available)
   return (
-    <div className="h-screen w-65 bg-white shadow-md fixed top-[120px] left-0 p-6">
-      {/* Profile Section */}
-      <div className="flex flex-col items-center">
-        <img
-          src="blank-profile-picture-973460_1280.webp"
-          alt="Profile"
-          className="w-[130px] h-[130px] rounded-full object-cover mb-4"
-        />
-        <h2 className="text-lg font-semibold text-[#1c394e] text-center">
-          Welcome Back, <br /> {user.empName  || "Employee"}!
-        </h2>
-      </div>
-<hr />
-      {/* Employee Details Section */}
-      <div className="mt-6 text-md text-gray-700">
-        <p className="mb-2">
-          <span className="font-semibold">Employee No.:</span> 
-          <br/>
-          {employeeInfo ? employeeInfo.empNo : "Loading..."}
-        </p>
-        <p className="mb-2">
-          <span className="font-semibold">Branch:</span> 
-          <br/>
-          {employeeInfo ? employeeInfo.branchName : "Loading..."}
-        </p>
-        <p className="mb-2">
-          <span className="font-semibold">Payroll Group:</span> 
-          <br/>
-          {employeeInfo ? employeeInfo.payrollGroup : "Loading..."}
-        </p>
-        <p className="mb-2">
-          <span className="font-semibold">Department:</span> 
-          <br/>
-          {employeeInfo ? employeeInfo.department : "Loading..."}
-        </p>
-        <p className="mb-2">
-          <span className="font-semibold">Position:</span> 
-          <br/>
-          {employeeInfo ? employeeInfo.position : "Loading..."}
-        </p>
-        <p className="mb-2">
-          <span className="font-semibold">Employee Status:</span> 
-          <br/>
-          {employeeInfo ? employeeInfo.employeeStatus : "Loading..."}
-        </p>
-        <p className="mb-2">
-          <span className="font-semibold">Shift Schedule:</span> 
-          <br/>
-          {employeeInfo ? employeeInfo.shiftSchedule : "Loading..."}
-        </p>
-      </div>
-    </div>
+    <div className="h-screen w-[260px] bg-white shadow-md fixed top-[120px] left-0 p-5">
+  {/* Profile Section */}
+  <div className="flex flex-col items-center text-center">
+    <img
+      src="blank-profile-picture-973460_1280.png"
+      alt="Profile"
+      className="w-[130px] h-[130px] rounded-full object-cover mb-4"
+    />
+    <h2 className="text-lg font-semibold text-[#1c394e] break-words">
+      Welcome Back, <br /> {user.empName || "Employee"}!
+    </h2>
+  </div>
+  <hr />
+  {/* Employee Details Section */}
+  <div className="mt-6 text-md text-gray-700">
+    <p className="mb-2">
+      <span className="font-semibold">Employee No.:</span> 
+      <br />
+      {employeeInfo ? employeeInfo.empNo : "Loading..."}
+    </p>
+    <p className="mb-2">
+      <span className="font-semibold">Branch:</span> 
+      <br />
+      <span className="block break-words">
+        {employeeInfo ? employeeInfo.branchName : "Loading..."}
+      </span>
+    </p>
+    <p className="mb-2">
+      <span className="font-semibold">Payroll Group:</span> 
+      <br />
+      <span className="block break-words">
+        {employeeInfo ? employeeInfo.payrollGroup : "Loading..."}
+      </span>
+    </p>
+    <p className="mb-2">
+      <span className="font-semibold">Department:</span> 
+      <br />
+      <span className="block break-words">
+        {employeeInfo ? employeeInfo.department : "Loading..."}
+      </span>
+    </p>
+    <p className="mb-2">
+      <span className="font-semibold">Position:</span> 
+      <br />
+      <span className="block break-words">
+        {employeeInfo ? employeeInfo.position : "Loading..."}
+      </span>
+    </p>
+    <p className="mb-2">
+      <span className="font-semibold">Employee Status:</span> 
+      <br />
+      <span className="block break-words">
+        {employeeInfo ? employeeInfo.employeeStatus : "Loading..."}
+      </span>
+    </p>
+    <p className="mb-2">
+      <span className="font-semibold">Shift Schedule:</span> 
+      <br />
+      <span className="block break-words">
+        {employeeInfo ? employeeInfo.shiftSchedule : "Loading..."}
+      </span>
+    </p>
+  </div>
+</div>
+
   );
 };
 

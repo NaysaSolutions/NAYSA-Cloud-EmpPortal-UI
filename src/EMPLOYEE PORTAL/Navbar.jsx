@@ -24,7 +24,7 @@ const Navbar = () => {
       </div>
 
       {/* Main Navbar */}
-      <div className="flex justify-between items-center bg-white shadow-md p-4 fixed top-[15px] mt-3 left-0 w-full z-10">
+      <div className="flex justify-between items-center bg-white shadow-md p-3 fixed top-[15px] mt-3 left-0 w-full z-10">
         
         {/* ✅ Clickable Logo & "Employee Portal" */}
         <div 
@@ -85,18 +85,18 @@ const Navbar = () => {
 
         {/* Header with Notification and Profile */}
         <div className="flex justify-end mb-4 space-x-4 relative">
-          {/* Notification Bell */}
+          {/* Notification Bell
           <div className="relative">
             <FontAwesomeIcon
               icon={faBell}
               className="w-5 h-5 text-gray-500 bg-white p-2 rounded-lg shadow-md cursor-pointer"
             />
             <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-yellow-400 rounded-full border-2 border-white"></span>
-          </div>
+          </div> */}
 
           {/* Profile Picture */}
           <div
-            className="w-8 h-8 bg-gray-200 rounded-full overflow-hidden shadow-md cursor-pointer"
+            className="w-10 h-10 bg-gray-200 rounded-full overflow-hidden shadow-md cursor-pointer"
             onClick={toggleDropdown}
           >
             <img src="3135715.png" alt="Profile" className="w-full h-full object-cover" />

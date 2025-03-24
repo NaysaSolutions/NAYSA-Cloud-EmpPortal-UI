@@ -139,8 +139,8 @@ const Timekeeping = () => {
   
             if (type === "TIME IN") setTimeInImage(capturedImage);
             else if (type === "TIME OUT") setTimeOutImage(capturedImage);
-            else if (type === "BREAK IN") setBreakInImage(capturedImage);
-            else if (type === "BREAK OUT") setBreakOutImage(capturedImage);
+            else if (type === "BREAK IN") setBreakIn(capturedImage);
+            else if (type === "BREAK OUT") setBreakOut(capturedImage);
           }
   
           setCapturing(false);
