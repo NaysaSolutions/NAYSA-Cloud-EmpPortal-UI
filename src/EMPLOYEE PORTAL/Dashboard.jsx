@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext"; // Import AuthContext
 import { useNavigate } from "react-router-dom";
 import LeaveCreditModal from "./LeaveCreditModal";
+import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 
 dayjs.extend(advancedFormat);
 
@@ -74,49 +75,48 @@ const Dashboard = () => {
   
     const fetchDailyRecords = async () => {
       try {
-        const response = await fetch("https://api.nemarph.com:81/api/dashBoard", {
+        const response = await fetch(API_ENDPOINTS.dashBoard, { // Use dynamic API endpoint here
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ EMP_NO: user.empNo }),
         });
-  
+    
         const result = await response.json();
         console.log("Raw API Response:", result);
-  
+    
         if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
           const parsedData = JSON.parse(result.data[0].result);
           console.log("Parsed Employee Summary:", parsedData);
-
+    
           let apiLeaveCredits = parsedData[0]?.leaveCredit || [];
-
-        // Merge API leave credits with default leave types
-        const mergedLeaveCredits = defaultLeaveTypes.map((defaultLeave) => {
-          const foundLeave = apiLeaveCredits.find(
-            (apiLeave) => apiLeave.description === defaultLeave.description
-          );
-          return foundLeave ? foundLeave : defaultLeave;
-        });
-
+    
+          // Merge API leave credits with default leave types
+          const mergedLeaveCredits = defaultLeaveTypes.map((defaultLeave) => {
+            const foundLeave = apiLeaveCredits.find(
+              (apiLeave) => apiLeave.description === defaultLeave.description
+            );
+            return foundLeave ? foundLeave : defaultLeave;
+          });
+    
           setLeaveCredit(mergedLeaveCredits);
-  
           setDailyTimeRecord(parsedData[0]?.dailyTimeRecord || []);
           setLeaveCredit(parsedData[0]?.leaveCredit || []);
           setLoanBalance(parsedData[0]?.loanBalance || []);
           setOtApproval(parsedData[0]?.otApproval || []);
           setLeaveApproval(parsedData[0]?.leaveApproval || []);
           setOfficialBusinessApproval(parsedData[0]?.obApproval || []);
-  
-          // ✅ Extract Leave Applications
+    
+          // Extract Leave Applications
           console.log("Leave Applications:", parsedData[0].leaveApplication);
           setLeaveApplication(parsedData[0]?.leaveApplication || []);
-  
-          // ✅ Extract Overtime Applications
+    
+          // Extract Overtime Applications
           console.log("Overtime Applications:", parsedData[0].otApplication);
           setOtApplication(parsedData[0]?.otApplication || []);
-
-          // ✅ Extract Official Business Applications
-        console.log("Official Business Applications:", parsedData[0]?.obApplication);
-        setOfficialBusinessApplication(parsedData[0]?.obApplication || []);
+    
+          // Extract Official Business Applications
+          console.log("Official Business Applications:", parsedData[0]?.obApplication);
+          setOfficialBusinessApplication(parsedData[0]?.obApplication || []);
         } else {
           setError("API response format is incorrect or no data found.");
         }
@@ -124,7 +124,7 @@ const Dashboard = () => {
         console.error("Error fetching daily time records:", err);
         setError("An error occurred while fetching the records.");
       }
-    };
+    };    
   
     fetchDailyRecords();
   }, [user.empNo]); // Dependency on user.empNo
@@ -179,41 +179,52 @@ const Dashboard = () => {
     const prevMonthDays = currentMonth.subtract(1, "month").daysInMonth();
     
     let days = [];
-  
+    
     // Convert leaveApplication dates into a set of marked days
-    const leaveDays = new Set();
+    const leaveDays = new Set(); // For pending leaves
+    const approvedLeaveDays = new Set(); // For approved leaves
+  
     leaveApplication.forEach((leave) => {
       const [start, end] = leave.dateapplied.split(" - ").map(date => dayjs(date, "MM/DD/YYYY"));
       let current = start;
       while (current.isBefore(end) || current.isSame(end, 'day')) {
         if (current.month() === currentMonth.month()) {
-          leaveDays.add(current.date()); // Store only the day
+          if (leave.status === 'approved') {
+            approvedLeaveDays.add(current.date()); // Store approved days
+          } else if (leave.status === 'pending') {
+            leaveDays.add(current.date()); // Store pending leave days
+          }
+          // Disapproved leaves will not be added to any set (they won't be marked)
         }
         current = current.add(1, "day");
       }
     });
-  
+    
     // Add previous month's overflow days
     for (let i = startDay - 1; i >= 0; i--) {
       days.push({ day: prevMonthDays - i, currentMonth: false });
     }
-  
+    
     // Add current month's days
     for (let i = 1; i <= daysInMonth; i++) {
-      days.push({ day: i, currentMonth: true, isLeaveDay: leaveDays.has(i) });
+      days.push({
+        day: i,
+        currentMonth: true,
+        isLeaveDay: leaveDays.has(i),
+        isApproved: approvedLeaveDays.has(i),
+      });
     }
-  
-    // ✅ FIX: Properly add next month's days until the calendar grid is complete
+    
+    // Add next month's overflow days
     const remainingDays = 7 - (days.length % 7);
     if (remainingDays < 7) {
       for (let i = 1; i <= remainingDays; i++) {
-        days.push({ day: i, currentMonth: false }); // Correctly add next month's days
+        days.push({ day: i, currentMonth: false });
       }
     }
   
     return days;
-  };
-  
+  };  
   
 
   return (
@@ -360,14 +371,17 @@ const Dashboard = () => {
   {/* Calendar Grid with Fixed Height */}
   <div className="grid grid-cols-7 grid-rows-6 gap-1 text-center min-h-[300px]">
     {generateCalendar().map((item, index) => (
-      <div 
-        key={index} 
-        className={`p-2 rounded-full h-[40px] flex items-center justify-center 
-          ${item.currentMonth ? "text-black" : "text-gray-400"} 
-          ${item.isLeaveDay ? "bg-yellow-500 text-white font-bold" : ""}`}
-      >
-        {item.day}
-      </div>
+      <div
+      key={index}
+      className={`p-2 rounded-full h-[40px] flex items-center justify-center 
+        ${item.currentMonth ? "text-black" : "text-gray-400"} 
+        ${item.isApproved ? "bg-green-500 text-white font-bold" : ""}
+        ${item.isLeaveDay && !item.isApproved ? "bg-blue-500 text-white font-bold" : ""}`}
+    >
+      {item.day}
+    </div>
+    
+    
     ))}
   </div>
 

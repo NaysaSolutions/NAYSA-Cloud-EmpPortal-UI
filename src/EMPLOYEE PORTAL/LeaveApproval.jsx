@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { useAuth } from "./AuthContext";
 import LeaveReview from "./LeaveReview"; // Import modal component
+import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 
 const LeaveApproval = () => {
   const navigate = useNavigate();
@@ -20,31 +21,31 @@ const LeaveApproval = () => {
       try {
         const today = dayjs().format("YYYY-MM-DD");
         const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
-
+    
         // Fetch Pending Leave Applications
-        const pendingResponse = await fetch("https://api.nemarph.com:81/api/getLVApprInq", {
+        const pendingResponse = await fetch(API_ENDPOINTS.fetchLeaveApplications, { // Use dynamic API URL here
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ EMP_NO: user.empNo, STAT: "Pending" }),
         });
-
+    
         const pendingResult = await pendingResponse.json();
         console.log("Fetched Pending Leave Applications:", pendingResult);
-
+    
         if (pendingResult.success && pendingResult.data.length > 0) {
           setPendingLeaves(JSON.parse(pendingResult.data[0].result) || []);
         }
-
+    
         // Fetch Leave Approval History
-        const historyResponse = await fetch("https://api.nemarph.com:81/api/getLVApprHistory", {
+        const historyResponse = await fetch(API_ENDPOINTS.approvedLeaveHistory, { // Use dynamic API URL here
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: startDate, END_DATE: today }),
         });
-
+    
         const historyResult = await historyResponse.json();
         console.log("Fetched Leave Approval History:", historyResult);
-
+    
         if (historyResult.success && historyResult.data.length > 0) {
           const parsedHistoryData = JSON.parse(historyResult.data[0].result);
           setHistory(parsedHistoryData.filter((record) => record.leaveStatus !== "Pending") || []);

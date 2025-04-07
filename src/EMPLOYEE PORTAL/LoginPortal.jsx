@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext"; // Import useAuth hook
+import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 
 function LoginPortal() {
     const [empNo, setEmpNo] = useState(""); // Only store employee number
@@ -20,7 +21,7 @@ function LoginPortal() {
       
         try {
           // Send the request to fetch data based on empNo
-          const response = await axios.post("https://api.nemarph.com:81/api/dashBoard", { EMP_NO: empNo });
+          const response = await axios.post(API_ENDPOINTS.dashBoard, { EMP_NO: empNo }); // Use dynamic API URL here
       
           if (response.data.success) {
             // Ensure that the data is in the expected format and contains user info
@@ -32,14 +33,13 @@ function LoginPortal() {
       
               console.log("User set:", userData); // Verify user data in console
       
-      
               // Redirect to the dashboard after a successful login
               navigate("/dashboard");
             } else {
-              
+              // Handle no user data case (optional)
             }
           } else {
-            
+            // Handle API failure (optional)
           }
         } catch (error) {
           // Handle network or server errors

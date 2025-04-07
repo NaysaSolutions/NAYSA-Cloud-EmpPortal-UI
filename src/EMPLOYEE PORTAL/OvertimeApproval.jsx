@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { useAuth } from "./AuthContext";
 import OvertimeReview from "./OvertimeReview";
+import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 
 const OvertimeApproval = () => {
   const { user } = useAuth();
@@ -21,24 +22,26 @@ const OvertimeApproval = () => {
       try {
         const today = dayjs().format("YYYY-MM-DD");
         const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
-
-        const pendingResponse = await fetch("https://api.nemarph.com:81/api/getOTApprInq", {
+    
+        // Fetch Pending Overtime Approvals
+        const pendingResponse = await fetch(API_ENDPOINTS.fetchOvertimeApplications, { // Use dynamic API URL here
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ EMP_NO: user.empNo, STAT: "Pending" }),
         });
-
+    
         const pendingResult = await pendingResponse.json();
         if (pendingResult.success && pendingResult.data.length > 0) {
           setPendingOvertime(JSON.parse(pendingResult.data[0].result) || []);
         }
-
-        const historyResponse = await fetch("https://api.nemarph.com:81/api/getOTApprHistory", {
+    
+        // Fetch Overtime Approval History
+        const historyResponse = await fetch(API_ENDPOINTS.approvedOvertimeHistory, { // Use dynamic API URL here
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: startDate, END_DATE: today }),
         });
-
+    
         const historyResult = await historyResponse.json();
         if (historyResult.success && historyResult.data.length > 0) {
           setHistory(
@@ -50,6 +53,7 @@ const OvertimeApproval = () => {
         setError("An error occurred while fetching overtime approvals.");
       }
     };
+    
 
     fetchOvertimeApprovals();
   }, [user]);

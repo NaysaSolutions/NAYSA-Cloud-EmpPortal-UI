@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { AiOutlineClose } from "react-icons/ai"; // ✅ Import X (close) icon from React Icons
 import { X } from "lucide-react";
 import { useAuth } from "./AuthContext"; // Import AuthContext to get logged-in user data
-
+import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 
 const OvertimeReview = ({ overtimeData, onClose }) => {
   if (!overtimeData) return null;
@@ -58,7 +58,7 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
   
       console.log("Sending approval data:", payload);
   
-      const response = await fetch("https://api.nemarph.com:81/api/approvalOT", {
+      const response = await fetch(API_ENDPOINTS.overtimeApproval, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -103,7 +103,7 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
   
       console.log("Sending disapproval data:", payload);
   
-      const response = await fetch("https://api.nemarph.com:81/api/approvalOT", {
+      const response = await fetch(API_ENDPOINTS.overtimeApproval, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -124,10 +124,6 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
       alert("Failed to send disapproval. Please try again.");
     }
   };
-
-
-
-
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
@@ -161,14 +157,14 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
 
         {/* ✅ Approver Remarks (Editable) */}
         <div className="mt-4">
-          <label className="block text-gray-700">Approved Hours</label>
+          {/* <label className="block text-gray-700">Approved Hours</label>
           <input
               type="number"
               name="approvedHrs"
               value={formData.approvedHrs}
               onChange={handleChange}
               className="w-full border rounded p-2"
-            />
+            /> */}
           {/* <input className="border p-2 w-full" value={overtimeData.otHrs || ""}  /> */}
           <label className="block text-gray-700">Approver's Remarks</label>
           <textarea

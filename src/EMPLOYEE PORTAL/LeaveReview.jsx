@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
+import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 
 const LeaveReview = ({ leaveData, onClose }) => {
   if (!leaveData) return null; // Ensure data exists before rendering
@@ -55,7 +56,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
   
       console.log("Sending approval data:", payload);
   
-      const response = await fetch("https://api.nemarph.com:81/api/approvalLV", {
+      const response = await fetch(API_ENDPOINTS.leaveApproval, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -99,7 +100,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
   
       console.log("Sending disapproval data:", payload);
   
-      const response = await fetch("https://api.nemarph.com:81/api/approvalLV", {
+      const response = await fetch(API_ENDPOINTS.leaveApproval, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -218,7 +219,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
         </div>
         <hr  className="mt-5 mb-5"/>
 
-        {/* Approved Days & Approved Hours (Side by Side) */}
+        {/* Approved Days & Approved Hours (Side by Side)
         <div className="grid grid-cols-2 gap-4 mt-3">
           <div>
             <label className="block text-sm font-medium uppercase">Approved Days:</label>
@@ -241,7 +242,7 @@ const LeaveReview = ({ leaveData, onClose }) => {
               className="w-full border rounded p-2"
             />
           </div>
-        </div>
+        </div> */}
         <div className="mt-3">
           <label className="block text-sm font-medium uppercase">Approver Remarks:</label>
           <textarea

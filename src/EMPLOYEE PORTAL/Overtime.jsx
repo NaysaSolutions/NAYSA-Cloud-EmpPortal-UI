@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs"; // dayjs library for working with dates easily.
 import Swal from "sweetalert2"; // SweetAlert2 library for displaying alerts.
 import { useAuth } from "./AuthContext"; //  access authentication details, such as the logged-in user.
+import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 
 const OvertimeApplication = () => { 
 
@@ -51,7 +52,7 @@ const OvertimeApplication = () => {
         const today = dayjs().format("YYYY-MM-DD"); // Getting the current date in "YYYY-MM-DD" format.
         const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD"); // Calculating the date one year ago for filtering applications.
         
-        const response = await fetch("https://api.nemarph.com:81/api/getOTApprInq", { 
+        const response = await fetch(API_ENDPOINTS.fetchOvertimeApplications, {
           method: "POST", 
           headers: { "Content-Type": "application/json" }, 
           body: JSON.stringify({ 
@@ -209,7 +210,7 @@ const OvertimeApplication = () => {
     console.log("Sending Overtime Data:", JSON.stringify(OvertimeData, null, 2));
   
     try {
-      const response = await fetch("http://127.0.0.1:8000/api/OTupsert", {
+      const response = await fetch(API_ENDPOINTS.saveOvertimeApplication, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(OvertimeData), //  Send correctly formatted JSON

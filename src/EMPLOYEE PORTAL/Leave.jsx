@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext";
+import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 
 const Leave = () => {
   const { user } = useAuth();
@@ -37,13 +38,12 @@ const Leave = () => {
 
   useEffect(() => {
     if (!user || !user.empNo) return;
-  
     const fetchLeaveApplications = async () => {
       try {
         const today = dayjs().format("YYYY-MM-DD");
         const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
-  
-        const response = await fetch("https://api.nemarph.com:81/api/getLVApprInq", {
+    
+        const response = await fetch(API_ENDPOINTS.fetchLeaveApplications, { 
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -52,6 +52,7 @@ const Leave = () => {
             END_DATE: today,
           }),
         });
+    
   
         const result = await response.json();
         console.log("Leave Applications API Response:", result);
@@ -218,11 +219,11 @@ const Leave = () => {
     console.log("Sending Leave Data:", JSON.stringify(leaveData, null, 2));
 
     try {
-        const response = await fetch("https://api.nemarph.com:81/api/upsertLV", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(leaveData),
-        });
+      const response = await fetch(API_ENDPOINTS.saveLeaveApplication, { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(leaveData),
+      });
 
         const result = await response.json();
         console.log("API Response:", result);
@@ -394,6 +395,7 @@ const Leave = () => {
                     { key: "leaveDays", label: "Duration" },
                     { key: "leaveCode", label: "Leave Type" },
                     { key: "leaveRemarks", label: "Remarks" },
+                    { key: "ApprRemarks", label: "ApprRemarks" },
                     { key: "leaveStatus", label: "Status" },
                   ].map(({ key, label }) => (
                     <th
@@ -428,6 +430,7 @@ const Leave = () => {
                       <td className="px-4 py-2 border">{leave.leaveDays} Days</td>
                       <td className="px-4 py-2 border">{leave.leaveCode}</td>
                       <td className="px-4 py-2 border">{leave.leaveRemarks || "N/A"}</td>
+                      <td className="px-4 py-2 border">{leave.ApprleaveRemarks || "N/A"}</td>
                       <td className="px-4 py-2 border text-center">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${

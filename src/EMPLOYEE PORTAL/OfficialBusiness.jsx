@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext";
+import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 
 const officialBusiness = () => {
 
@@ -23,11 +24,7 @@ const officialBusiness = () => {
     const [obHrs, setOBHrs] = useState("");
     const [remarks, setRemarks] = useState("");
 
-
     
-
-
-
    // Anj_Search State
     const [searchFields, setSearchFields] = useState({
       obDate: "",
@@ -58,7 +55,7 @@ const officialBusiness = () => {
           const today = dayjs().format("YYYY-MM-DD");
           const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
     
-          const response = await fetch("https://api.nemarph.com:81/api/getOBApprInq", {
+          const response = await fetch(API_ENDPOINTS.fetchOfficialBusinessApplications, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -188,7 +185,7 @@ const officialBusiness = () => {
       console.log("Sending Official Business Data:", JSON.stringify(obData, null, 2));
   
       try {
-          const response = await fetch("https://api.nemarph.com:81/api/upsertOB", {
+        const response = await fetch(API_ENDPOINTS.saveOfficialBusinessApplication, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(obData),

@@ -179,8 +179,26 @@ export default App;
 
 
 
+// import React from 'react';
+// import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+// import './App.css';
+// import Login from './NAYSA Cloud/Login';
+// import Register from './NAYSA Cloud/Register'; // Make sure to import Register
 
+// function App() {
+//   return (
+//     <Router>
+//       <div className="flex">
+//         <Routes>
+//           <Route path="/" element={<Login />} />
+//           <Route path="/register" element={<Register />} />
+//         </Routes>
+//       </div>
+//     </Router>
+//   );
+// }
 
+// export default App;
 
 
 
