@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { AiOutlineClose } from "react-icons/ai"; // ✅ Import X (close) icon from React Icons
-import { X } from "lucide-react";
 import { useAuth } from "./AuthContext"; // Import AuthContext to get logged-in user data
 import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+import Swal from 'sweetalert2';
 
-const OvertimeReview = ({ overtimeData, onClose }) => {
+const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
   if (!overtimeData) return null;
 
   const { user } = useAuth(); // Get logged-in user data
@@ -24,8 +24,8 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
     otHrs: overtimeData.otHrs || "",
     otType: overtimeData.otType || "",
     otRemarks: overtimeData.otRemarks || "",
-    approverRemarks: overtimeData.approverRemarks || "",
-    approvedHrs: overtimeData.approvedHrs || "",
+    // approverRemarks: overtimeData.approverRemarks || "",
+    // approvedHrs: overtimeData.approvedHrs || "",
     otStamp: overtimeData.otStamp || "", // ✅ Include lvStamp
    });
   
@@ -38,21 +38,25 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
     try {
       if (!formData.otStamp) {
         console.error("Error: otStamp is missing!");
-        alert("Error: otStamp is missing. Please try again.");
+        Swal.fire({
+          title: "Error",
+          text: "otStamp is missing. Please try again.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
         return;
       }
   
-      // Correct JSON format: wrapping json_data around the actual approval details
       const payload = {
         json_data: JSON.stringify({
           json_data: {
             empNo: formData.empNo,
             appRemarks: formData.approverRemarks,
-            appHrs: parseFloat(formData.approvedHrs) || 0,
-            otStamp: formData.otStamp, // ✅ Ensure lvStamp is included
-            appStat: 1, // Status for approved
-            appUser: user.empNo, // Global User
-          }
+            appHrs: parseFloat(formData.otHrs) || 0,
+            otStamp: formData.otStamp,
+            appStat: 1, // Approved
+            appUser: user.empNo,
+          },
         }),
       };
   
@@ -69,35 +73,56 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
       const result = await response.json();
   
       if (response.ok) {
-        alert("Approval successful!");
-        onClose();
+        Swal.fire({
+          title: "Success",
+          text: "Approval successful!",
+          icon: "success",
+          confirmButtonText: "OK",
+        }).then(() => {
+          refreshData(); // ✅ Refresh parent list
+          onClose();     // ✅ Close modal
+        });
       } else {
-        alert(`Error: ${result.message}`);
+        Swal.fire({
+          title: "Error",
+          text: result.message || "Something went wrong",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
       }
     } catch (error) {
       console.error("Approval failed:", error);
-      alert("Failed to send approval. Please try again.");
+      Swal.fire({
+        title: "Error",
+        text: "Failed to send approval. Please try again.",
+        icon: "error",
+        confirmButtonText: "OK",
+      });
     }
   };
-  
   
   const handleDisapprove = async () => {
     try {
       if (!formData.otStamp) {
         console.error("Error: otStamp is missing!");
-        alert("Error: otStamp is missing. Please try again.");
+        Swal.fire({
+          title: "Error",
+          text: "otStamp is missing. Please try again.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
         return;
       }
   
       const payload = {
         json_data: JSON.stringify({
           json_data: {
-            applEmpNo: formData.applEmpNo,
+            empNo: formData.empNo,
             appRemarks: formData.approverRemarks,
-            otStamp: formData.otStamp, // Ensure lvStamp is included
-            appStat: 0, // Status for disapproved
-            appuser: formData.empNo, // Global User
-          }
+            otStamp: formData.otStamp,
+            appStat: 0, // Disapproved
+            appUser: user.empNo,
+          },
         }),
       };
   
@@ -114,16 +139,34 @@ const OvertimeReview = ({ overtimeData, onClose }) => {
       const result = await response.json();
   
       if (response.ok) {
-        alert("Leave disapproved successfully!");
-        onClose();
+        Swal.fire({
+          title: "Success",
+          text: "Leave disapproved successfully!",
+          icon: "success",
+          confirmButtonText: "OK",
+        }).then(() => {
+          refreshData(); // ✅ Refresh parent list
+          onClose();     // ✅ Close modal
+        });
       } else {
-        alert(`Error: ${result.message}`);
+        Swal.fire({
+          title: "Error",
+          text: result.message || "Something went wrong",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
       }
     } catch (error) {
       console.error("Disapproval failed:", error);
-      alert("Failed to send disapproval. Please try again.");
+      Swal.fire({
+        title: "Error",
+        text: "Failed to send disapproval. Please try again.",
+        icon: "error",
+        confirmButtonText: "OK",
+      });
     }
   };
+  
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">

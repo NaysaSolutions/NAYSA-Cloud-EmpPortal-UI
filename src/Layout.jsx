@@ -1,7 +1,6 @@
 // Layout.jsx
 import React from 'react';
 import Sidebar from './Components/Sidebar';
-import Dashboard from './Components/Dashboard';
 
 const Layout = ({ children }) => {
   return (

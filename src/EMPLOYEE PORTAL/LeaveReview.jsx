@@ -1,9 +1,13 @@
 import React, { useState } from "react";
-import { X } from "lucide-react";
+import { User, X } from "lucide-react";
+import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+import Swal from 'sweetalert2';
 
-const LeaveReview = ({ leaveData, onClose }) => {
+const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setHistory }) => {
   if (!leaveData) return null; // Ensure data exists before rendering
+
+  const { user } = useAuth(); // Get logged-in user data
 
   const formatDate = (date) => {
     if (!date) return ""; // Ensure it's not null/undefined
@@ -22,9 +26,9 @@ const LeaveReview = ({ leaveData, onClose }) => {
     leaveCode: leaveData.leaveCode || "",
     leaveRemarks: leaveData.leaveRemarks || "",
     approverRemarks: leaveData.approverRemarks || "",
-    approvedDays: leaveData.approvedDays || "",
-    approvedHrs: leaveData.approvedHrs || "",
-    lvStamp: leaveData.lvStamp || "", // ✅ Include lvStamp
+    // approvedDays: leaveData.approvedDays || "",
+    // approvedHrs: leaveData.approvedHrs || "",
+    LV_STAMP: leaveData.LV_STAMP || "", // ✅ Include lvStamp
   });
   
   // Handle input change
@@ -34,23 +38,28 @@ const LeaveReview = ({ leaveData, onClose }) => {
 
   const handleApprove = async () => {
     try {
-      if (!formData.lvStamp) {
-        console.error("Error: lvStamp is missing!");
-        alert("Error: lvStamp is missing. Please try again.");
+      if (!formData.LV_STAMP) {
+        console.error("Error: LV_STAMP is missing!");
+        await Swal.fire({
+          title: "Error",
+          text: "LV_STAMP is missing. Please try again.",
+          icon: "error",
+          customClass: {
+            popup: 'z-[10050]',
+          },
+        });
         return;
       }
   
-      // Correct JSON format: wrapping json_data around the actual approval details
       const payload = {
         json_data: JSON.stringify({
           json_data: {
             empNo: formData.empNo,
             appRemarks: formData.approverRemarks,
-            appDays: parseFloat(formData.approvedDays) || 0,
-            appHrs: parseFloat(formData.approvedHrs) || 0,
-            lvStamp: formData.lvStamp, // ✅ Ensure lvStamp is included
-            appStat: 1, // Status for approved
-          }
+            LV_STAMP: formData.LV_STAMP,
+            appStat: 1, // Approved
+            appUser: user.empNo,
+          },
         }),
       };
   
@@ -58,32 +67,67 @@ const LeaveReview = ({ leaveData, onClose }) => {
   
       const response = await fetch(API_ENDPOINTS.leaveApproval, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
   
       const result = await response.json();
   
       if (response.ok) {
-        alert("Approval successful!");
-        onClose();
+        await Swal.fire({
+          title: "Success",
+          text: "Approval successful!",
+          icon: "success",
+          customClass: {
+            popup: 'z-[10050]',
+          },
+        });
+  
+        setPendingLeaves((prevLeaves) =>
+          prevLeaves.filter((leave) => leave.LV_STAMP !== leaveData.LV_STAMP)
+        );
+  
+        setHistory((prevHistory) => [
+          ...prevHistory,
+          { ...leaveData, leaveStatus: "Approved" },
+        ]);
+  
+        onClose(); // Close modal
       } else {
-        alert(`Error: ${result.message}`);
+        await Swal.fire({
+          title: "Error",
+          text: result.message || "Something went wrong.",
+          icon: "error",
+          customClass: {
+            popup: 'z-[10050]',
+          },
+        });
       }
     } catch (error) {
       console.error("Approval failed:", error);
-      alert("Failed to send approval. Please try again.");
+      await Swal.fire({
+        title: "Error",
+        text: "Failed to send approval. Please try again.",
+        icon: "error",
+        customClass: {
+          popup: 'z-[10050]',
+        },
+      });
     }
   };
   
-  
   const handleDisapprove = async () => {
     try {
-      if (!formData.lvStamp) {
-        console.error("Error: lvStamp is missing!");
-        alert("Error: lvStamp is missing. Please try again.");
+      if (!formData.LV_STAMP) {
+        console.error("Error: LV_STAMP is missing!");
+        await Swal.fire({
+          title: "Error",
+          text: "LV_STAMP is missing. Please try again.",
+          icon: "error",
+          customClass: {
+            popup: 'z-[10050]',
+          },
+        });
         return;
       }
   
@@ -92,9 +136,10 @@ const LeaveReview = ({ leaveData, onClose }) => {
           json_data: {
             empNo: formData.empNo,
             appRemarks: formData.approverRemarks,
-            lvStamp: formData.lvStamp, // Ensure lvStamp is included
-            appStat: 0, // Status for disapproved
-          }
+            LV_STAMP: formData.LV_STAMP,
+            appStat: 0, // Disapproved
+            appUser: user.empNo,
+          },
         }),
       };
   
@@ -102,26 +147,56 @@ const LeaveReview = ({ leaveData, onClose }) => {
   
       const response = await fetch(API_ENDPOINTS.leaveApproval, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
   
       const result = await response.json();
   
       if (response.ok) {
-        alert("Leave disapproved successfully!");
-        onClose();
+        await Swal.fire({
+          title: "Success",
+          text: "Leave disapproved successfully!",
+          icon: "success",
+          customClass: {
+            popup: 'z-[10050]',
+          },
+        });
+  
+        setPendingLeaves((prevLeaves) =>
+          prevLeaves.filter((leave) => leave.LV_STAMP !== leaveData.LV_STAMP)
+        );
+  
+        setHistory((prevHistory) => [
+          ...prevHistory,
+          { ...leaveData, leaveStatus: "Disapproved" },
+        ]);
+  
+        onClose(); // Close modal
       } else {
-        alert(`Error: ${result.message}`);
+        await Swal.fire({
+          title: "Error",
+          text: result.message || "Something went wrong.",
+          icon: "error",
+          customClass: {
+            popup: 'z-[10050]',
+          },
+        });
       }
     } catch (error) {
       console.error("Disapproval failed:", error);
-      alert("Failed to send disapproval. Please try again.");
+      await Swal.fire({
+        title: "Error",
+        text: "Failed to send disapproval. Please try again.",
+        icon: "error",
+        customClass: {
+          popup: 'z-[10050]',
+        },
+      });
     }
   };
-
+  
+  
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-[9999]">
   <div className="bg-white p-6 rounded-lg shadow-xl max-w-4xl w-full relative">

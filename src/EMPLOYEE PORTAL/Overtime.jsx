@@ -26,6 +26,16 @@ const OvertimeApplication = () => {
     status: "",
   });
 
+  // Add this at the top of your component file
+const overtimeTypeMap = {
+  'REG': 'Regular Overtime',
+  'HOL': 'Holiday',
+  'RD': 'Rest Day',
+  'Regular Day': 'Regular Overtime', // Handle legacy values
+};
+
+const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
+
   const [currentPage, setCurrentPage] = useState(1); // State to track the current page number.
 
   const recordsPerPage = 50; // defining the number of records per page.
@@ -35,60 +45,53 @@ const OvertimeApplication = () => {
   const currentRecords = filteredApplications.slice(indexOfFirstRecord, indexOfLastRecord); // Extracting the current page's records from the filtered applications list.
 
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
+    const today = new Date().toISOString().split("T")[0];
     setApplicationDate(today);
     setOTDate(today);
-    setOtType("REG");
+    setOtType("REG"); // Default to the code value
   }, []);
   
   useEffect(() => { 
 
     if (!user || !user.empNo) return; // If the user is not logged in or employee number is unavailable, exit early.
 
-    const fetchOvertimeApplications = async () => { 
-
-      try { 
-
-        const today = dayjs().format("YYYY-MM-DD"); // Getting the current date in "YYYY-MM-DD" format.
-        const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD"); // Calculating the date one year ago for filtering applications.
-        
+    const fetchOvertimeApplications = async () => {
+      if (!user || !user.empNo) return;
+    
+      try {
+        const today = dayjs("2099-12-31").format("YYYY-MM-DD");
+        const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
+    
         const response = await fetch(API_ENDPOINTS.fetchOvertimeApplications, {
-          method: "POST", 
-          headers: { "Content-Type": "application/json" }, 
-          body: JSON.stringify({ 
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
             EMP_NO: user.empNo,
             START_DATE: startDate,
-            END_DATE: today,
+            END_DATE: "2030-01-01"
           }),
         });
-
-        const result = await response.json(); 
-
-        console.log("Overtime Applications API Response:", result); 
-
+    
+        const result = await response.json();
+    
+        console.log("Overtime Applications API Response:", result);
+    
         if (result.success && result.data.length > 0) {
-
-          const parsedData = JSON.parse(result.data[0].result); 
-
-          setOvertimeApplications(parsedData || []); // Updating the state with the retrieved applications or an empty array if no data.
-
-          setFilteredApplications(parsedData || []); // Initially setting the filtered list to the same as the fetched list.
-
-        } else { 
-          setError("No overtime applications found."); 
+          const parsedData = JSON.parse(result.data[0].result);
+          setOvertimeApplications(parsedData || []);
+          setFilteredApplications(parsedData || []);
+        } else {
+          setError("No overtime applications found.");
         }
-
-      } catch (err) { 
-
-        console.error("Error fetching overtime applications:", err); 
-
-        setError("An error occurred while fetching overtime applications."); 
+      } catch (err) {
+        console.error("Error fetching overtime applications:", err);
+        setError("An error occurred while fetching overtime applications.");
       }
     };
-
-    fetchOvertimeApplications(); 
-
-  }, [user]); // Dependency array ensures that the effect runs whenever `user` changes.
+    
+      fetchOvertimeApplications();
+    }, [user]);
+    
 
   // Sorting Function
   const sortData = (key) => { // Function to handle sorting of data based on the selected key.
@@ -166,46 +169,31 @@ const OvertimeApplication = () => {
   };
 
   const handleSubmit = async () => {
-
-    // const OvertimeData = {
-    //   json_data: {
-    //     empNo: user.empNo,
-    //     detail: [
-    //       {
-    //         otDate: otDate,
-    //         otDay: otDay,
-    //         otHrs: parseFloat(overtimeHours) || 0,
-    //         otRemarks: remarks,
-    //         otType: otType,
-    //       },
-    //     ],
-    //   },
-    // };
-
-  // Check if any required fields are empty
-      if (!otDate || !otDay || !otType || !remarks.trim()) {
-        Swal.fire({
-            title: "Incomplete Form",
-            text: "Please fill in all required fields before submitting.",
-            icon: "warning",
-            confirmButtonText: "OK",
-        });
-        return; // Stop execution to prevent API call
+    // Check if any required fields are empty
+    if (!otDate || !otDay || !otType || !remarks.trim()) {
+      Swal.fire({
+        title: "Incomplete Form",
+        text: "Please fill in all required fields before submitting.",
+        icon: "warning",
+        confirmButtonText: "OK",
+      });
+      return; // Stop execution to prevent API call
     }
+  
     const OvertimeData = {
       json_data: {
-          empNo: user.empNo,
-          detail: [
-              {
-                otDate: otDate,
-                otDay: otDay,
-                otType: otType,
-                otRemarks: remarks,
-                otHrs: overtimeHours ? parseFloat(overtimeHours) : 0,
-              },
-          ],
+        empNo: user.empNo,
+        detail: [
+          {
+            otDate: otDate,
+            otDay: otDay,
+            otType: otType,
+            otRemarks: remarks,
+            otHrs: overtimeHours ? parseFloat(overtimeHours) : 0,
+          },
+        ],
       },
-  };
+    };
   
     console.log("Sending Overtime Data:", JSON.stringify(OvertimeData, null, 2));
   
@@ -213,11 +201,25 @@ const OvertimeApplication = () => {
       const response = await fetch(API_ENDPOINTS.saveOvertimeApplication, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(OvertimeData), //  Send correctly formatted JSON
+        body: JSON.stringify(OvertimeData), // Send correctly formatted JSON
       });
   
+      // Check if the response status is OK (2xx)
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API Error Response:", errorText);
+        Swal.fire({
+          title: "Error!",
+          text: "An error occurred with the API. Please check the API endpoint or try again later.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
+        return;
+      }
+  
+      // Try parsing the response as JSON
       const result = await response.json();
-      console.log("API Response:", result); //  Log API response
+      console.log("API Response:", result);
   
       if (result.status === "success") {
         Swal.fire({
@@ -225,33 +227,36 @@ const OvertimeApplication = () => {
           text: "Overtime application submitted successfully.",
           icon: "success",
           confirmButtonText: "OK",
-      }).then(() => {
-        // Reset all input fields after successful submission
-        setApplicationDate("");
-        setOvertimeHours(""); // Reset input field
-        setRemarks("");
-        setOtType(""); // Reset default type
-        
-        fetchOvertimeApplications(); // Refresh leave applications list
-      });
-    } else {
-        Swal.fire({
-            title: "Failed!",
-            text: "Failed to submit overtime. Please try again.",
-            icon: "error",
-            confirmButtonText: "OK",
+        }).then(() => {
+          // Reset all input fields after successful submission
+          setOTDate("");
+          setOtDay("");
+          setOvertimeHours(""); // Reset input field
+          setRemarks("");
+          setOtType(""); // Reset default type
+  
+          setOvertimeApplications(); // Refresh overtime applications list
         });
-    }
-} catch (err) {
-    console.error("Error submitting leave application:", err);
-    Swal.fire({
+      } else {
+        Swal.fire({
+          title: "Failed!",
+          text: "Failed to submit overtime. Please try again.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
+      }
+    } catch (err) {
+      console.error("Error submitting overtime application:", err);
+      Swal.fire({
         title: "Error!",
         text: "An error occurred while submitting. Please check your connection and try again.",
         icon: "error",
         confirmButtonText: "OK",
-    });
-}
-};
+      });
+    }
+  };
+  
+  
   
 useEffect(() => {
   if (otDate) {
@@ -310,22 +315,23 @@ useEffect(() => {
     min="0" 
     step="0.5"
     value={overtimeHours}
-    onChange={(e) => setOvertimeHours(e.target.value)}
+    onChange={(e) => setOvertimeHours(e.target.value)}  
     placeholder="Enter Overtime hours"
   />
 </div>
 
             <div>
               <span className="block font-semibold mb-1 uppercase">Overtime Type</span>
-              <select
-                value={otType} 
-                onChange={(e) => setOtType(e.target.value)}
-                className="w-full p-2 border rounded"
-              >
-                <option value="REG">Regular Overtime</option>
-                <option>Holiday</option>
-                <option>Rest Day</option>
-              </select>
+<select
+  className="w-full p-2 border rounded"
+  value={otType}
+  onChange={(e) => setOtType(e.target.value)}
+>
+  <option value="">Select Overtime Type</option>
+  <option value="REG">Regular Overtime</option>
+  <option value="HOL">Holiday</option>
+  <option value="RD">Rest Day</option>
+</select>
             </div>
           </div>
 
@@ -399,7 +405,7 @@ useEffect(() => {
                       <td className="px-4 py-2 border">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
                       {/* <td className="px-4 py-2 border">{entry.otDay}</td> */}
                       <td className="px-4 py-2 border">{entry.otHrs}</td>
-                      <td className="px-4 py-2 border">{entry.otDesc}</td>
+                      <td className="px-4 py-2 border">{getOvertimeTypeLabel(entry.otType)}</td>
                       <td className="px-4 py-2 border">{entry.otRemarks || "N/A"}</td>
                       <td className="px-4 py-2 border text-center">
                         <span

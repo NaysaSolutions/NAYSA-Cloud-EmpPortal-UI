@@ -49,7 +49,7 @@ const Leave = () => {
           body: JSON.stringify({
             EMP_NO: user.empNo,
             START_DATE: startDate,
-            END_DATE: today,
+            END_DATE: "2030-01-01"
           }),
         });
     
@@ -243,7 +243,7 @@ const Leave = () => {
                 setLeaveHours("");
                 setLeaveDays("");
 
-                fetchLeaveApplications(); // Refresh leave applications list
+                setLeaveApplications(); // Refresh leave applications list
             });
         } else {
             Swal.fire({
