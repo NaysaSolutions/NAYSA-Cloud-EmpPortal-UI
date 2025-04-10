@@ -49,12 +49,11 @@ const Sidebar = () => {
 
   // Render sidebar with employee details (or empty state if not available)
   return (
-    <div className="h-screen w-[260px] bg-white shadow-md fixed top-[120px] left-0 p-5">
+    <div className="h-screen w-[260px] bg-white shadow-md fixed top-[90px] left-0 p-5">
   {/* Profile Section */}
   <div className="flex flex-col items-center text-center">
     <img
       src="blank-profile-picture-973460_1280.png"
-      alt="Profile"
       className="w-[130px] h-[130px] rounded-full object-cover mb-4"
     />
     <h2 className="text-lg font-semibold text-[#1c394e] break-words">
@@ -63,8 +62,8 @@ const Sidebar = () => {
   </div>
   <hr />
   {/* Employee Details Section */}
-  <div className="mt-6 text-md text-gray-700">
-    <p className="mb-2">
+  <div className="mt-5 text-md text-gray-700">
+    <p className="mb-1">
       <span className="font-semibold">Employee No.:</span> 
       <br />
       {employeeInfo ? employeeInfo.empNo : "Loading..."}

@@ -244,7 +244,7 @@ const Timekeeping = () => {
     };
   
   return (    
-  <div className="ml-[260px] mt-[120px] p-6 bg-gray-100 min-h-screen">
+  <div className="ml-[260px] mt-[110px] p-6 bg-gray-100 min-h-screen">
      
       {/* Header */}
       <div className="max-w-[1150px] mx-auto">
@@ -311,7 +311,7 @@ const Timekeeping = () => {
             <div className="relative">
               <video
                 ref={videoRef}
-                className="w-[300px] h-[200px] rounded shadow-lg"
+                className="w-[300px] h-[200px] rounded shadow-lg transform scale-x-[-1]"
                 autoPlay
                 muted
               />
@@ -366,7 +366,7 @@ const Timekeeping = () => {
       ) : (
         <video
           ref={videoRef}
-          className="w-[300px] h-[200px] rounded shadow-lg"
+          className="w-[300px] h-[200px] rounded shadow-lg transform scale-x-[-1]"
           autoPlay
           muted
         />

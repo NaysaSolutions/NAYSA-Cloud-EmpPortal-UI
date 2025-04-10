@@ -226,9 +226,8 @@ const Dashboard = () => {
     return days;
   };  
   
-
   return (
-    <div className="ml-[260px] mt-[115px] p-4 bg-gray-100 min-h-screen">
+    <div className="ml-[260px] mt-[110px] p-4 bg-gray-100 min-h-screen">
       
       {/* Header */}
 <div className="flex justify-between items-start w-full max-w-[2000px] mx-auto px-4">
@@ -444,13 +443,14 @@ const Dashboard = () => {
 
     {/* View All Button - Fixed on Small Screens */}
     {otApplication.length > 0 && (
+      <div className="relative md:static flex justify-end">
       <button 
-        onClick={() => navigate("/overtime")} 
-        className="absolute bottom-4 right-4 text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex items-center
-        md:static md:mt-4"
+        onClick={() => navigate("/leave")} 
+        className="fixed bottom-4 right-4 md:static text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex items-center md:mt-4 bg-white shadow-md md:shadow-none px-3 py-2 rounded-full md:rounded-none"
       >
         View All <span className="ml-1">→</span>
       </button>
+    </div>
     )}
   </div>
 

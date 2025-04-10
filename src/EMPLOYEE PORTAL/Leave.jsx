@@ -266,7 +266,7 @@ const Leave = () => {
 
 
   return (
-    <div className="ml-[260px] mt-[120px] p-6 bg-gray-100 min-h-screen">
+    <div className="ml-[260px] mt-[110px] p-6 bg-gray-100 min-h-screen">
       <div className="max-w-[1150px] mx-auto">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
@@ -292,6 +292,7 @@ const Leave = () => {
   type="date" 
   className="w-full p-2 border rounded" 
   value={selectedStartDate} 
+  min={applicationDate}
   // onChange={(e) => setSelectedStartDate(e.target.value)} 
   onChange={(e) => handleDateChange("start", e.target.value)}
 />
@@ -303,6 +304,7 @@ const Leave = () => {
   type="date" 
   className="w-full p-2 border rounded" 
   value={selectedEndDate} 
+  min={selectedStartDate} // Ensure end date is not before start date
   // onChange={(e) => setSelectedEndDate(e.target.value)} 
   onChange={(e) => handleDateChange("end", e.target.value)}
 />
@@ -319,14 +321,11 @@ const Leave = () => {
   <option value="">Select Leave Type</option>
   <option value="SL">Sick Leave</option>
   <option value="VL">Vacation Leave</option>
-  <option value="VL">Emergency Leave</option>
-  <option value="VL">Birthday Leave</option>
-  <option value="Maternity Leave">Maternity Leave</option>
+  <option value="EL">Emergency Leave</option>
+  <option value="BL">Birthday Leave</option>
+  <option value="ML">Maternity Leave</option>
 </select>
-
             </div>
-
-           
 
             <div>
               <span className="block font-semibold mb-1 propercase">Number of Days</span>
@@ -334,6 +333,8 @@ const Leave = () => {
   type="number" 
   className="w-full p-2 border rounded" 
   value={leaveDays} 
+  min="0" 
+  step="1"
   placeholder="Enter Leave Days"
   // onChange={(e) => setLeaveDays(e.target.value)} 
   onChange={handleDaysChange}

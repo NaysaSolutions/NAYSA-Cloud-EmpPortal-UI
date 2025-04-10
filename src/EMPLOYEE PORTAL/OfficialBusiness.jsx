@@ -249,7 +249,7 @@ const officialBusiness = () => {
   
   
     return (
-      <div className="ml-[260px] mt-[120px] p-6 bg-gray-100 min-h-screen">
+      <div className="ml-[260px] mt-[110px] p-6 bg-gray-100 min-h-screen">
       <div className="max-w-[1150px] mx-auto">
           {/* Header Section */}
           <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">

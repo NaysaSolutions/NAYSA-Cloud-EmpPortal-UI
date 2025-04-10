@@ -44,13 +44,7 @@ const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage; // Calculating the index of the first record for the current page.
   const currentRecords = filteredApplications.slice(indexOfFirstRecord, indexOfLastRecord); // Extracting the current page's records from the filtered applications list.
 
-  useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
-    setApplicationDate(today);
-    setOTDate(today);
-    setOtType("REG"); // Default to the code value
-  }, []);
-  
+
   useEffect(() => { 
 
     if (!user || !user.empNo) return; // If the user is not logged in or employee number is unavailable, exit early.
@@ -91,6 +85,14 @@ const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
     
       fetchOvertimeApplications();
     }, [user]);
+
+    useEffect(() => {
+      const today = new Date().toISOString().split("T")[0];
+      setApplicationDate(today);
+      setOTDate(today);
+      setOtType("REG"); // Default to the code value
+    }, []);
+    
     
 
   // Sorting Function
@@ -201,10 +203,9 @@ const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
       const response = await fetch(API_ENDPOINTS.saveOvertimeApplication, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(OvertimeData), // Send correctly formatted JSON
+        body: JSON.stringify(OvertimeData),
       });
-  
-      // Check if the response status is OK (2xx)
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error("API Error Response:", errorText);
@@ -216,26 +217,49 @@ const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
         });
         return;
       }
-  
-      // Try parsing the response as JSON
+
       const result = await response.json();
       console.log("API Response:", result);
-  
+
       if (result.status === "success") {
         Swal.fire({
           title: "Success!",
           text: "Overtime application submitted successfully.",
           icon: "success",
           confirmButtonText: "OK",
-        }).then(() => {
-          // Reset all input fields after successful submission
+        }).then(async () => {
+          // Reset form fields
           setOTDate("");
           setOtDay("");
-          setOvertimeHours(""); // Reset input field
+          setOvertimeHours("");
           setRemarks("");
-          setOtType(""); // Reset default type
+          setOtType("REG"); // Reset to default value
   
-          setOvertimeApplications(); // Refresh overtime applications list
+          // Refresh the data
+          try {
+            const today = dayjs().format("YYYY-MM-DD");
+            const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
+  
+            const response = await fetch(API_ENDPOINTS.fetchOvertimeApplications, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                EMP_NO: user.empNo,
+                START_DATE: startDate,
+                END_DATE: "2099-12-31" // Use a far future date
+              }),
+            });
+  
+            const result = await response.json();
+            
+            if (result.success && result.data.length > 0) {
+              const parsedData = JSON.parse(result.data[0].result);
+              setOvertimeApplications(parsedData || []);
+              setFilteredApplications(parsedData || []);
+            }
+          } catch (err) {
+            console.error("Error refreshing data:", err);
+          }
         });
       } else {
         Swal.fire({
@@ -256,19 +280,15 @@ const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
     }
   };
   
-  
-  
 useEffect(() => {
   if (otDate) {
     const dayOfWeek = dayjs(otDate).format("dddd"); // Get day name (e.g., Monday)
     setOtDay(dayOfWeek);
   }
 }, [otDate]); // Runs whenever otDate changes
-  
-
 
   return (
-    <div className="ml-[260px] mt-[120px] p-6 bg-gray-100 min-h-screen">
+    <div className="ml-[260px] mt-[110px] p-6 bg-gray-100 min-h-screen">
       <div className="max-w-[1150px] mx-auto">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
@@ -294,6 +314,7 @@ useEffect(() => {
     value={otDate} 
     onChange={(e) => setOTDate(e.target.value)}
     type="date" 
+    min={applicationDate} // Prevent selecting a date before the application date
     className="w-full p-2 border rounded"
   />
 </div>
@@ -315,7 +336,10 @@ useEffect(() => {
     min="0" 
     step="0.5"
     value={overtimeHours}
-    onChange={(e) => setOvertimeHours(e.target.value)}  
+    onChange={(e) => {
+      const value = parseFloat(e.target.value);
+      setOvertimeHours(isNaN(value) || value < 0 ? 0 : value);
+    }}
     placeholder="Enter Overtime hours"
   />
 </div>
