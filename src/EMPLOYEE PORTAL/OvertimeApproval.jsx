@@ -15,28 +15,32 @@ const OvertimeApproval = () => {
   const [selectedOvertime, setSelectedOvertime] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {
-    if (!user || !user.empNo) return;
 
     const fetchOvertimeApprovals = async () => {
       try {
         const today = dayjs().format("YYYY-MM-DD");
         const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
     
-        // Fetch Pending Overtime Approvals
-        const pendingResponse = await fetch(API_ENDPOINTS.fetchOvertimeApplications, { // Use dynamic API URL here
+        const pendingResponse = await fetch(API_ENDPOINTS.OvertimeHistoryApplication, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ EMP_NO: user.empNo, STAT: "Pending" }),
+          body: JSON.stringify({
+            EMP_NO: user.empNo,
+            START_DATE: startDate,
+            END_DATE: "2030-01-01"
+          }),
         });
     
-        const pendingResult = await pendingResponse.json();
+        const pendingText = await pendingResponse.text();
+        let pendingResult = JSON.parse(pendingText);
+    
         if (pendingResult.success && pendingResult.data.length > 0) {
-          setPendingOvertime(JSON.parse(pendingResult.data[0].result) || []);
+          const allRecords = JSON.parse(pendingResult.data[0].result) || [];
+          const pendingOnly = allRecords.filter((record) => record.otStatus === "Pending");
+          setPendingOvertime(pendingOnly);
         }
     
-        // Fetch Overtime Approval History
-        const historyResponse = await fetch(API_ENDPOINTS.approvedOvertimeHistory, { // Use dynamic API URL here
+        const historyResponse = await fetch(API_ENDPOINTS.approvedOvertimeHistory, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: startDate, END_DATE: today }),
@@ -48,15 +52,18 @@ const OvertimeApproval = () => {
             JSON.parse(historyResult.data[0].result).filter((record) => record.otStatus !== "Pending") || []
           );
         }
+    
       } catch (err) {
         console.error("Error fetching overtime approval data:", err);
         setError("An error occurred while fetching overtime approvals.");
       }
     };
+    useEffect(() => {
+      if (user && user.empNo) {
+        fetchOvertimeApprovals();
+      }
+    }, [user]);
     
-
-    fetchOvertimeApprovals();
-  }, [user]);
 
   const handleReviewClick = (overtime) => {
     setSelectedOvertime(overtime);
@@ -155,7 +162,16 @@ const OvertimeApproval = () => {
           </table>
         </div>
       </div>
-      {showModal && <OvertimeReview overtimeData={selectedOvertime} onClose={() => setShowModal(false)} />}
+      {showModal && (
+  <OvertimeReview
+  overtimeData={selectedOvertime}
+  onClose={() => {
+    setShowModal(false);
+    fetchOvertimeApprovals(); // ✅ This will now work
+  }}
+  refreshData={fetchOvertimeApprovals}
+/>
+)}
     </div>
   );
 };

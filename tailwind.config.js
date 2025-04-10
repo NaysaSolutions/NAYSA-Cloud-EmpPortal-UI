@@ -33,6 +33,10 @@ export default {
         'gradient-start-3': '#f12711', // Gradient 3 start color
         'gradient-end-3': '#f5af19',   // Gradient 3 end color
       },
+      zIndex: {
+        'modal': '9999',
+        'swal': '10050',
+      },
     },
   },
   plugins: [],

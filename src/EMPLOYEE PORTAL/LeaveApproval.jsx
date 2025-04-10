@@ -21,31 +21,54 @@ const LeaveApproval = () => {
       try {
         const today = dayjs().format("YYYY-MM-DD");
         const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
-    
-        // Fetch Pending Leave Applications
-        const pendingResponse = await fetch(API_ENDPOINTS.fetchLeaveApplications, { // Use dynamic API URL here
+
+        // Fetch All Leave Applications, then filter pending
+        const pendingResponse = await fetch(API_ENDPOINTS.approvedLeaveHistory, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ EMP_NO: user.empNo, STAT: "Pending" }),
+          body: JSON.stringify({
+            EMP_NO: user.empNo,
+            START_DATE: startDate,
+            END_DATE: "2030-01-01"
+          }),
         });
-    
-        const pendingResult = await pendingResponse.json();
-        console.log("Fetched Pending Leave Applications:", pendingResult);
-    
-        if (pendingResult.success && pendingResult.data.length > 0) {
-          setPendingLeaves(JSON.parse(pendingResult.data[0].result) || []);
+        
+        if (!pendingResponse.ok) {
+          throw new Error("Failed to fetch leave approvals: " + pendingResponse.statusText);
         }
-    
+        
+
+        const pendingText = await pendingResponse.text();
+        let pendingResult;
+
+        try {
+          pendingResult = JSON.parse(pendingText);
+        } catch (err) {
+          throw new Error("Invalid JSON in leave response: " + pendingText);
+        }
+
+        console.log("Fetched Leave Applications:", pendingResult);
+
+        if (pendingResult.success && pendingResult.data.length > 0) {
+          const allLeaves = JSON.parse(pendingResult.data[0].result) || [];
+const pendingOnly = allLeaves.filter((record) => {
+  console.log(record.leaveStatus); // Check if leaveStatus is exactly "Pending"
+  return record.leaveStatus === "Pending";
+});
+setPendingLeaves(pendingOnly);
+
+        }
+
         // Fetch Leave Approval History
-        const historyResponse = await fetch(API_ENDPOINTS.approvedLeaveHistory, { // Use dynamic API URL here
+        const historyResponse = await fetch(API_ENDPOINTS.approvedLeaveHistory, { 
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: startDate, END_DATE: today }),
         });
-    
+
         const historyResult = await historyResponse.json();
         console.log("Fetched Leave Approval History:", historyResult);
-    
+
         if (historyResult.success && historyResult.data.length > 0) {
           const parsedHistoryData = JSON.parse(historyResult.data[0].result);
           setHistory(parsedHistoryData.filter((record) => record.leaveStatus !== "Pending") || []);
@@ -58,6 +81,10 @@ const LeaveApproval = () => {
 
     fetchLeaveApprovals();
   }, [user]);
+
+  const handleClose = () => {
+    setSelectedLeave(null); // Close modal
+  };
 
   return (
     <div className="ml-[220px] mt-[120px] p-6 bg-gray-100 min-h-screen">
@@ -73,8 +100,8 @@ const LeaveApproval = () => {
           <table className="w-full border-collapse text-center">
             <thead className="bg-gray-100">
               <tr className="border-b">
-              <th className="p-3">Employee Name</th>
-              <th className="p-3">Department</th>
+                <th className="p-3">Employee Name</th>
+                <th className="p-3">Department</th>
                 <th className="p-2">Leave Start</th>
                 <th className="p-2">Leave End</th>
                 <th className="p-2">Duration (Days)</th>
@@ -86,10 +113,10 @@ const LeaveApproval = () => {
               </tr>
             </thead>
             <tbody>
-              {pendingLeaves.length > 0 ? (
-                pendingLeaves.map((leave, index) => (
-                  <tr key={index} className="border-b">
-                    <td className="p-2">{leave.empName}</td>
+            {pendingLeaves.length > 0 ? (
+  pendingLeaves.map((leave, index) => (
+    <tr key={index} className="border-b">
+      <td className="p-2">{leave.empName}</td>
                     <td className="p-2">{leave.department || "N/A"}</td>
                     <td className="p-2">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
                     <td className="p-2">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
@@ -99,16 +126,15 @@ const LeaveApproval = () => {
                     <td className="p-2">{leave.leaveRemarks}</td>
                     <td className="p-2 text-orange-500 font-bold">{leave.leaveStatus}</td>
                     <td className="p-2">
-                    <button
-  className="bg-blue-500 text-white px-3 py-1 rounded"
-  onClick={() => {
-    console.log("Selected Leave for Review:", leave);
-    setSelectedLeave(leave);
-  }}
->
-  Review
-</button>
-
+                      <button
+                        className="bg-blue-500 text-white px-3 py-1 rounded"
+                        onClick={() => {
+                          console.log("Selected Leave for Review:", leave);
+                          setSelectedLeave(leave);
+                        }}
+                      >
+                        Review
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -127,8 +153,8 @@ const LeaveApproval = () => {
           <table className="w-full border-collapse text-center">
             <thead className="bg-gray-100">
               <tr className="border-b">
-              <th className="p-3">Employee Name</th>
-              <th className="p-3">Department</th>
+                <th className="p-3">Employee Name</th>
+                <th className="p-3">Department</th>
                 <th className="p-2">Leave Start</th>
                 <th className="p-2">Leave End</th>
                 <th className="p-2">Duration (Days)</th>
@@ -164,9 +190,16 @@ const LeaveApproval = () => {
           </table>
         </div>
       </div>
+
       {/* Modal for Leave Review */}
       {selectedLeave && (
-        <LeaveReview leaveData={selectedLeave} onClose={() => setSelectedLeave(null)} />
+        <LeaveReview 
+          leaveData={selectedLeave}  // Passing selectedLeave to the LeaveReview component
+          onClose={handleClose} 
+          pendingLeaves={pendingLeaves} 
+          setPendingLeaves={setPendingLeaves} 
+          setHistory={setHistory}
+        />
       )}
     </div>
   );
