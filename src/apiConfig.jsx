@@ -20,6 +20,13 @@ const API_ENDPOINTS = {
      LeaveHistoryApplication: `${API_BASE_URL}/getLVApprInq`,
      approvedLeaveHistory: `${API_BASE_URL}/getLVApprHistory`,
      leaveApproval: `${API_BASE_URL}/approvalLV`,
+
+     //Official Business
+     fetchOfficialBusinessApplications: `${API_BASE_URL}/getOBAppInq`,
+     saveOfficialBusinessApplication: `${API_BASE_URL}/upsertOB`,
+     OfficialBusinessHistoryApplication: `${API_BASE_URL}/getOBApprInq`,
+     approvedOfficialBusinessHistory: `${API_BASE_URL}/getOBApprHistory`,
+     officialBusinessApproval: `${API_BASE_URL}/approvalOB`,
     
 
 };

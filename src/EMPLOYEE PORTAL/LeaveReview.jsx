@@ -4,7 +4,7 @@ import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 import Swal from 'sweetalert2';
 
-const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setHistory }) => {
+const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setHistory, refreshData }) => {
   if (!leaveData) return null; // Ensure data exists before rendering
 
   const { user } = useAuth(); // Get logged-in user data
@@ -74,6 +74,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
       const result = await response.json();
   
       if (response.ok) {
+        onClose(); // Close modal
         await Swal.fire({
           title: "Success",
           text: "Approval successful!",
@@ -91,8 +92,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
           ...prevHistory,
           { ...leaveData, leaveStatus: "Approved" },
         ]);
-  
-        onClose(); // Close modal
+        
       } else {
         await Swal.fire({
           title: "Error",
@@ -154,6 +154,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
       const result = await response.json();
   
       if (response.ok) {
+        onClose(); // Close modal
         await Swal.fire({
           title: "Success",
           text: "Leave disapproved successfully!",
@@ -171,8 +172,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
           ...prevHistory,
           { ...leaveData, leaveStatus: "Disapproved" },
         ]);
-  
-        onClose(); // Close modal
+
       } else {
         await Swal.fire({
           title: "Error",

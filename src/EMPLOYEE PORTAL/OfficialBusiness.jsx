@@ -44,17 +44,14 @@ const officialBusiness = () => {
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
   const currentRecords = filteredApplications.slice(indexOfFirstRecord, indexOfLastRecord);
-
-  
-  // Anj
-    useEffect(() => {
-      if (!user || !user.empNo) return;
     
       const fetchOBApplications = async () => {
         try {
+          if (!user || !user.empNo) return;
+      
           const today = dayjs().format("YYYY-MM-DD");
           const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
-    
+      
           const response = await fetch(API_ENDPOINTS.fetchOfficialBusinessApplications, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -64,23 +61,45 @@ const officialBusiness = () => {
               END_DATE: today,
             }),
           });
-    
-          const result = await response.json();
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("API Error: ", errorText);
+            throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+          }
+          
+      
+          const text = await response.text();
+          const result = text ? JSON.parse(text) : {};
+      
           console.log("Official Business Applications API Response:", result);
-    
-          if (result.success && result.data.length > 0) {
-            const parsedData = JSON.parse(result.data[0].result);
-            setOBApplications(parsedData || []);
-            setFilteredApplications(parsedData || []);
+      
+          if (result.success && result.data && result.data.length > 0) {
+            try {
+              const parsedData = JSON.parse(result.data[0].result);
+              setOBApplications(parsedData || []);
+              setFilteredApplications(parsedData || []);
+            } catch (parseError) {
+              console.error("Error parsing result data:", parseError);
+              setOBApplications([]);
+              setFilteredApplications([]);
+            }
           } else {
-            setError("No Official Business applications found.");
+            setOBApplications([]);
+            setFilteredApplications([]);
+            setError(result.message || "No Official Business applications found.");
           }
         } catch (err) {
           console.error("Error fetching Official Business applications:", err);
           setError("An error occurred while fetching Official Business applications.");
+          setOBApplications([]);
+          setFilteredApplications([]);
         }
       };
     
+      // Anj
+    useEffect(() => {
+      if (!user || !user.empNo) return;
       // Initial fetch
       fetchOBApplications();
     
@@ -145,89 +164,88 @@ const officialBusiness = () => {
   
   
     const handleSubmit = async () => {
-      // Check if any required fields are empty
-      // if (!obDate || !selectedStartDate || !selectedEndDate || !remarks.trim()) {
-      //     Swal.fire({
-      //         title: "Incomplete Form",
-      //         text: "Please fill in all required fields before submitting.",
-      //         icon: "warning",
-      //         confirmButtonText: "OK",
-      //     });
-      //      return; // Stop execution to prevent API call
-      // }
-  
-      // const convertToISO = (dateString) => {
-      //   // Example input: "03/10/2025 14:30"
-      //   const [datePart, timePart] = dateString.split(" ");
-      //   const [month, day, year] = datePart.split("/");
-      //   // Ensure month and day are two digits
-      //   const isoDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${timePart}`;
-      //   return isoDate;
-      // };
-
+      // Validation checks
+      if (!selectedStartDate || !selectedEndDate) {
+        Swal.fire({
+          title: "Incomplete Form",
+          text: "Please select both start and end dates",
+          icon: "warning",
+          confirmButtonText: "OK",
+        });
+        return;
+      }
+    
       const obData = {
-          json_data: {
-              empNo: user.empNo,
-              detail: [
-                  {
-                    obDate: applicationDate,
-                    // obStart: selectedStartDate ? convertToISO(selectedStartDate) : null,
-                    // obEnd: selectedEndDate ? convertToISO(selectedEndDate) : null,
-                    obStart: selectedStartDate,
-                    obEnd: selectedEndDate ,
-                    obRemarks: remarks,
-                    obHrs: obHrs ? parseFloat(obHrs) : 0,
-                  },
-              ],
-          },
+        json_data: {
+          empNo: user.empNo,
+          detail: [
+            {
+              obDate: applicationDate,
+              obStart: selectedStartDate,
+              obEnd: selectedEndDate,
+              obRemarks: remarks,
+              obHrs: obHrs ? parseFloat(obHrs) : 0,
+            },
+          ],
+        },
       };
-  
-      console.log("Sending Official Business Data:", JSON.stringify(obData, null, 2));
-  
+    
+      console.log("Sending Official Business Data:", obData);
+    
       try {
         const response = await fetch(API_ENDPOINTS.saveOfficialBusinessApplication, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(obData),
-          });
-  
-          const result = await response.json();
-          console.log("API Response:", result);
-  
-          if (result.status === "success") {
-              Swal.fire({
-                  title: "Success!",
-                  text: "Official Business application submitted successfully.",
-                  icon: "success",
-                  confirmButtonText: "OK",
-              }).then(() => {
-                  // Reset all input fields after successful submission
-                  setApplicationDate("");
-                  setSelectedStartDate("");
-                  setSelectedEndDate("");
-                  setRemarks("");  // Ensure remarks are cleared
-                  setOBHrs("");
-  
-                  fetchOBApplications(); // Refresh Official Business applications list
-              });
-          } else {
-              Swal.fire({
-                  title: "Failed!",
-                  text: "Failed to submit Official Business. Please try again.",
-                  icon: "error",
-                  confirmButtonText: "OK",
-              });
-          }
-      } catch (err) {
-          console.error("Error submitting Official Business application:", err);
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(obData),
+        });
+    
+        // Check if response is OK
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("API Error: ", errorText);
+          throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
+        }
+    
+        // Safely parse JSON
+        const text = await response.text();
+        const result = text ? JSON.parse(text) : {};
+    
+        console.log("API Response:", result);
+    
+        if (result.status === "success") {
           Swal.fire({
-              title: "Error!",
-              text: "An error occurred while submitting. Please check your connection and try again.",
-              icon: "error",
-              confirmButtonText: "OK",
+            title: "Success!",
+            text: "Official Business application submitted successfully.",
+            icon: "success",
+            confirmButtonText: "OK",
+          }).then(() => {
+            // Reset form
+            setSelectedStartDate("");
+            setSelectedEndDate("");
+            setRemarks("");
+            setOBHrs("");
+            
+            // Refresh data
+            fetchOBApplications();
           });
+        } else {
+          Swal.fire({
+            title: "Failed!",
+            text: result.message || "Failed to submit Official Business.",
+            icon: "error",
+            confirmButtonText: "OK",
+          });
+        }
+      } catch (err) {
+        console.error("Error submitting Official Business application:", err);
+        Swal.fire({
+          title: "Error!",
+          text: "An error occurred while submitting. Please try again.",
+          icon: "error",
+          confirmButtonText: "OK",
+        });
       }
-  };
+    };
   
   
     return (
