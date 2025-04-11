@@ -42,7 +42,6 @@ const Dashboard = () => {
     { description: "Bereavement Leave", balance: 0 },
     { description: "Birthday Leave", balance: 0 }
   ];
-  
 
 
   useEffect(() => {
@@ -68,67 +67,67 @@ const Dashboard = () => {
     return <div className="p-6">Loading...</div>;
   }
 
-  useEffect(() => {
+  const fetchDashboardData = async () => {
     if (!user || !user.empNo) {
       return; // Don't fetch if user or empNo is missing
     }
-  
-    const fetchDailyRecords = async () => {
-      try {
-        const response = await fetch(API_ENDPOINTS.dashBoard, { // Use dynamic API endpoint here
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ EMP_NO: user.empNo }),
+
+    try {
+      const response = await fetch(API_ENDPOINTS.dashBoard, { // Use dynamic API endpoint here
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ EMP_NO: user.empNo }),
+      });
+
+      const result = await response.json();
+      console.log("Raw API Response:", result);
+
+      if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
+        const parsedData = JSON.parse(result.data[0].result);
+        console.log("Parsed Employee Summary:", parsedData);
+
+        let apiLeaveCredits = parsedData[0]?.leaveCredit || [];
+
+        // Merge API leave credits with default leave types
+        const mergedLeaveCredits = defaultLeaveTypes.map((defaultLeave) => {
+          const foundLeave = apiLeaveCredits.find(
+            (apiLeave) => apiLeave.description === defaultLeave.description
+          );
+          return foundLeave ? foundLeave : defaultLeave;
         });
-    
-        const result = await response.json();
-        console.log("Raw API Response:", result);
-    
-        if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
-          const parsedData = JSON.parse(result.data[0].result);
-          console.log("Parsed Employee Summary:", parsedData);
-    
-          let apiLeaveCredits = parsedData[0]?.leaveCredit || [];
-    
-          // Merge API leave credits with default leave types
-          const mergedLeaveCredits = defaultLeaveTypes.map((defaultLeave) => {
-            const foundLeave = apiLeaveCredits.find(
-              (apiLeave) => apiLeave.description === defaultLeave.description
-            );
-            return foundLeave ? foundLeave : defaultLeave;
-          });
-    
-          setLeaveCredit(mergedLeaveCredits);
-          setDailyTimeRecord(parsedData[0]?.dailyTimeRecord || []);
-          setLeaveCredit(parsedData[0]?.leaveCredit || []);
-          setLoanBalance(parsedData[0]?.loanBalance || []);
-          setOtApproval(parsedData[0]?.otApproval || []);
-          setLeaveApproval(parsedData[0]?.leaveApproval || []);
-          setOfficialBusinessApproval(parsedData[0]?.obApproval || []);
-    
-          // Extract Leave Applications
-          console.log("Leave Applications:", parsedData[0].leaveApplication);
-          setLeaveApplication(parsedData[0]?.leaveApplication || []);
-    
-          // Extract Overtime Applications
-          console.log("Overtime Applications:", parsedData[0].otApplication);
-          setOtApplication(parsedData[0]?.otApplication || []);
-    
-          // Extract Official Business Applications
-          console.log("Official Business Applications:", parsedData[0]?.obApplication);
-          setOfficialBusinessApplication(parsedData[0]?.obApplication || []);
-        } else {
-          setError("API response format is incorrect or no data found.");
-        }
-      } catch (err) {
-        console.error("Error fetching daily time records:", err);
-        setError("An error occurred while fetching the records.");
+
+        setLeaveCredit(mergedLeaveCredits);
+        setDailyTimeRecord(parsedData[0]?.dailyTimeRecord || []);
+        setLeaveCredit(parsedData[0]?.leaveCredit || []);
+        setLoanBalance(parsedData[0]?.loanBalance || []);
+        setOtApproval(parsedData[0]?.otApproval || []);
+        setLeaveApproval(parsedData[0]?.leaveApproval || []);
+        setOfficialBusinessApproval(parsedData[0]?.obApproval || []);
+
+        // Extract Leave Applications
+        console.log("Leave Applications:", parsedData[0].leaveApplication);
+        setLeaveApplication(parsedData[0]?.leaveApplication || []);
+
+        // Extract Overtime Applications
+        console.log("Overtime Applications:", parsedData[0].otApplication);
+        setOtApplication(parsedData[0]?.otApplication || []);
+
+        // Extract Official Business Applications
+        console.log("Official Business Applications:", parsedData[0]?.obApplication);
+        setOfficialBusinessApplication(parsedData[0]?.obApplication || []);
+      } else {
+        setError("API response format is incorrect or no data found.");
       }
-    };    
-  
-    fetchDailyRecords();
+    } catch (err) {
+      console.error("Error fetching daily time records:", err);
+      setError("An error occurred while fetching the records.");
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
   }, [user.empNo]); // Dependency on user.empNo
-  
+
   // Current Date and Time
   useEffect(() => {
     const timer = setInterval(() => {
@@ -153,14 +152,14 @@ const Dashboard = () => {
     return () => clearInterval(countdown);
   }, [isCounting, breakTime]);
 
- 
 
   // Convert seconds to HH:MM:SS
   const formatTime = (seconds) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  return `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  
   };
 
   // Personal Calendar Navigation
@@ -174,61 +173,68 @@ const Dashboard = () => {
 
   // Generate Calendar Days
   const generateCalendar = () => {
-    const startDay = currentMonth.startOf("month").day(); // Day index of 1st day (0=Sun, 6=Sat)
+    const startDay = currentMonth.startOf("month").day();
     const daysInMonth = currentMonth.daysInMonth();
     const prevMonthDays = currentMonth.subtract(1, "month").daysInMonth();
-    
+
     let days = [];
-    
-    // Convert leaveApplication dates into a set of marked days
-    const leaveDays = new Set(); // For pending leaves
-    const approvedLeaveDays = new Set(); // For approved leaves
-  
+
+    const pendingLeaveDays = new Set();
+    const approvedLeaveDays = new Set();
+
     leaveApplication.forEach((leave) => {
-      const [start, end] = leave.dateapplied.split(" - ").map(date => dayjs(date, "MM/DD/YYYY"));
-      let current = start;
-      while (current.isBefore(end) || current.isSame(end, 'day')) {
-        if (current.month() === currentMonth.month()) {
-          if (leave.status === 'approved') {
-            approvedLeaveDays.add(current.date()); // Store approved days
-          } else if (leave.status === 'pending') {
-            leaveDays.add(current.date()); // Store pending leave days
+      const dates = leave.dateapplied.split(" - ");
+      let startDate, endDate;
+
+      if (dates.length === 1) {
+        startDate = dayjs(dates[0], "MM/DD/YYYY");
+        endDate = dayjs(dates[0], "MM/DD/YYYY");
+      } else if (dates.length === 2) {
+        startDate = dayjs(dates[0], "MM/DD/YYYY");
+        endDate = dayjs(dates[1], "MM/DD/YYYY");
+      }
+
+      if (startDate && endDate && startDate.isValid() && endDate.isValid()) {
+        let current = startDate;
+        while (current.isBefore(endDate) || current.isSame(endDate, 'day')) {
+          if (current.month() === currentMonth.month()) {
+            if (leave.leavestatus === 'approved') {
+              approvedLeaveDays.add(current.date());
+            } else if (leave.leavestatus === 'pending') {
+              pendingLeaveDays.add(current.date());
+            }
           }
-          // Disapproved leaves will not be added to any set (they won't be marked)
+          current = current.add(1, "day");
         }
-        current = current.add(1, "day");
       }
     });
-    
-    // Add previous month's overflow days
+
     for (let i = startDay - 1; i >= 0; i--) {
       days.push({ day: prevMonthDays - i, currentMonth: false });
     }
-    
-    // Add current month's days
+
     for (let i = 1; i <= daysInMonth; i++) {
       days.push({
         day: i,
         currentMonth: true,
-        isLeaveDay: leaveDays.has(i),
-        isApproved: approvedLeaveDays.has(i),
+        isPendingLeave: pendingLeaveDays.has(i),
+        isApprovedLeave: approvedLeaveDays.has(i),
       });
     }
-    
-    // Add next month's overflow days
+
     const remainingDays = 7 - (days.length % 7);
     if (remainingDays < 7) {
       for (let i = 1; i <= remainingDays; i++) {
         days.push({ day: i, currentMonth: false });
       }
     }
-  
+
     return days;
-  };  
-  
+  };
+
   return (
     <div className="ml-[260px] mt-[110px] p-4 bg-gray-100 min-h-screen">
-      
+
       {/* Header */}
 <div className="flex justify-between items-start w-full max-w-[2000px] mx-auto px-4">
   <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex flex-wrap justify-between items-center mb-4 w-full shadow-lg">
@@ -293,8 +299,8 @@ const Dashboard = () => {
   </div>
 
   {/* Fixed View All Button */}
-  <button 
-    onClick={() => navigate("/timekeeping")} 
+  <button
+    onClick={() => navigate("/timekeeping")}
     className="absolute bottom-4 right-4 text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
   >
     View All <span className="ml-1">→</span>
@@ -352,7 +358,7 @@ const Dashboard = () => {
   {/* Personal Calendar */}
 <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full">
   <h2 className="text-lg font-semibold mb-4 text-center uppercase">Personal Calendar</h2>
-  
+
   {/* Navigation */}
   <div className="flex justify-between items-center mb-2">
     <button onClick={handlePrevMonth} className="text-gray-400">◀</button>
@@ -361,34 +367,26 @@ const Dashboard = () => {
   </div>
 
   {/* Weekday Headers */}
-  <div className="grid grid-cols-7 gap-1 text-center text-gray-600 font-semibold">
-    {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
-      <div key={day} className="p-2">{day}</div>
-    ))}
-  </div>
-
-  {/* Calendar Grid with Fixed Height */}
   <div className="grid grid-cols-7 grid-rows-6 gap-1 text-center min-h-[300px]">
     {generateCalendar().map((item, index) => (
       <div
-      key={index}
-      className={`p-2 rounded-full h-[40px] flex items-center justify-center 
-        ${item.currentMonth ? "text-black" : "text-gray-400"} 
-        ${item.isApproved ? "bg-green-500 text-white font-bold" : ""}
-        ${item.isLeaveDay && !item.isApproved ? "bg-blue-500 text-white font-bold" : ""}`}
-    >
-      {item.day}
-    </div>
-    
-    
+        key={index}
+        className={`p-2 rounded-full h-[40px] flex items-center justify-center
+          ${item.currentMonth ? "text-black" : "text-gray-400"}
+          ${item.isApprovedLeave ? "bg-blue-500 text-white font-bold" : ""}
+          ${item.isPendingLeave ? "bg-yellow-500 text-white font-bold" : ""}
+          `}
+      >
+        {item.day}
+      </div>
     ))}
   </div>
 
   {/* Calendar Legend */}
   <div className="flex justify-between text-sm mt-2">
     <div className="flex items-center"><span className="w-2 h-2 bg-red-500 inline-block mr-1"></span> Holiday</div>
-    <div className="flex items-center"><span className="w-2 h-2 bg-blue-500 inline-block mr-1"></span> Leave</div>
-    <div className="flex items-center"><span className="w-2 h-2 bg-yellow-500 inline-block mr-1"></span> Pending for Approval</div>
+    <div className="flex items-center"><span className="w-2 h-2 bg-blue-500 inline-block mr-1"></span> Approved Leave</div>
+    <div className="flex items-center"><span className="w-2 h-2 bg-yellow-500 inline-block mr-1"></span> Pending Leave</div>
   </div>
 </div>
 </div>

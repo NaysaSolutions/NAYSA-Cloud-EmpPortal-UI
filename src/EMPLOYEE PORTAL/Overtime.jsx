@@ -388,7 +388,7 @@ useEffect(() => {
           {error && <p className="text-red-500 text-center">{error}</p>}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
+            <table className="w-full text-sm xt-centeter border border-gray-200 rounded-lg shadow-md">
               <thead className="text-gray-700 propercase bg-gray-100 ">
                 <tr>
                   {[
