@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { User, X } from "lucide-react";
 import { useAuth } from "./AuthContext";
-import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+// import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+import API_ENDPOINTS from "/NAYSA-Solutions Inc/Programming/NAYSA Employee Portal Cloud/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+
 import Swal from 'sweetalert2';
 
 const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setHistory, refreshData }) => {

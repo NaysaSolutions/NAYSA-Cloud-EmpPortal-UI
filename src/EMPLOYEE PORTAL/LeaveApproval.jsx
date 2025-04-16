@@ -3,7 +3,9 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { useAuth } from "./AuthContext";
 import LeaveReview from "./LeaveReview"; // Import modal component
-import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+// import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+import API_ENDPOINTS from "/NAYSA-Solutions Inc/Programming/NAYSA Employee Portal Cloud/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+
 
 const LeaveApproval = () => {
   const navigate = useNavigate();
@@ -87,69 +89,76 @@ setPendingLeaves(pendingOnly);
   };
 
   return (
-    <div className="ml-[220px] mt-[120px] p-6 bg-gray-100 min-h-screen">
-      <div className="max-w-[1150px] mx-auto">
+    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen">
+
+    <div className="mx-auto">
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
           <h1 className="text-3xl font-semibold">Leave Approval</h1>
         </div>
 
-        {/* Pending Leave Table */}
-        <div className="mt-6 bg-white p-4 shadow-lg rounded-lg">
-          <h2 className="text-lg font-bold mb-4">Pending Leave Applications</h2>
-          {error && <p className="text-red-500 text-center">{error}</p>}
-          <table className="w-full border-collapse text-center">
-            <thead className="bg-gray-100">
-              <tr className="border-b">
-                <th className="p-3">Employee Name</th>
-                <th className="p-3">Department</th>
-                <th className="p-2">Leave Start</th>
-                <th className="p-2">Leave End</th>
-                <th className="p-2">Duration (Days)</th>
-                <th className="p-2">Duration (Hours)</th>
-                <th className="p-2">Leave Type</th>
-                <th className="p-2">Remarks</th>
-                <th className="p-2">Status</th>
-                <th className="p-2">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-            {pendingLeaves.length > 0 ? (
-  pendingLeaves.map((leave, index) => (
-    <tr key={index} className="border-b">
-      <td className="p-2">{leave.empName}</td>
-                    <td className="p-2">{leave.department || "N/A"}</td>
-                    <td className="p-2">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
-                    <td className="p-2">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
-                    <td className="p-2">{leave.leaveDays}</td>
-                    <td className="p-2">{leave.leaveHrs} HRS</td>
-                    <td className="p-2">{leave.leaveCode}</td>
-                    <td className="p-2">{leave.leaveRemarks}</td>
-                    <td className="p-2 text-orange-500 font-bold">{leave.leaveStatus}</td>
-                    <td className="p-2">
-                      <button
-                        className="bg-blue-500 text-white px-3 py-1 rounded"
-                        onClick={() => {
-                          console.log("Selected Leave for Review:", leave);
-                          setSelectedLeave(leave);
-                        }}
-                      >
-                        Review
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="8" className="p-2 text-center text-gray-500">No pending leave applications.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+{/* Pending Leave Table */}
+<div className="mt-6 bg-white p-4 shadow-lg rounded-lg">
+  <h2 className="text-lg font-bold mb-4">Pending Leave Applications</h2>
+  {error && <p className="text-red-500 text-center">{error}</p>}
+
+  {/* Scrollable container */}
+  <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
+    <table className="min-w-full text-sm text-center">
+      <thead className="bg-gray-100 sticky top-0 z-10">
+        <tr className="border-b">
+          <th className="p-3">Employee Name</th>
+          <th className="p-3">Department</th>
+          <th className="p-2">Leave Start</th>
+          <th className="p-2">Leave End</th>
+          <th className="p-2">Duration (Days)</th>
+          <th className="p-2">Duration (Hours)</th>
+          <th className="p-2">Leave Type</th>
+          <th className="p-2">Remarks</th>
+          <th className="p-2">Status</th>
+          <th className="p-2">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {pendingLeaves.length > 0 ? (
+          pendingLeaves.map((leave, index) => (
+            <tr key={index} className="border-b">
+              <td className="p-2 text-left">{leave.empName}</td>
+              <td className="p-2 text-left">{leave.department || "N/A"}</td>
+              <td className="p-2 text-center">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
+              <td className="p-2 text-center">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
+              <td className="p-2 text-right">{leave.leaveDays}</td>
+              <td className="p-2 text-right">{leave.leaveHrs} HRS</td>
+              <td className="p-2 text-center">{leave.leaveCode}</td>
+              <td className="p-2 text-left">{leave.leaveRemarks}</td>
+              <td className="p-2 text-orange-500 font-bold">{leave.leaveStatus}</td>
+              <td className="p-2">
+                <button
+                  className="bg-blue-500 text-white px-3 py-1 rounded"
+                  onClick={() => setSelectedLeave(leave)}
+                >
+                  Review
+                </button>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="10" className="p-2 text-center text-gray-500">
+              No pending leave applications.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+</div>
+
 
         {/* Leave Approval History Table */}
         <div className="mt-6 bg-white p-4 shadow-lg rounded-lg">
           <h2 className="text-lg font-bold mb-4">Leave Approval History</h2>
+          {error && <p className="text-red-500 text-center">{error}</p>}
+          <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
           <table className="w-full border-collapse text-center">
             <thead className="bg-gray-100">
               <tr className="border-b">
@@ -168,14 +177,14 @@ setPendingLeaves(pendingOnly);
               {history.length > 0 ? (
                 history.map((record, index) => (
                   <tr key={index} className="border-b">
-                    <td className="p-2">{record.empName}</td>
-                    <td className="p-2">{record.department || "N/A"}</td>
-                    <td className="p-2">{dayjs(record.leaveStart).format("MM/DD/YYYY")}</td>
-                    <td className="p-2">{dayjs(record.leaveEnd).format("MM/DD/YYYY")}</td>
-                    <td className="p-2">{record.leaveDays}</td>
-                    <td className="p-2">{record.leaveHrs} HRS</td>
-                    <td className="p-2">{record.leaveCode}</td>
-                    <td className="p-2">{record.leaveRemarks || "N/A"}</td>
+                    <td className="p-2 text-left">{record.empName}</td>
+                    <td className="p-2 text-left">{record.department || "N/A"}</td>
+                    <td className="p-2 text-left">{dayjs(record.leaveStart).format("MM/DD/YYYY")}</td>
+                    <td className="p-2 text-left">{dayjs(record.leaveEnd).format("MM/DD/YYYY")}</td>
+                    <td className="p-2 text-right">{record.leaveDays}</td>
+                    <td className="p-2 text-right">{record.leaveHrs} HRS</td>
+                    <td className="p-2 text-center">{record.leaveCode}</td>
+                    <td className="p-2 text-left">{record.leaveRemarks || "N/A"}</td>
                     <td className={`p-2 font-bold ${record.leaveStatus === "Approved" ? "text-green-500" : "text-red-500"}`}>
                       {record.leaveStatus}
                     </td>
@@ -188,6 +197,7 @@ setPendingLeaves(pendingOnly);
               )}
             </tbody>
           </table>
+        </div>
         </div>
       </div>
 

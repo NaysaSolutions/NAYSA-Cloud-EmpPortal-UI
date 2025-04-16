@@ -1,98 +1,133 @@
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faBars, faXmark } from '@fortawesome/free-solid-svg-icons';
 import { faBell } from '@fortawesome/free-solid-svg-icons';
 import { useState } from "react";
+import { useAuth } from "./AuthContext"; // Import AuthContext
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Get the current route
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { user } = useAuth(); // Get user data from AuthContext
 
   // Function to toggle dropdown
-  const toggleDropdown = () => {
-    setIsDropdownOpen((prev) => !prev);
-  };
+  const toggleDropdown = () => setIsDropdownOpen(prev => !prev);
+  const toggleMobileMenu = () => setIsMobileMenuOpen(prev => !prev);
 
   // Function to check if a link is active
   const isActive = (path) => location.pathname === path;
+  const navItems = [
+    { path: "/dashboard", label: "Inquiry" },
+    { path: "/timekeeping", label: "Timekeeping" },
+
+// Only show this single link if not approver
+...(user.approver !== "1"
+  ? [{ path: "/overtime", label: "Overtime" }]
+  : [
+      {
+        label: "Overtime",
+        children: [
+          { path: "/overtime", label: "Overtime Application" },
+          { path: "/overtimeapproval", label: "Overtime for Approval" }
+        ]
+      }
+    ]
+),
+
+    // Only show this single link if not approver
+    ...(user.approver !== "1"
+      ? [{ path: "/leave", label: "Leave" }]
+      : [
+          {
+            label: "Leave",
+            children: [
+              { path: "/leave", label: "Leave Application" },
+              { path: "/leaveapproval", label: "Leave for Approval" }
+            ]
+          }
+        ]
+    ),
+  
+// Only show this single link if not approver
+...(user.approver !== "1"
+  ? [{ path: "/official-business", label: "Official Business" }]
+  : [
+      {
+        label: "Official Business",
+        children: [
+          { path: "/official-business", label: "Official Business Application" },
+          { path: "/official-business", label: "Official Business for Approval" }
+        ]
+      }
+    ]
+),
+
+  ];
+  
 
   return (
     <>
-      {/* Top Navbar */}
-      <div className="flex justify-center items-center bg-[#162e3a] text-white p-3 fixed top-0 left-0 w-full h-[30px] z-20">
+      {/* Top Blue Bar */}
+      <div className="flex justify-center items-center bg-blue-900 text-white p-3 fixed top-0 left-0 w-full h-[30px] z-30">
         <span className="font-bold text-lg">NAYSA SOLUTIONS INC.</span>
       </div>
 
       {/* Main Navbar */}
-      <div className="flex justify-between items-center bg-white shadow-md p-3 fixed top-[15px] mt-3 left-0 w-full z-10">
-        
-        {/* ✅ Clickable Logo & "Employee Portal" */}
-        <div 
-          className="flex items-center space-x-2 cursor-pointer" 
-          onClick={() => navigate("/dashboard")}
-        >
-          <img 
-            src="naysa_logo.png" 
-            className="w-[100px] h-[60px]" 
-            alt="Naysa Logo"
-          />
-          <span className="text-[#0e00cb] font-bold text-lg mt-3">Employee Portal</span>
+      <div className="flex justify-between items-center bg-white shadow-md p-3 fixed top-[15px] mt-3 left-0 w-full z-20">
+        {/* Logo + Portal */}
+        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
+          <img src="naysa_logo.png" className="w-[100px] h-[60px]" alt="Naysa Logo" />
+          <span className="text-blue-800 font-bold text-lg mt-3">Employee Portal</span>
         </div>
 
-        {/* Navigation Links */}
-        <div className="flex space-x-[45px] ml-[450px]">
-          <span 
-            onClick={() => navigate("/dashboard")} 
-            className={`cursor-pointer hover:font-bold ${
-              isActive("/dashboard") ? "text-blue-900 font-bold border-b-2 border-blue-900" : "text-blue-700"
-            }`}
-          >
-            Inquiry
-          </span>
-          <span 
-            onClick={() => navigate("/timekeeping")} 
-            className={`cursor-pointer hover:font-bold ${
-              isActive("/timekeeping") ? "text-blue-900 font-bold border-b-2 border-blue-900" : "text-blue-700"
-            }`}
-          >
-            Timekeeping
-          </span>
-          <span 
-            onClick={() => navigate("/overtime")} 
-            className={`cursor-pointer hover:font-bold ${
-              isActive("/overtime") ? "text-blue-900 font-bold border-b-2 border-blue-900" : "text-blue-700"
-            }`}
-          >
-            Overtime
-          </span>
-          <span 
-            onClick={() => navigate("/leave")} 
-            className={`cursor-pointer hover:font-bold ${
-              isActive("/leave") ? "text-blue-900 font-bold border-b-2 border-blue-900" : "text-blue-700"
-            }`}
-          >
-            Leave
-          </span>
-          <span 
-            onClick={() => navigate("/official-business")} 
-            className={`cursor-pointer hover:font-bold ${
-              isActive("/official-business") ? "text-blue-900 font-bold border-b-2 border-blue-900" : "text-blue-700"
-            }`}
-          >
-            Official Business
-          </span>
+        {/* Desktop Nav Links */}
+        <div className="hidden md:flex space-x-20">
+        {navItems.map((item, index) => (
+  <div key={index} className="relative group">
+    {item.children ? (
+      <>
+        <span className="cursor-pointer text-blue-800 hover:font-extrabold">
+          {item.label}
+        </span>
+        <div className="absolute hidden group-hover:block bg-white shadow-md rounded-md mt-0.5 z-20">
+          {item.children.map((child, idx) => (
+            <div
+              key={idx}
+              onClick={() => navigate(child.path)}
+              className={`whitespace-nowrap px-4 py-2 hover:bg-gray-100 cursor-pointer ${
+                isActive(child.path) ? "font-bold text-blue-900" : "text-gray-700"
+              }`}
+            >
+              {child.label}
+            </div>
+          ))}
+        </div>
+      </>
+    ) : (
+      <span
+        onClick={() => navigate(item.path)}
+        className={`cursor-pointer hover:font-extrabold ${
+          isActive(item.path) ? "text-blue-900 font-bold border-b-2 border-blue-900" : "text-blue-800"
+        }`}
+      >
+        {item.label}
+      </span>
+    )}
+  </div>
+))}
         </div>
 
-        {/* Header with Notification and Profile */}
-        <div className="flex justify-end mb-4 space-x-4 relative">
-          {/* Notification Bell
-          <div className="relative">
-            <FontAwesomeIcon
-              icon={faBell}
-              className="w-5 h-5 text-gray-500 bg-white p-2 rounded-lg shadow-md cursor-pointer"
-            />
-            <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-yellow-400 rounded-full border-2 border-white"></span>
-          </div> */}
+{/* Right Side Controls */}
+<div className="flex items-center space-x-4 relative">
+          {/* Hamburger Icon on Mobile */}
+          <button
+            onClick={toggleMobileMenu}
+            className="md:hidden p-2 text-gray-600 focus:outline-none"
+          >
+            <FontAwesomeIcon icon={isMobileMenuOpen ? faXmark : faBars} size="lg" />
+          </button>
 
           {/* Profile Picture */}
           <div
@@ -102,28 +137,67 @@ const Navbar = () => {
             <img src="3135715.png" alt="Profile" className="w-full h-full object-cover" />
           </div>
 
-          {/* Dropdown Menu */}
+          {/* Profile Dropdown */}
           {isDropdownOpen && (
-            <div className="absolute right-0 mt-10 w-48 bg-white rounded-lg shadow-md py-2 z-10">
-              <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
-                Account Management
-              </button>
-              <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
-                Settings
-              </button>
+            <div className="absolute right-0 mt-12 w-48 bg-white rounded-lg shadow-md py-2 z-30">
+              <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Account Management</button>
+              <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Settings</button>
               <button
-  className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
-  onClick={() => {
-    navigate("/"); // Redirect to login page
-  }}
->
-  Logout
-</button>
-
+                className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
+                onClick={() => navigate("/")}
+              >
+                Logout
+              </button>
             </div>
           )}
         </div>
       </div>
+
+
+      {/* Mobile Navigation Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed top-[100px] left-0 w-full bg-white shadow-md z-10 py-4 px-6">
+          <div className="flex flex-col space-y-4">
+          {navItems.map((item, index) => (
+  <div key={index}>
+    {item.children ? (
+      <div className="mb-2">
+        <p className="font-semibold text-blue-800">{item.label}</p>
+        <div className="ml-4">
+          {item.children.map((child, idx) => (
+            <span
+              key={idx}
+              onClick={() => {
+                navigate(child.path);
+                setIsMobileMenuOpen(false);
+              }}
+              className={`block py-1 cursor-pointer ${
+                isActive(child.path) ? "text-blue-900 font-bold" : "text-gray-700"
+              }`}
+            >
+              {child.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    ) : (
+      <span
+        onClick={() => {
+          navigate(item.path);
+          setIsMobileMenuOpen(false);
+        }}
+        className={`cursor-pointer text-md hover:font-semibold ${
+          isActive(item.path) ? "text-blue-900 font-bold border-l-4 pl-2 border-blue-900" : "text-gray-700"
+        }`}
+      >
+        {item.label}
+      </span>
+    )}
+  </div>
+))}
+          </div>
+        </div>
+      )}
     </>
   );
 };

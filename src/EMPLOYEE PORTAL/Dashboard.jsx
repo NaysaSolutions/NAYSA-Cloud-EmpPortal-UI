@@ -5,7 +5,9 @@ import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext"; // Import AuthContext
 import { useNavigate } from "react-router-dom";
 import LeaveCreditModal from "./LeaveCreditModal";
-import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+// import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+// import API_ENDPOINTS from "/NAYSA-Solutions Inc/Programming/NAYSA Employee Portal Cloud/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+import API_ENDPOINTS from "@/apiConfig.jsx";
 
 dayjs.extend(advancedFormat);
 
@@ -233,33 +235,38 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="ml-[260px] mt-[110px] p-4 bg-gray-100 min-h-screen">
+    // <div className="ml-[260px] mt-[110px] p-4 bg-gray-100 min-h-screen">
+      <div className="mt-[110px] p-4 bg-gray-100 min-h-screen ml-0 md:ml-[260px]">
+
 
       {/* Header */}
-<div className="flex justify-between items-start w-full max-w-[2000px] mx-auto px-4">
-  <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex flex-wrap justify-between items-center mb-4 w-full shadow-lg">
-    <div>
-      <p className="text-md font-light mb-1 text-[#424554]">
+      <div className="flex justify-center sm:justify-between items-start w-full max-w-[2000px] mx-auto px-4">
+  {/* <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex flex-wrap justify-between items-center mb-4 w-full shadow-lg"> */}
+  <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex flex-col sm:flex-row sm:flex-wrap justify-center sm:justify-between items-center gap-4 mb-4 w-full shadow-lg">
+
+  {/* Date Section */}
+  <div className="text-center sm:text-left">
+      <p className="text-sm sm:text-lg font-light text-[#424554]">
         <span className="kanit-text">Today</span>
       </p>
-      <h1 className="text-4xl font-extrabold text-[#495057]">
+      <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-[#495057]">
         {currentDate.format("MMMM DD, YYYY")}
       </h1>
     </div>
 
-    {/* Entry Time and Break Time Count */}
-    <div className="flex flex-wrap sm:flex-col lg:flex-row sm:gap-2 lg:gap-10">
-      <div>
-        <p className="text-sm font-medium">Philippine Standard Time:</p>
-        <p className="text-4xl font-bold">{time || "00:00 PM"}</p>
-      </div>
-      <div>
-        <p className="text-sm font-medium">Break Time Count:</p>
-        <p className="text-4xl font-bold">
-          {formatTime(breakTime)}
-        </p>
-      </div>
-    </div>
+{/* Entry Time and Break Time Count */}
+<div className="flex flex-col sm:flex-row gap-4 sm:gap-10 items-center sm:items-start text-center sm:text-left">
+  <div>
+    <p className="text-sm font-extrabold text-[#424554] mb-2">Philippine Standard Time:</p>
+    <p className="text-xl sm:text-4xl font-bold">{time || "00:00 PM"}</p>
+  </div>
+  <div>
+    <p className="text-sm font-extrabold text-[#424554] mb-2">Break Time Count:</p>
+    <p className="text-xl sm:text-4xl font-bold">
+      {formatTime(breakTime)}
+    </p>
+  </div>
+</div>
   </div>
 </div>
 
@@ -267,7 +274,7 @@ const Dashboard = () => {
 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
   {/* Daily Time Record Section */}
 <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full relative">
-  <h2 className="text-lg font-semibold uppercase">Daily Time Record</h2>
+  <h2 className="text-lg font-semibold mb-4 text-blue-800">Daily Time Record</h2>
   <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
 
   {/* Table Structure */}
@@ -309,7 +316,7 @@ const Dashboard = () => {
 
   {/* Leave Credit Section */}
   <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full">
-    <h2 className="text-lg font-semibold uppercase">Leave Credit</h2>
+    <h2 className="text-lg font-semibold mb-4 text-blue-800">Leave Credit</h2>
     <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
 
     {/* Table Structure */}
@@ -356,26 +363,26 @@ const Dashboard = () => {
   </div>
 
   {/* Personal Calendar */}
-<div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full">
-  <h2 className="text-lg font-semibold mb-4 text-center uppercase">Personal Calendar</h2>
-
+<div className="bg-white p-3 sm:p-6 rounded-lg shadow-lg w-full">
+  <h2 className="text-md sm:text-lg font-semibold mb-4 text-blue-800 text-center">Personal Calendar</h2>
+  
   {/* Navigation */}
   <div className="flex justify-between items-center mb-2">
     <button onClick={handlePrevMonth} className="text-gray-400">◀</button>
-    <h3 className="text-lg font-semibold">{currentMonth.format("MMMM YYYY")}</h3>
+    <h3 className="text-md sm:text-lg font-semibold">{currentMonth.format("MMMM YYYY")}</h3>
     <button onClick={handleNextMonth} className="text-gray-600">▶</button>
   </div>
 
   {/* Weekday Headers */}
-  <div className="grid grid-cols-7 grid-rows-6 gap-1 text-center min-h-[300px]">
+  <div className="grid grid-cols-7 grid-rows-6 gap-0.5 sm:gap-1 text-center min-h-[300px]">
     {generateCalendar().map((item, index) => (
       <div
-        key={index}
-        className={`p-2 rounded-full h-[40px] flex items-center justify-center
-          ${item.currentMonth ? "text-black" : "text-gray-400"}
-          ${item.isApprovedLeave ? "bg-blue-500 text-white font-bold" : ""}
-          ${item.isPendingLeave ? "bg-yellow-500 text-white font-bold" : ""}
-          `}
+      key={index}
+      className={`text-sm sm:text-base p-1 sm:p-2 rounded-full h-[32px] sm:h-[40px] flex items-center justify-center
+        ${item.currentMonth ? "text-black" : "text-gray-400"}
+        ${item.isApprovedLeave ? "bg-blue-500 text-white font-bold" : ""}
+        ${item.isPendingLeave ? "bg-yellow-500 text-white font-bold" : ""}
+      `}
       >
         {item.day}
       </div>
@@ -383,7 +390,7 @@ const Dashboard = () => {
   </div>
 
   {/* Calendar Legend */}
-  <div className="flex justify-between text-sm mt-2">
+  <div className="flex justify-between text-sm sm:text-lg mt-2">
     <div className="flex items-center"><span className="w-2 h-2 bg-red-500 inline-block mr-1"></span> Holiday</div>
     <div className="flex items-center"><span className="w-2 h-2 bg-blue-500 inline-block mr-1"></span> Approved Leave</div>
     <div className="flex items-center"><span className="w-2 h-2 bg-yellow-500 inline-block mr-1"></span> Pending Leave</div>
@@ -395,13 +402,13 @@ const Dashboard = () => {
       <hr className="mt-6 mb-6" />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 min-h-screen">
   {/* Overtime Applications */}
-  <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow relative">
-    <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Overtime Applications</h2>
+  <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+    <h2 className="text-lg font-semibold mb-4 text-blue-800">My Overtime Applications</h2>
 
     {/* Responsive Table */}
     <div className="overflow-x-auto flex-grow">
       <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="bg-gray-200 text-gray-700 text-xs sm:text-sm">
+        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
           <tr>
             <th className="py-3 px-3 text-left">OT Date</th>
             <th className="py-3 px-3 text-left">OT Type</th>
@@ -453,12 +460,12 @@ const Dashboard = () => {
   </div>
 
   <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow relative">
-  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Leave Applications</h2>
+  <h2 className="text-lg font-semibold mb-4 text-blue-800">My Leave Applications</h2>
 
   {/* Responsive Table */}
   <div className="overflow-x-auto flex-grow">
-    <table className="min-w-full border border-gray-200 rounded-lg">
-      <thead className="bg-gray-200 text-gray-700 text-xs sm:text-sm">
+      <table className="min-w-full border border-gray-200 rounded-lg">
+        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
         <tr>
           <th className="py-3 px-3 text-left">Leave Date</th>
           <th className="py-3 px-3 text-left">Leave Type</th>
@@ -512,12 +519,12 @@ const Dashboard = () => {
 
       {/* Official Business Applications */}
 <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex flex-col flex-grow">
-  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Official Business Applications</h2>
+  <h2 className="text-lg font-semibold mb-4 text-blue-800">My Official Business Applications</h2>
 
   {/* Responsive Table Container */}
   <div className="overflow-x-auto flex-grow">
-    <table className="min-w-full table-auto border border-gray-200 rounded-lg">
-      <thead className="bg-gray-200 text-gray-700 text-sm">
+      <table className="min-w-full border border-gray-200 rounded-lg">
+        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
         <tr>
           <th className="py-3 px-3 text-left">OB Date</th>
           <th className="py-3 px-3 text-center">Start Datetime</th>
@@ -535,7 +542,7 @@ const Dashboard = () => {
               <td className="py-2 px-2 text-center">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm A")}</td>
               <td className="py-2 px-2 text-center">{ob.duration}</td>
               <td className="py-2 px-2 text-center">
-                <span className={`inline-block w-[100px] px-2 py-1 rounded-full text-sm font-medium
+                <span className={`inline-block w-[100px] px-2 py-1 rounded-full text-xs sm:text-sm font-medium
                   ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                     ob.obstatus === "Approved" ? "bg-green-100 text-green-600" : 
                     "bg-red-100 text-red-600"}`}>
@@ -572,12 +579,12 @@ const Dashboard = () => {
 
 {/* Loan Balance Inquiry */}
 <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex flex-col flex-grow">
-  <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">My Loan Balance</h2>
+  <h2 className="text-lg font-semibold mb-4 text-blue-800">My Loan Balance</h2>
 
   {/* Responsive Table */}
   <div className="overflow-x-auto flex-grow">
-    <table className="min-w-full table-auto border border-gray-200 rounded-lg">
-      <thead className="bg-gray-200 text-gray-700 text-sm">
+      <table className="min-w-full border border-gray-200 rounded-lg">
+        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
         <tr>
           <th className="py-3 px-3 text-left">Loan Type</th>
           <th className="py-3 px-3 text-right">Loan Amount</th>
@@ -634,19 +641,19 @@ const Dashboard = () => {
   <>
     {/* Overtime Approval */}
     <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
-      <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">Overtime for Approval</h2>
+      <h2 className="text-lg font-semibold mb-4 text-blue-800">Overtime for Approval</h2>
       <div className="overflow-x-auto flex-grow">
-        <table className="min-w-full border border-gray-200 rounded-lg">
-          <thead className="bg-gray-200 text-gray-700 text-sm propercase">
+      <table className="min-w-full border border-gray-200 rounded-lg">
+        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
             <tr>
-              <th className="py-3 px-4 text-left">OT Date</th>
-              <th className="py-3 px-4 text-left">OT Type</th>
-              <th className="py-3 px-4 text-left">Duration</th>
-              <th className="py-3 px-4 text-left">Employee Name</th>
-              <th className="py-3 px-4 text-center">Status</th>
+              <th className="py-2 px-2 text-left">OT Date</th>
+              <th className="py-2 px-2 text-left">OT Type</th>
+              <th className="py-2 px-2 text-left">Duration (hrs)</th>
+              <th className="py-2 px-2 text-left">Employee Name</th>
+              <th className="py-2 px-2 text-center">Status</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700 text-sm h-full">
+          <tbody className="text-gray-700 text-xs sm:text-sm h-full">
             {otApproval.length > 0 ? (
               otApproval.slice(0, 5).map((ot, index) => (
                 <tr key={index} className="border-b hover:bg-gray-50">
@@ -655,7 +662,7 @@ const Dashboard = () => {
                   <td className="py-2 px-2">{ot.duration}</td>
                   <td className="py-2 px-2">{ot.empname}</td>
                   <td className="py-2 px-2">
-                    <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-sm font-medium
+                    <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium
                       ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                       ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
                       "bg-red-100 text-red-600"}`}>
@@ -691,19 +698,19 @@ const Dashboard = () => {
 
     {/* Leave Approval */}
     <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
-      <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">Leave for Approval</h2>
+      <h2 className="text-lg font-semibold mb-4 text-blue-800">Leave for Approval</h2>
       <div className="overflow-x-auto flex-grow">
-        <table className="min-w-full border border-gray-200 rounded-lg">
-          <thead className="bg-gray-200 text-gray-700 text-sm propercase">
+      <table className="min-w-full border border-gray-200 rounded-lg">
+        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
             <tr>
-              <th className="py-3 px-3 text-left">Leave Date</th>
-              <th className="py-3 px-3 text-left">Leave Type</th>
-              <th className="py-3 px-3 text-left">Duration</th>
-              <th className="py-3 px-3 text-left">Employee</th>
-              <th className="py-3 px-3 text-left">Status</th>
+              <th className="py-2 px-2 text-left">Leave Date</th>
+              <th className="py-2 px-2 text-left">Leave Type</th>
+              <th className="py-2 px-2 text-left">Duration (days)</th>
+              <th className="py-2 px-2 text-left">Employee</th>
+              <th className="py-2 px-2 text-left">Status</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700 text-sm h-full">
+          <tbody className="text-gray-700 text-xs sm:text-sm h-full">
             {leaveApproval.length > 0 ? (
               leaveApproval.slice(0, 5).map((leave, index) => (
                 <tr key={index} className="border-b hover:bg-gray-50">
@@ -712,7 +719,7 @@ const Dashboard = () => {
                   <td className="py-2 px-2">{leave.duration}</td>
                   <td className="py-2 px-2">{leave.empname}</td>
                   <td className="py-2 px-2">
-                    <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-sm font-medium
+                    <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium
                       ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                       leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
                       "bg-red-100 text-red-600"}`}>
@@ -748,10 +755,10 @@ const Dashboard = () => {
 
     {/* Official Business Approval */}
     <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
-      <h2 className="text-lg font-semibold mb-4 text-gray-800 uppercase">Official Business for Approval</h2>
+      <h2 className="text-lg font-semibold mb-4 text-blue-800">Official Business for Approval</h2>
       <div className="overflow-x-auto flex-grow">      
-        <table className="min-w-full border border-gray-200 rounded-lg">
-          <thead className="bg-gray-200 text-gray-700 text-sm propercase">
+      <table className="min-w-full border border-gray-200 rounded-lg">
+        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
             <tr>
               <th className="py-3 px-3">OB Date</th>
               <th className="py-3 px-3">Start Datetime</th>
@@ -771,7 +778,7 @@ const Dashboard = () => {
                   <td className="py-3 px-3 text-right">{ob.duration}</td>
                   <td className="py-3 px-3">{ob.empname}</td>
                   <td className="py-3 px-3">
-                    <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-sm font-medium
+                    <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium
                       ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                         ob.obstatus === "Approved" ? "bg-green-100 text-green-600" : 
                       "bg-red-100 text-red-600"}`}>

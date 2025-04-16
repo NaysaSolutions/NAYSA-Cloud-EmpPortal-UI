@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext";
-import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+import API_ENDPOINTS from "@/apiConfig.jsx";
 
 const Leave = () => {
   const { user } = useAuth();
@@ -13,8 +13,8 @@ const Leave = () => {
   const [applicationDate, setApplicationDate] = useState("");
   const [selectedStartDate, setSelectedStartDate] = useState("");
   const [selectedEndDate, setSelectedEndDate] = useState("");
-  const [leaveHours, setLeaveHours] = useState("");
-  const [leaveDays, setLeaveDays] = useState("");
+  const [leaveHours, setLeaveHours] = useState("8");
+  const [leaveDays, setLeaveDays] = useState("1");
   const [leaveType, setLeaveType] = useState("");
   const [remarks, setRemarks] = useState("");
 
@@ -25,6 +25,7 @@ const Leave = () => {
     leaveDays: "",
     leaveCode: "",
     leaveRemarks: "",
+    ApprRemarks: "",
     leaveStatus: "",
   });
 
@@ -71,7 +72,7 @@ const Leave = () => {
     };
   
     // Initial fetch
-    fetchLeaveApplications();
+    fetchLeaveApplications(); 
   
     // Set up auto-refresh every 10 seconds
     const interval = setInterval(() => {
@@ -266,40 +267,45 @@ const Leave = () => {
 
 
   return (
-    <div className="ml-[260px] mt-[110px] p-6 bg-gray-100 min-h-screen">
-      <div className="max-w-[1150px] mx-auto">
+      
+      <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen">
+
+      <div className="mx-auto">
+        
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
-          <h1 className="text-3xl font-semibold">My Leave Applications</h1>
+        <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 sm:p-6 rounded-lg text-white shadow-lg">
+          <h1 className="text-lg sm:text-2xl font-semibold">My Leave Applications</h1>
         </div>
 
         {/* Leave Details Section */}
-        <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-          <div className="grid grid-cols-3 gap-6">
-          <div>
-      <span className="block font-semibold mb-1 propercase">Date</span>
-      <input
-        type="date"
-        className="w-full p-2 border rounded"
-        value={applicationDate}
-        onChange={(e) => setApplicationDate(e.target.value)}
-      />
-    </div>
+        <div className="mt-6 bg-white p-4 sm:p-6 shadow-md rounded-lg">
+          
+          {/* <div className="grid grid-cols-3 gap-6"> */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="flex flex-col">
+            <span className="block font-semibold mb-1 propercase">Date</span>
+            <input
+              type="date"
+              className="w-full p-2 border rounded"
+              value={applicationDate}
+              onChange={(e) => setApplicationDate(e.target.value)}
+            />
+          </div>
 
-<div>
-  <span className="block font-semibold mb-1 propercase">Start Date</span>
-  <input 
-  type="date" 
-  className="w-full p-2 border rounded" 
-  value={selectedStartDate} 
-  min={applicationDate}
-  // onChange={(e) => setSelectedStartDate(e.target.value)} 
-  onChange={(e) => handleDateChange("start", e.target.value)}
-/>
-</div>
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1">Start Date</span>
+            <input 
+              type="date" 
+              className="w-full p-2 border rounded" 
+              value={selectedStartDate} 
+              min={applicationDate}
+              // onChange={(e) => setSelectedStartDate(e.target.value)} 
+              onChange={(e) => handleDateChange("start", e.target.value)}
+            />
+            </div>
 
-<div>
-  <span className="block font-semibold mb-1 propercase">End Date</span>
+<div className="flex flex-col">
+  <span className="block font-semibold mb-1">End Date</span>
   <input 
   type="date" 
   className="w-full p-2 border rounded" 
@@ -311,7 +317,7 @@ const Leave = () => {
 </div>
 
 
-            <div>
+<div className="flex flex-col">
               <span className="block font-semibold mb-1 propercase">Application Type</span>
               <select
   className="w-full p-2 border rounded"
@@ -324,10 +330,11 @@ const Leave = () => {
   <option value="EL">Emergency Leave</option>
   <option value="BL">Birthday Leave</option>
   <option value="ML">Maternity Leave</option>
+  <option value="SIL">Service Incentive Leave</option>
 </select>
             </div>
 
-            <div>
+            <div className="flex flex-col">
               <span className="block font-semibold mb-1 propercase">Number of Days</span>
               <input 
   type="number" 
@@ -336,13 +343,14 @@ const Leave = () => {
   min="0" 
   step="1"
   placeholder="Enter Leave Days"
+  defaultValue="1"
   // onChange={(e) => setLeaveDays(e.target.value)} 
   onChange={handleDaysChange}
 />
             </div>
 
-            <div>
-              <span className="block font-semibold mb-1 propercase">Number of Hours</span>
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1">Number of Hours</span>
               <input 
   type="number" 
   className="w-full p-2 border rounded" 
@@ -356,11 +364,12 @@ const Leave = () => {
 />
             </div>
 
-          </div>
+            </div>
 
           {/* Remarks Section */}
-          <div className="mt-6">
-            <span className="block font-semibold mb-1 propercase">Remarks</span>
+          {/* <div className="mt-6"> */}
+          <div className="flex flex-col mt-4">
+            <span className="block font-semibold mb-1">Remarks</span>
             <textarea
               onChange={(e) => setRemarks(e.target.value)}
               rows="4"
@@ -372,22 +381,25 @@ const Leave = () => {
           </div>
 
           {/* Submit Button */}
-          <div className="mt-6 flex justify-end">
-            <button className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+          <div className="mt-6 flex justify-center">
+            {/* <button className="bg-blue-700 text-white px-6 py-2 rounded hover:bg-blue-700" */}
+            <button className="bg-blue-700 text-white px-6 py-3 rounded-md text-md sm:text-lg hover:bg-blue-700 w-full sm:w-auto mx-auto"
             onClick={handleSubmit}>
-              SUBMIT
+              Submit to Approver
             </button>
           </div>
         </div>
 
         {/* Leave History Table */}
-        <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-          <h2 className="text-lg font-semibold mb-4 uppercase">History</h2>
+        <div className="mt-6 bg-white p-4 sm:p-6 shadow-md rounded-lg">
+          <h2 className="text-lg font-semibold mb-4">History</h2>
 
           {error && <p className="text-red-500 text-center">{error}</p>}
 
           <div className="overflow-x-auto">
-            <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
+            {/* <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">   */}
+              <table className="min-w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
+  
               <thead className="text-gray-700 propercase bg-gray-100">
                 <tr>
                   {[
@@ -396,7 +408,7 @@ const Leave = () => {
                     { key: "leaveDays", label: "Duration" },
                     { key: "leaveCode", label: "Leave Type" },
                     { key: "leaveRemarks", label: "Remarks" },
-                    { key: "ApprRemarks", label: "ApprRemarks" },
+                    { key: "ApprRemarks", label: "Approver's Remarks" },
                     { key: "leaveStatus", label: "Status" },
                   ].map(({ key, label }) => (
                     <th
@@ -459,7 +471,8 @@ const Leave = () => {
           </div>
 
            {/* Pagination */}
-<div className="flex justify-between items-center mt-4 border-t pt-4">
+{/* <div className="flex justify-between items-center mt-4 border-t pt-4"> */}
+<div className="flex flex-wrap justify-between items-center mt-4 border-t pt-4">
   {/* Left: Showing Text */}
   <div className="text-sm text-gray-600">
     Showing <b>{indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries
@@ -482,7 +495,7 @@ const Leave = () => {
         key={i}
         onClick={() => setCurrentPage(i + 1)}
         className={`px-3 py-1 border-r ${
-          currentPage === i + 1 ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-200"
+          currentPage === i + 1 ? "bg-blue-700 text-white" : "text-gray-700 hover:bg-gray-200"
         }`}
       >
         {i + 1}
