@@ -5,9 +5,8 @@ import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext"; // Import AuthContext
 import { useNavigate } from "react-router-dom";
 import LeaveCreditModal from "./LeaveCreditModal";
-// import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
-// import API_ENDPOINTS from "/NAYSA-Solutions Inc/Programming/NAYSA Employee Portal Cloud/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 import API_ENDPOINTS from "@/apiConfig.jsx";
+import '@/index.css';
 
 dayjs.extend(advancedFormat);
 
@@ -236,7 +235,7 @@ const Dashboard = () => {
 
   return (
     // <div className="ml-[260px] mt-[110px] p-4 bg-gray-100 min-h-screen">
-      <div className="mt-[110px] p-4 bg-gray-100 min-h-screen ml-0 md:ml-[260px]">
+      <div className="mt-[110px] p-4 bg-gray-100 min-h-screen ml-0 lg:ml-[260px]">
 
 
       {/* Header */}
@@ -246,10 +245,10 @@ const Dashboard = () => {
 
   {/* Date Section */}
   <div className="text-center sm:text-left">
-      <p className="text-sm sm:text-lg font-light text-[#424554]">
+      <p className="text-sm sm:text-lg font-light text-black">
         <span className="kanit-text">Today</span>
       </p>
-      <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-[#495057]">
+      <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-black">
         {currentDate.format("MMMM DD, YYYY")}
       </h1>
     </div>
@@ -257,11 +256,11 @@ const Dashboard = () => {
 {/* Entry Time and Break Time Count */}
 <div className="flex flex-col sm:flex-row gap-4 sm:gap-10 items-center sm:items-start text-center sm:text-left">
   <div>
-    <p className="text-sm font-extrabold text-[#424554] mb-2">Philippine Standard Time:</p>
+    <p className="text-sm font-extrabold text-black mb-2">Philippine Standard Time:</p>
     <p className="text-xl sm:text-4xl font-bold">{time || "00:00 PM"}</p>
   </div>
   <div>
-    <p className="text-sm font-extrabold text-[#424554] mb-2">Break Time Count:</p>
+    <p className="text-sm font-extrabold text-black mb-2">Break Time Count:</p>
     <p className="text-xl sm:text-4xl font-bold">
       {formatTime(breakTime)}
     </p>
@@ -271,7 +270,7 @@ const Dashboard = () => {
 </div>
 
       {/* Main Content */}
-<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 p-2">
   {/* Daily Time Record Section */}
 <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full relative">
   <h2 className="text-lg font-semibold mb-4 text-blue-800">Daily Time Record</h2>
@@ -280,8 +279,8 @@ const Dashboard = () => {
   {/* Table Structure */}
   <div className="mt-4 overflow-x-auto">
     <table className="w-full border-collapse">
-      <thead>
-        <tr className="bg-gray-200 text-gray-700 text-sm">
+      <thead classname ="dashboard-thead">
+        <tr className="dashboard-thead">
           <th className="p-2 text-left">Date</th>
           <th className="p-2 text-center">Time In</th>
           <th className="p-2 text-center">Time Out</th>
@@ -322,8 +321,8 @@ const Dashboard = () => {
     {/* Table Structure */}
     <div className="mt-4 overflow-x-auto">
       <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-gray-200 text-gray-700 text-sm">
+      <thead classname ="dashboard-thead">
+          <tr className="dashboard-thead">
             <th className="p-2 text-left">Leave Type</th>
             <th className="p-2 text-center">Credit</th>
             <th className="p-2 text-center">Used</th>
@@ -399,8 +398,8 @@ const Dashboard = () => {
 </div>
 
 
-      <hr className="mt-6 mb-6" />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 min-h-screen">
+      <hr className="mt-2 mb-2" />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-2 min-h-screen">
   {/* Overtime Applications */}
   <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
     <h2 className="text-lg font-semibold mb-4 text-blue-800">My Overtime Applications</h2>
@@ -408,23 +407,24 @@ const Dashboard = () => {
     {/* Responsive Table */}
     <div className="overflow-x-auto flex-grow">
       <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
-          <tr>
-            <th className="py-3 px-3 text-left">OT Date</th>
-            <th className="py-3 px-3 text-left">OT Type</th>
-            <th className="py-3 px-3 text-left">Duration</th>
-            <th className="py-3 px-3 text-left">Status</th>
+        {/* <thead className="bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-xs md:text-xs lg:text-base"> */}
+        <thead className="dashboard-thead">
+        <tr>
+            <th className="py-2 px-2 text-left">OT Date</th>
+            <th className="py-2 px-2 text-left">OT Type</th>
+            <th className="py-2 px-2 text-left">Duration</th>
+            <th className="py-2 px-2 text-center">Status</th>
           </tr>
         </thead>
-        <tbody className="text-gray-700 text-xs sm:text-sm">
+        <tbody className="text-gray-700 text-xs sm:text-xs md:text-xs lg:text-base h-full">
           {otApplication.length > 0 ? (
             otApplication.slice(0, 5).map((ot, index) => (
               <tr key={index} className="border-b hover:bg-gray-50">
-                <td className="py-3 px-3">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
-                <td className="py-3 px-3">{ot.ottype}</td>
-                <td className="py-3 px-3">{ot.duration}</td>
-                <td className="py-3 px-3">
-                  <span className={`inline-block w-[90px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium
+                <td className="py-2 px-2">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
+                <td className="py-2 px-2">{ot.ottype}</td>
+                <td className="py-2 px-2">{ot.duration}</td>
+                <td className="py-2 px-2 text-center">
+                  <span className={`inline-block w-[90px] px-2 py-1 rounded-full 
                     ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                       ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
                       "bg-red-100 text-red-600"}`}>
@@ -436,7 +436,7 @@ const Dashboard = () => {
           ) : (
             <tr>
               <td colSpan="4">
-                <div className="h-[300px] flex justify-center items-center text-gray-500 text-xs sm:text-sm">
+                <div className="dashboard-div-norecords">
                   No overtime applications found.
                 </div>
               </td>
@@ -450,7 +450,7 @@ const Dashboard = () => {
     {otApplication.length > 0 && (
       <div className="relative md:static flex justify-end">
       <button 
-        onClick={() => navigate("/leave")} 
+        onClick={() => navigate("/overtime")} 
         className="fixed bottom-4 right-4 md:static text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex items-center md:mt-4 bg-white shadow-md md:shadow-none px-3 py-2 rounded-full md:rounded-none"
       >
         View All <span className="ml-1">→</span>
@@ -459,18 +459,18 @@ const Dashboard = () => {
     )}
   </div>
 
-  <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow relative">
-  <h2 className="text-lg font-semibold mb-4 text-blue-800">My Leave Applications</h2>
+  <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+    <h2 className="text-lg font-semibold mb-4 text-blue-800">My Leave Applications</h2>
 
   {/* Responsive Table */}
-  <div className="overflow-x-auto flex-grow">
+    <div className="overflow-x-auto flex-grow">
       <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
+        <thead className="dashboard-thead">
         <tr>
-          <th className="py-3 px-3 text-left">Leave Date</th>
-          <th className="py-3 px-3 text-left">Leave Type</th>
-          <th className="py-3 px-3 text-left">Duration</th>
-          <th className="py-3 px-3 text-left">Status</th>
+          <th className="py-2 px-2 text-left">Leave Date</th>
+          <th className="py-2 px-2 text-left">Leave Type</th>
+          <th className="py-2 px-2 text-left">Duration</th>
+          <th className="py-2 px-2 text-left">Status</th>
         </tr>
       </thead>
       <tbody className="text-gray-700 text-xs sm:text-sm">
@@ -493,7 +493,7 @@ const Dashboard = () => {
         ) : (
           <tr>
             <td colSpan="4">
-              <div className="h-[300px] flex justify-center items-center text-gray-500 text-xs sm:text-sm">
+              <div className="dashboard-div-norecords">
                 No leave applications found.
               </div>
             </td>
@@ -518,19 +518,19 @@ const Dashboard = () => {
 </div>
 
       {/* Official Business Applications */}
-<div className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex flex-col flex-grow">
-  <h2 className="text-lg font-semibold mb-4 text-blue-800">My Official Business Applications</h2>
+      <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+      <h2 className="text-lg font-semibold mb-4 text-blue-800">My Official Business Applications</h2>
 
   {/* Responsive Table Container */}
   <div className="overflow-x-auto flex-grow">
       <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
+        <thead className="dashboard-thead">
         <tr>
-          <th className="py-3 px-3 text-left">OB Date</th>
-          <th className="py-3 px-3 text-center">Start Datetime</th>
-          <th className="py-3 px-3 text-center">End Datetime</th>
-          <th className="py-3 px-3 text-center">Duration</th>
-          <th className="py-3 px-3 text-center">Status</th>
+          <th className="py-2 px-2 text-left">OB Date</th>
+          <th className="py-2 px-2 text-center">Start Datetime</th>
+          <th className="py-2 px-2 text-center">End Datetime</th>
+          <th className="py-2 px-2 text-center">Duration</th>
+          <th className="py-2 px-2 text-center">Status</th>
         </tr>
       </thead>
       <tbody className="text-gray-700 text-sm">
@@ -554,7 +554,7 @@ const Dashboard = () => {
         ) : (
           <tr>
             <td colSpan="5">
-              <div className="h-40 sm:h-64 flex justify-center items-center text-gray-500">
+              <div className="dashboard-div-norecords">
                 No official business applications found.
               </div>
             </td>
@@ -578,18 +578,18 @@ const Dashboard = () => {
 </div>
 
 {/* Loan Balance Inquiry */}
-<div className="bg-white p-4 sm:p-6 rounded-lg shadow-md flex flex-col flex-grow">
-  <h2 className="text-lg font-semibold mb-4 text-blue-800">My Loan Balance</h2>
+<div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+    <h2 className="text-lg font-semibold mb-4 text-blue-800">My Loan Balance</h2>
 
   {/* Responsive Table */}
   <div className="overflow-x-auto flex-grow">
       <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
+        <thead className="dashboard-thead">
         <tr>
-          <th className="py-3 px-3 text-left">Loan Type</th>
-          <th className="py-3 px-3 text-right">Loan Amount</th>
-          <th className="py-3 px-3 text-right">Balance</th>
-          <th className="py-3 px-3 text-right">Total Paid</th>
+          <th className="py-2 px-2 text-left">Loan Type</th>
+          <th className="py-2 px-2 text-right">Loan Amount</th>
+          <th className="py-2 px-2 text-right">Balance</th>
+          <th className="py-2 px-2 text-right">Total Paid</th>
         </tr>
       </thead>
       <tbody className="text-gray-700 text-sm">
@@ -611,7 +611,7 @@ const Dashboard = () => {
         ) : (
           <tr>
             <td colSpan="4">
-              <div className="h-40 sm:h-64 flex justify-center items-center text-gray-500">
+              <div className="dashboard-div-norecords">
                 No loan balances found.
               </div>
             </td>
@@ -640,11 +640,11 @@ const Dashboard = () => {
 {user.approver === "1" && (
   <>
     {/* Overtime Approval */}
-    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
-      <h2 className="text-lg font-semibold mb-4 text-blue-800">Overtime for Approval</h2>
+    <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+    <h2 className="text-lg font-semibold mb-4 text-blue-800">Overtime for Approval</h2>
       <div className="overflow-x-auto flex-grow">
       <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
+        <thead className="dashboard-thead">
             <tr>
               <th className="py-2 px-2 text-left">OT Date</th>
               <th className="py-2 px-2 text-left">OT Type</th>
@@ -674,7 +674,7 @@ const Dashboard = () => {
             ) : (
               <tr className="h-full">
                 <td colSpan="6">
-                  <div className="h-[400px] flex justify-center items-center text-gray-500">
+                  <div className="dashboard-div-norecords">
                     No overtime approvals found.
                   </div>
                 </td>
@@ -697,11 +697,11 @@ const Dashboard = () => {
     </div>
 
     {/* Leave Approval */}
-    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
-      <h2 className="text-lg font-semibold mb-4 text-blue-800">Leave for Approval</h2>
+    <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+    <h2 className="text-lg font-semibold mb-4 text-blue-800">Leave for Approval</h2>
       <div className="overflow-x-auto flex-grow">
       <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
+        <thead className="dashboard-thead">
             <tr>
               <th className="py-2 px-2 text-left">Leave Date</th>
               <th className="py-2 px-2 text-left">Leave Type</th>
@@ -731,7 +731,7 @@ const Dashboard = () => {
             ) : (
               <tr className="h-full">
                 <td colSpan="6">
-                  <div className="h-[400px] flex justify-center items-center text-gray-500">
+                  <div className="dashboard-div-norecords">
                     No leave approvals found.
                   </div>
                 </td>
@@ -754,30 +754,30 @@ const Dashboard = () => {
     </div>
 
     {/* Official Business Approval */}
-    <div className="bg-white p-6 rounded-lg shadow-md flex flex-col flex-grow">
-      <h2 className="text-lg font-semibold mb-4 text-blue-800">Official Business for Approval</h2>
+    <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+    <h2 className="text-lg font-semibold mb-4 text-blue-800">Official Business for Approval</h2>
       <div className="overflow-x-auto flex-grow">      
       <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="bg-blue-300 text-black text-xs sm:text-sm">
+        <thead className="dashboard-thead">
             <tr>
-              <th className="py-3 px-3">OB Date</th>
-              <th className="py-3 px-3">Start Datetime</th>
-              <th className="py-3 px-3">End Datetime</th>
-              <th className="py-3 px-3">Duration</th>
-              <th className="py-3 px-3">Employee</th>
-              <th className="py-3 px-3">Status</th>
+              <th className="py-2 px-2">OB Date</th>
+              <th className="py-2 px-2">Start Datetime</th>
+              <th className="py-2 px-2">End Datetime</th>
+              <th className="py-2 px-2">Duration</th>
+              <th className="py-2 px-2">Employee</th>
+              <th className="py-2 px-2">Status</th>
             </tr>
           </thead>        
           <tbody className="text-gray-700 text-sm h-full">
             {obApproval.length > 0 ? (
               obApproval.slice(0, 5).map((ob, index) => (              
                 <tr key={index} className="border-b hover:bg-gray-50 propercase">
-                  <td className="py-3 px-3">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
+                  <td className="py-2 px-2">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
                   <td className="py-2 px-2">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm a")}</td>
                   <td className="py-2 px-2">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm a")}</td>
-                  <td className="py-3 px-3 text-right">{ob.duration}</td>
-                  <td className="py-3 px-3">{ob.empname}</td>
-                  <td className="py-3 px-3">
+                  <td className="py-2 px-2 text-right">{ob.duration}</td>
+                  <td className="py-2 px-2">{ob.empname}</td>
+                  <td className="py-2 px-2">
                     <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium
                       ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                         ob.obstatus === "Approved" ? "bg-green-100 text-green-600" : 
@@ -790,7 +790,7 @@ const Dashboard = () => {
             ) : (
               <tr className="h-full">
                 <td colSpan="6">
-                  <div className="h-[400px] flex justify-center items-center text-gray-500">
+                  <div className="dashboard-div-norecords">
                     No official business approvals found.
                   </div>
                 </td>

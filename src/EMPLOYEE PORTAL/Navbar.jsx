@@ -79,11 +79,11 @@ const Navbar = () => {
         {/* Logo + Portal */}
         <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
           <img src="naysa_logo.png" className="w-[100px] h-[60px]" alt="Naysa Logo" />
-          <span className="text-blue-800 font-bold text-lg mt-3">Employee Portal</span>
+          <span className="text-blue-800 font-bold mt-3 text-base sm:text-base md:text-lg lg:text-xl">Employee Portal</span>
         </div>
 
         {/* Desktop Nav Links */}
-        <div className="hidden md:flex space-x-20">
+        <div className="hidden sm:hidden md:hidden lg:flex space-x-12 text-sm sm:text-sm md:text-base lg:text-xl">
         {navItems.map((item, index) => (
   <div key={index} className="relative group">
     {item.children ? (
@@ -124,7 +124,7 @@ const Navbar = () => {
           {/* Hamburger Icon on Mobile */}
           <button
             onClick={toggleMobileMenu}
-            className="md:hidden p-2 text-gray-600 focus:outline-none"
+            className="lg:hidden p-2 text-gray-600 focus:outline-none"
           >
             <FontAwesomeIcon icon={isMobileMenuOpen ? faXmark : faBars} size="lg" />
           </button>
@@ -156,7 +156,7 @@ const Navbar = () => {
 
       {/* Mobile Navigation Menu */}
       {isMobileMenuOpen && (
-        <div className="md:hidden fixed top-[100px] left-0 w-full bg-white shadow-md z-10 py-4 px-6">
+        <div className="lg:hidden fixed top-[100px] left-0 w-full bg-white shadow-md z-10 py-4 px-6">
           <div className="flex flex-col space-y-4">
           {navItems.map((item, index) => (
   <div key={index}>

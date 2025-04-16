@@ -80,7 +80,7 @@ const Sidebar = () => {
         className={`
           fixed top-[90px] left-0 h-screen w-[260px] bg-white shadow-md p-5 z-40 transition-transform duration-300
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          md:translate-x-0 md:block mt-7
+          lg:translate-x-0 lg:block mt-7 
         `}
       >
  

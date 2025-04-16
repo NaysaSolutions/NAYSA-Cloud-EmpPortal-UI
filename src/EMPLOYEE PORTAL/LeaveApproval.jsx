@@ -3,8 +3,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { useAuth } from "./AuthContext";
 import LeaveReview from "./LeaveReview"; // Import modal component
-// import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
-import API_ENDPOINTS from "/NAYSA-Solutions Inc/Programming/NAYSA Employee Portal Cloud/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+import API_ENDPOINTS from "@/apiConfig.jsx";
 
 
 const LeaveApproval = () => {
@@ -102,16 +101,16 @@ setPendingLeaves(pendingOnly);
   {error && <p className="text-red-500 text-center">{error}</p>}
 
   {/* Scrollable container */}
-  <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
-    <table className="min-w-full text-sm text-center">
-      <thead className="bg-gray-100 sticky top-0 z-10">
+  <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
+    <table className="min-w-full text-xs text-center">
+      <thead className="bg-gradient-to-r from-blue-300 to-purple-300">
         <tr className="border-b">
           <th className="p-3">Employee Name</th>
-          <th className="p-3">Department</th>
+          {/* <th className="p-2">Department</th> */}
           <th className="p-2">Leave Start</th>
           <th className="p-2">Leave End</th>
-          <th className="p-2">Duration (Days)</th>
-          <th className="p-2">Duration (Hours)</th>
+          <th className="p-2">Days</th>
+          <th className="p-2">Hours</th>
           <th className="p-2">Leave Type</th>
           <th className="p-2">Remarks</th>
           <th className="p-2">Status</th>
@@ -122,18 +121,18 @@ setPendingLeaves(pendingOnly);
         {pendingLeaves.length > 0 ? (
           pendingLeaves.map((leave, index) => (
             <tr key={index} className="border-b">
-              <td className="p-2 text-left">{leave.empName}</td>
-              <td className="p-2 text-left">{leave.department || "N/A"}</td>
-              <td className="p-2 text-center">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
-              <td className="p-2 text-center">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
-              <td className="p-2 text-right">{leave.leaveDays}</td>
-              <td className="p-2 text-right">{leave.leaveHrs} HRS</td>
-              <td className="p-2 text-center">{leave.leaveCode}</td>
-              <td className="p-2 text-left">{leave.leaveRemarks}</td>
-              <td className="p-2 text-orange-500 font-bold">{leave.leaveStatus}</td>
-              <td className="p-2">
+              <td className="px-2 p-2 text-left">{leave.empName}</td>
+              {/* <td className="px-2 p-2 text-left">{leave.department || "N/A"}</td> */}
+              <td className="px-2 p-2 text-center">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
+              <td className="px-2 p-2 text-center">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
+              <td className="px-2 p-2 text-right">{leave.leaveDays}</td>
+              <td className="px-2 p-2 text-right">{leave.leaveHrs} HRS</td>
+              <td className="px-2 p-2 text-center">{leave.leaveCode}</td>
+              <td className="px-2 p-2 text-left">{leave.leaveRemarks}</td>
+              <td className="px-2 p-2 text-orange-500 font-bold">{leave.leaveStatus}</td>
+              <td className="px-2 p-2">
                 <button
-                  className="bg-blue-500 text-white px-3 py-1 rounded"
+                  className="bg-blue-500 text-white px-2 py-2 rounded"
                   onClick={() => setSelectedLeave(leave)}
                 >
                   Review
@@ -159,15 +158,15 @@ setPendingLeaves(pendingOnly);
           <h2 className="text-lg font-bold mb-4">Leave Approval History</h2>
           {error && <p className="text-red-500 text-center">{error}</p>}
           <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
-          <table className="w-full border-collapse text-center">
-            <thead className="bg-gray-100">
+          <table className="min-w-full text-xs text-center">
+            <thead className="bg-gradient-to-r from-blue-300 to-purple-300">
               <tr className="border-b">
                 <th className="p-3">Employee Name</th>
-                <th className="p-3">Department</th>
+                {/* <th className="p-3">Department</th> */}
                 <th className="p-2">Leave Start</th>
                 <th className="p-2">Leave End</th>
-                <th className="p-2">Duration (Days)</th>
-                <th className="p-2">Duration (Hours)</th>
+                <th className="p-2">Days</th>
+                <th className="p-2">Hours</th>
                 <th className="p-2">Leave Type</th>
                 <th className="p-2">Remarks</th>
                 <th className="p-2">Status</th>
@@ -178,7 +177,7 @@ setPendingLeaves(pendingOnly);
                 history.map((record, index) => (
                   <tr key={index} className="border-b">
                     <td className="p-2 text-left">{record.empName}</td>
-                    <td className="p-2 text-left">{record.department || "N/A"}</td>
+                    {/* <td className="p-2 text-left">{record.department || "N/A"}</td> */}
                     <td className="p-2 text-left">{dayjs(record.leaveStart).format("MM/DD/YYYY")}</td>
                     <td className="p-2 text-left">{dayjs(record.leaveEnd).format("MM/DD/YYYY")}</td>
                     <td className="p-2 text-right">{record.leaveDays}</td>

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import { useAuth } from "./AuthContext";
 import OvertimeReview from "./OvertimeReview";
-import API_ENDPOINTS from "/NAYSA-Solutions Inc/Programming/NAYSA Employee Portal Cloud/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+import API_ENDPOINTS from "@/apiConfig.jsx";
 
 const OvertimeApproval = () => {
   const { user } = useAuth();
@@ -71,13 +71,14 @@ const OvertimeApproval = () => {
   };
 
   return (
-    <div className="ml-[260px] mt-[120px] p-6 bg-gray-100 min-h-screen">
-      <div className="max-w-[1150px] mx-auto">
-        <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
+    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen">
+
+    <div className="mx-auto">
+    <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
           <h1 className="text-3xl font-semibold">Overtime Approval</h1>
         </div>
 
-        <div className="mt-6 bg-white p-4 shadow-lg rounded-lg overflow-x-auto">
+        <div className="mt-6 bg-white p-4 shadow-lg rounded-lg">
           <h2 className="text-lg font-bold mb-4">Pending Overtime Applications</h2>
           {error && <p className="text-red-500 text-center">{error}</p>}
 

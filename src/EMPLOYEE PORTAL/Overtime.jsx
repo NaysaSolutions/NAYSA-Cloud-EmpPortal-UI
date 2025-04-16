@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import dayjs from "dayjs"; // dayjs library for working with dates easily.
 import Swal from "sweetalert2"; // SweetAlert2 library for displaying alerts.
 import { useAuth } from "./AuthContext"; //  access authentication details, such as the logged-in user.
-// import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
-import API_ENDPOINTS from "/NAYSA-Solutions Inc/Programming/NAYSA Employee Portal Cloud/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+import API_ENDPOINTS from "@/apiConfig.jsx";
 
 const OvertimeApplication = () => { 
 
@@ -289,11 +288,11 @@ useEffect(() => {
 }, [otDate]); // Runs whenever otDate changes
 
   return (
-    <div className="ml-[260px] mt-[110px] p-6 bg-gray-100 min-h-screen">
-      <div className="max-w-[1150px] mx-auto">
+    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen">
+      <div className="mx-auto">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
-          <h1 className="text-3xl font-semibold uppercase">My Overtime Applications</h1>
+          <h1 className="text-3xl font-semibold">My Overtime Applications</h1>
         </div>
 
         {/* Overtime Details Section */}
