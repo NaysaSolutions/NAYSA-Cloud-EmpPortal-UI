@@ -1,9 +1,7 @@
 import React, { useState } from "react";
 import { AiOutlineClose } from "react-icons/ai"; // ✅ Import X (close) icon from React Icons
 import { useAuth } from "./AuthContext"; // Import AuthContext to get logged-in user data
-// import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
-import API_ENDPOINTS from "/NAYSA-Solutions Inc/Programming/NAYSA Employee Portal Cloud/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
-
+import API_ENDPOINTS from "@/apiConfig.jsx";
 import Swal from 'sweetalert2';
 
 const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
@@ -143,7 +141,7 @@ const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
       if (response.ok) {
         Swal.fire({
           title: "Success",
-          text: "Leave disapproved successfully!",
+          text: "Overtime disapproved successfully!",
           icon: "success",
           confirmButtonText: "OK",
         }).then(() => {
@@ -171,31 +169,34 @@ const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
   
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+    <div className="fixed inset-0 z-50 bg-black bg-opacity-50 flex justify-center items-center">
       <div className="relative bg-white p-6 rounded-lg shadow-lg w-[600px]">
         {/* ✅ Close Button (X) in Top-Right */}
         <button className="absolute top-3 right-3 text-gray-600 hover:text-gray-900" onClick={onClose}>
           <AiOutlineClose size={24} />
         </button>
 
-        <h2 className="text-xl font-bold mb-4">Overtime Details</h2>
+        <h2 className="text-xl font-bold mb-4">Overtime Review</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-gray-700">Employee Name</label>
-            <input className="border p-2 w-full" value={overtimeData.empName || ""} readOnly />
+            <input className="border p-2 w-full" 
+            value={formData.empName || ""} disabled />
           </div>
           <div>
             <label className="block text-gray-700">Department</label>
-            <input className="border p-2 w-full" value={overtimeData.department || ""} readOnly />
+            <input className="border p-2 w-full" value={formData.department || ""} disabled />
           </div>
           <div>
             <label className="block text-gray-700">Overtime Date</label>
-            <input className="border p-2 w-full" value={overtimeData.otDate || ""} readOnly />
+            <input className="border p-2 w-full" 
+                type="date" 
+                value={formData.otDate || ""} disabled />
           </div>
           <div>
             <label className="block text-gray-700">Hours</label>
-            <input className="border p-2 w-full" value={overtimeData.otHrs || ""} readOnly />
+            <input className="border p-2 w-full" value={formData.otHrs || ""} disabled />
             
           </div>
         </div>

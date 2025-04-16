@@ -206,14 +206,14 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-600 hover:text-gray-900">
           <X size={24} />
         </button>
-    <h2 className="text-2xl font-bold mb-5 uppercase">Leave Review</h2>
+    <h2 className="text-2xl font-bold mb-5">Leave Review</h2>
 
         {/* Grid Layout for Inputs */}
         <div className="grid grid-cols-2 gap-4">
           {/* Left Column */}
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium uppercase">Employee Name:</label>
+              <label className="block text-sm font-medium">Employee Name:</label>
               <input
                 type="text"
                 name="empName"
@@ -224,7 +224,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
             </div>
 
             <div>
-              <label className="block text-sm font-medium uppercase">Department:</label>
+              <label className="block text-sm font-medium">Department:</label>
               <input
                 type="text"
                 name="department"
@@ -235,7 +235,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
             </div>
 
             <div>
-              <label className="block text-sm font-medium uppercase">Leave Start:</label>
+              <label className="block text-sm font-medium">Leave Start:</label>
               <input
                 type="date"
                 name="leaveStart"
@@ -249,7 +249,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
           {/* Right Column */}
           <div className="space-y-3">
             <div>
-              <label className="block text-sm font-medium uppercase">Number of Days:</label>
+              <label className="block text-sm font-medium">Number of Days:</label>
               <input
                 type="number"
                 name="leaveDays"
@@ -260,7 +260,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
             </div>
 
             <div>
-              <label className="block text-sm font-medium uppercase">Number of Hours:</label>
+              <label className="block text-sm font-medium">Number of Hours:</label>
               <input
                 type="number"
                 name="leaveHrs"
@@ -270,7 +270,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
               />
             </div>
             <div>
-              <label className="block text-sm font-medium uppercase">Leave End:</label>
+              <label className="block text-sm font-medium">Leave End:</label>
               <input
                 type="date"
                 name="leaveEnd"
@@ -284,7 +284,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
 
         {/* Full-Width Text Areas */}
         <div className="mt-4">
-          <label className="block text-sm font-medium uppercase">Remarks:</label>
+          <label className="block text-sm font-medium">Remarks:</label>
           <textarea
             name="leaveRemarks"
             value={formData.leaveRemarks}
