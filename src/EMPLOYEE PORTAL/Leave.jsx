@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faSortUp, faSortDown } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 
@@ -131,9 +133,15 @@ const Leave = () => {
 
   // Function to display sort indicator (↑ or ↓)
   const getSortIndicator = (key) => {
-    if (sortConfig.key !== key) return "";
-    return sortConfig.direction === "asc" ? "↑" : "↓";
+    if (sortConfig.key !== key) return null;
+    return (
+      <FontAwesomeIcon
+        icon={sortConfig.direction === "asc" ? faSortUp : faSortDown}
+        className="ml-1"
+      />
+    );
   };
+  
 
    // List of holidays (Modify this array based on your holidays)
    const holidays = ["2025-04-01", "2025-05-04"]; // Example holidays (New Year, Christmas, etc.)
@@ -141,41 +149,73 @@ const Leave = () => {
 
    // Function to calculate leave days excluding weekends & holidays
    const calculateLeaveDays = (startDate, endDate) => {
-    if (!startDate || !endDate) return "";
-  
+    if (!startDate || !endDate) return 0; // Return 0 if either date is missing
+    
     let start = new Date(startDate);
     let end = new Date(endDate);
     let count = 0;
-  
+    
     while (start <= end) {
       const day = start.getDay(); // 0 = Sunday, 6 = Saturday
       const formattedDate = start.toISOString().split("T")[0]; // Format YYYY-MM-DD
-  
+      
+      // Count weekdays that are not holidays
       if (day !== 0 && day !== 6 && !holidays.includes(formattedDate)) {
         count++;
       }
-  
+      
       start.setDate(start.getDate() + 1); // Move to the next day
     }
-  
+    
     return count;
   };
   
+  
     // Update leave days when start or end date changes
     const handleDateChange = (field, value) => {
-      if (field === "start") setSelectedStartDate(value);
-      if (field === "end") setSelectedEndDate(value);
-  
-      if (selectedStartDate && selectedEndDate) {
-        const days = calculateLeaveDays(
-          field === "start" ? value : selectedStartDate,
-          field === "end" ? value : selectedEndDate
-        );
-        setLeaveDays(days);
-        setLeaveHours(days * 8); // Convert days to hours
+      if (field === "start") {
+        setSelectedStartDate(value);
+        
+        // Adjust the end date to be at least the same as the start date
+        let adjustedEndDate = selectedEndDate;
+        if (!selectedEndDate || new Date(value) > new Date(selectedEndDate)) {
+          adjustedEndDate = value;
+          setSelectedEndDate(value);
+        }
+    
+        // Only calculate leave days if both start and end dates are provided
+        if (adjustedEndDate) {
+          const days = calculateLeaveDays(value, adjustedEndDate);
+          setLeaveDays(days);
+          setLeaveHours(days * 8);
+        }
+      }
+      
+      if (field === "end") {
+        // Only validate the end date if both start and end dates are set
+        if (selectedStartDate && value) {
+          if (new Date(value) < new Date(selectedStartDate)) {
+            Swal.fire({
+              icon: "warning",
+              title: "Invalid End Date",
+              text: "End date cannot be earlier than start date.",
+            });
+            return; // Exit early if validation fails
+          }
+        }
+    
+        // Proceed to set the end date only if it's valid
+        setSelectedEndDate(value);
+    
+        // Calculate and set leave days and hours after validating dates
+        if (selectedStartDate && value) {
+          const days = calculateLeaveDays(selectedStartDate, value);
+          setLeaveDays(days);
+          setLeaveHours(days * 8);
+        }
       }
     };
-  
+    
       const handleHoursChange = (e) => {
         const hours = e.target.value;
         setLeaveHours(hours);
@@ -268,7 +308,7 @@ const Leave = () => {
 
   return (
       
-      <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen">
+    <div className="ml-0 lg:ml-[260px] mt-[110px] px-4 sm:px-6 py-4 bg-gray-100 min-h-screen">
 
       <div className="mx-auto">
         
@@ -304,64 +344,63 @@ const Leave = () => {
             />
             </div>
 
-            <div className="flex flex-col">                             
-              <span className="block font-semibold mb-1">End Date</span>
-              <input                                                    
-              type="date"                                               
-              className="w-full p-2 border rounded"                     
-              value={selectedEndDate}                                   
-              min={selectedStartDate} // Ensure end date is not before start date
-              // onChange={(e) => setSelectedEndDate(e.target.value)}
-              onChange={(e) => handleDateChange("end", e.target.value)} 
-            />                                                          
+<div className="flex flex-col">
+  <span className="block font-semibold mb-1">End Date</span>
+  <input 
+  type="date" 
+  className="w-full p-2 border rounded" 
+  value={selectedEndDate} 
+  min={selectedStartDate}
+  onChange={(e) => handleDateChange("end", e.target.value)}
+/>
+</div>
+
+
+<div className="flex flex-col">
+              <span className="block font-semibold mb-1 propercase">Application Type</span>
+              <select
+  className="w-full p-2 border rounded"
+  value={leaveType}
+  onChange={(e) => setLeaveType(e.target.value)}
+>
+  <option value="">Select Leave Type</option>
+  <option value="SL">Sick Leave</option>
+  <option value="VL">Vacation Leave</option>
+  <option value="EL">Emergency Leave</option>
+  <option value="BL">Birthday Leave</option>
+  <option value="ML">Maternity Leave</option>
+  <option value="SIL">Service Incentive Leave</option>
+</select>
             </div>
-
-
-            <div className="flex flex-col">
-                          <span className="block font-semibold mb-1 propercase">Application Type</span>
-                          <select
-              className="w-full p-2 border rounded"
-              value={leaveType}
-              onChange={(e) => setLeaveType(e.target.value)}
-            >
-              <option value="">Select Leave Type</option>
-              <option value="SL">Sick Leave</option>
-              <option value="VL">Vacation Leave</option>
-              <option value="EL">Emergency Leave</option>
-              <option value="BL">Birthday Leave</option>
-              <option value="ML">Maternity Leave</option>
-              <option value="SIL">Service Incentive Leave</option>
-            </select>
-                        </div>
 
             <div className="flex flex-col">
               <span className="block font-semibold mb-1 propercase">Number of Days</span>
               <input 
-                type="number" 
-                className="w-full p-2 border rounded" 
-                value={leaveDays} 
-                min="0" 
-                step="1"
-                placeholder="Enter Leave Days"
-                defaultValue="1"
-                // onChange={(e) => setLeaveDays(e.target.value)} 
-                onChange={handleDaysChange}
-              />
+  type="number" 
+  className="w-full p-2 border rounded" 
+  value={leaveDays} 
+  min="0" 
+  step="1"
+  placeholder="Enter Leave Days"
+  defaultValue="1"
+  // onChange={(e) => setLeaveDays(e.target.value)} 
+  onChange={handleDaysChange}
+/>
             </div>
 
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Number of Hours</span>
               <input 
-                type="number" 
-                className="w-full p-2 border rounded" 
-                min="0" 
-                step="0.5"
-                placeholder="Enter hours"
-                value={leaveHours} 
-                // onChange={(e) => setLeaveHours(e.target.value)} 
-                onChange={handleHoursChange}
+  type="number" 
+  className="w-full p-2 border rounded" 
+  min="0" 
+  step="0.5"
+  placeholder="Enter hours"
+  value={leaveHours} 
+  // onChange={(e) => setLeaveHours(e.target.value)} 
+  onChange={handleHoursChange}
 
-              />  
+/>
             </div>
 
             </div>
@@ -374,6 +413,8 @@ const Leave = () => {
               onChange={(e) => setRemarks(e.target.value)}
               rows="4"
               className="w-full p-2 border rounded"
+
+
               placeholder="Enter Remarks"
               value={remarks}
               required
@@ -396,9 +437,10 @@ const Leave = () => {
 
           {error && <p className="text-red-500 text-center">{error}</p>}
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto w-full">
+          <div className="min-w-[700px]">
             {/* <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">   */}
-              <table className="min-w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
+            <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
   
               <thead className="text-gray-700 propercase bg-gray-100">
                 <tr>
@@ -413,7 +455,7 @@ const Leave = () => {
                   ].map(({ key, label }) => (
                     <th
                       key={key}
-                      className="px-4 py-2 border cursor-pointer"
+                      className="px-4 py-2 border cursor-pointer whitespace-nowrap"
                       onClick={() => sortData(key)}
                     >
                       {label} {getSortIndicator(key)}
@@ -443,7 +485,7 @@ const Leave = () => {
                       <td className="px-4 py-2 border">{leave.leaveDays} Days</td>
                       <td className="px-4 py-2 border">{leave.leaveCode}</td>
                       <td className="px-4 py-2 border">{leave.leaveRemarks || "N/A"}</td>
-                      <td className="px-4 py-2 border">{leave.appRemarks || "N/A"}</td>
+                      <td className="px-4 py-2 border">{leave.ApprleaveRemarks || "N/A"}</td>
                       <td className="px-4 py-2 border text-center">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -468,6 +510,7 @@ const Leave = () => {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
            {/* Pagination */}

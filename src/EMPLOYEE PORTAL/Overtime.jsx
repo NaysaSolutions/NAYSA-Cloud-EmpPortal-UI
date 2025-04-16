@@ -425,39 +425,53 @@ useEffect(() => {
                   ))}
                 </tr>
               </thead>
-              <tbody className="text-gray-700 text-xs sm:text-sm ms:text-sm lg:text-base h-full">
-                {currentRecords.length > 0 ? (
-                  currentRecords.map((entry, index) => (
-                    <tr key={index} className="bg-white hover:bg-blue-100 transition">
-                      <td className="p-2 border text-center">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
-                      {/* <td className="px-4 py-2 border">{entry.otDay}</td> */}
-                      <td className="p-2 border text-right">{entry.otHrs} hr(s)</td>
-                      <td className="p-2 border text-left">{getOvertimeTypeLabel(entry.otType)}</td>
-                      <td className="p-2 border text-left">{entry.otRemarks || "N/A"}</td>
-                      <td className="p-2 border text-left">{entry.appRemarks || "N/A"}</td>
-                      <td className="p-2 border text-center">
-                        <span
-                          className={`w-[100px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium ${
-                            entry.otStatus === "Pending"
-                              ? "bg-yellow-100 text-yellow-600"
-                              : entry.otStatus === "Approved"
-                              ? "bg-green-100 text-green-600"
-                              : "bg-red-100 text-red-600"
-                          }`}
-                        >
-                          {entry.otStatus}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
-                      No overtime applications found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
+              <tbody className="text-xs sm:text-sm ms:text-sm lg:text-base h-full">
+  {currentRecords.length > 0 ? (
+    currentRecords.map((entry, index) => {
+      // Determine row text color based on status
+      const textColor =
+        entry.otStatus === "Pending"
+          ? "text-gray-800"
+          : entry.otStatus === "Approved"
+          ? "text-green-800 font-bold"
+          : "text-red-800 font-bold";
+
+      return (
+        <tr
+          key={index}
+          className={`bg-white hover:bg-blue-100 transition ${textColor}`}
+        >
+          <td className="p-1 border text-center">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
+          <td className="p-1 border text-right">{entry.otHrs} hr(s)</td>
+          <td className="p-1 border text-left">{getOvertimeTypeLabel(entry.otType)}</td>
+          <td className="p-1 border text-left">{entry.otRemarks || "N/A"}</td>
+          <td className="p-1 border text-left">{entry.appRemarks || "N/A"}</td>
+          <td className="p-1 border text-center">{entry.otStatus || "N/A"}</td>
+          {/* <td className="p-2 border text-center">
+            <span
+              className={`w-[100px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium ${
+                entry.otStatus === "Pending"
+                  ? "bg-yellow-100"
+                  : entry.otStatus === "Approved"
+                  ? "bg-green-100"
+                  : "bg-red-100"
+              }`}
+            >
+              {entry.otStatus}
+            </span>
+          </td> */}
+        </tr>
+      );
+    })
+  ) : (
+    <tr>
+      <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
+        No overtime applications found.
+      </td>
+    </tr>
+  )}
+</tbody>
+
             </table>
           {/* </div> */}
 
