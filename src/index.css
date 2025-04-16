@@ -18,6 +18,9 @@ body {
     .dashboard-div-norecords {
       @apply h-[300px] flex justify-center items-center text-gray-600 text-xs sm:text-xs md:text-xs lg:text-base;
     }
+    .dashboard-div-norecords {
+      @apply h-[300px] flex justify-center items-center text-gray-600 text-xs sm:text-xs md:text-xs lg:text-base;
+    }
   }
   
 

@@ -23,6 +23,7 @@ const OvertimeApplication = () => {
     durationHours: "",
     type: "",
     remark: "",
+    appRemarks: "",
     status: "",
   });
 
@@ -38,7 +39,7 @@ const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
 
   const [currentPage, setCurrentPage] = useState(1); // State to track the current page number.
 
-  const recordsPerPage = 50; // defining the number of records per page.
+  const recordsPerPage = 10; // defining the number of records per page.
   const totalPages = Math.ceil(filteredApplications.length / recordsPerPage); // Calculating the total number of pages based on filtered applications.
   const indexOfLastRecord = currentPage * recordsPerPage; // Calculating the index of the last record for the current page.
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage; // Calculating the index of the first record for the current page.
@@ -292,13 +293,13 @@ useEffect(() => {
       <div className="mx-auto">
         {/* Header Section */}
         <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
-          <h1 className="text-3xl font-semibold">My Overtime Applications</h1>
+          <h1 className="text-lg sm:text-2xl font-semibold">My Overtime Applications</h1>
         </div>
 
         {/* Overtime Details Section */}
-        <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-          <div className="grid grid-cols-3 gap-6">
-          <div>
+        <div className="mt-6 bg-white p-4 sm:p-6 shadow-md rounded-lg">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="flex flex-col">
       <span className="block font-semibold mb-1 propercase">Date</span>
       <input 
         type="date" 
@@ -308,8 +309,8 @@ useEffect(() => {
       />
     </div>
 
-<div>
-  <span className="block font-semibold mb-1 propercase">Date of Overtime</span>
+    <div className="flex flex-col">
+  <span className="block font-semibold mb-1">Date of Overtime</span>
   <input 
     value={otDate} 
     onChange={(e) => setOTDate(e.target.value)}
@@ -328,8 +329,8 @@ useEffect(() => {
   />
 </div> */}
 
-<div>
-  <span className="block font-semibold mb-1 propercase">Number of Hours</span>
+<div className="flex flex-col">
+  <span className="block font-semibold mb-1">Number of Hours</span>
   <input 
     type="number" 
     className="w-full p-2 border rounded"
@@ -344,8 +345,8 @@ useEffect(() => {
   />
 </div>
 
-            <div>
-              <span className="block font-semibold mb-1 uppercase">Overtime Type</span>
+<div className="flex flex-col">
+              <span className="block font-semibold mb-1">Overtime Type</span>
 <select
   className="w-full p-2 border rounded"
   value={otType}
@@ -361,7 +362,7 @@ useEffect(() => {
 
           {/* Remarks Section */}
           <div className="mt-6">
-            <span className="block font-semibold mb-1 propercase">Remarks</span>
+            <span className="block font-semibold mb-1">Remarks</span>
             <textarea
             value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
@@ -372,10 +373,10 @@ useEffect(() => {
           </div>
 
           {/* Submit Button */}
-          <div className="mt-6 flex justify-end">
-            <button className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700"
+          <div className="mt-6 flex justify-center">
+            <button className="bg-blue-700 text-white px-6 py-3 rounded-md text-md sm:text-lg hover:bg-blue-700 w-full sm:w-auto mx-auto"
             onClick={handleSubmit}>
-              SUBMIT
+              Submit to Approver
             </button>
           </div>
         </div>
@@ -383,13 +384,14 @@ useEffect(() => {
 
         {/* Overtime History Table */}
         <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-          <h2 className="text-lg font-semibold mb-4 uppercase">Overtime Application History</h2>
+          <h2 className="text-lg font-semibold mb-4">Overtime Application History</h2>
 
           {error && <p className="text-red-500 text-center">{error}</p>}
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm xt-centeter border border-gray-200 rounded-lg shadow-md">
-              <thead className="text-gray-700 propercase bg-gray-100 ">
+          {/* <div className="w-full overflow-x-auto max-h-[460px] overflow-y-auto relative"> */}
+          <table className="min-w-[300px] w-full text-sm text-center border border-gray-200 rounded-lg">
+              {/* <thead className="bg-gradient-to-r from-blue-300 to-purple-300"> */}
+              <thead className="sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-sm ms:text-sm lg:text-base">
                 <tr>
                   {[
                     { key: "date", label: "OT Date" },
@@ -397,6 +399,7 @@ useEffect(() => {
                     { key: "durationHours", label: "Duration (Hours)" },
                     { key: "type", label: "Overtime Type" },
                     { key: "remark", label: "Remarks" },
+                    { key: "appRemarks", label: "Approver's Remarks" },
                     { key: "status", label: "Status" },
                   ].map(({ key, label }) => (
                     <th
@@ -422,18 +425,19 @@ useEffect(() => {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="text-gray-700 text-xs sm:text-sm ms:text-sm lg:text-base h-full">
                 {currentRecords.length > 0 ? (
                   currentRecords.map((entry, index) => (
-                    <tr key={index} className="bg-white hover:bg-gray-100 transition">
-                      <td className="px-4 py-2 border">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
+                    <tr key={index} className="bg-white hover:bg-blue-100 transition">
+                      <td className="p-2 border text-center">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
                       {/* <td className="px-4 py-2 border">{entry.otDay}</td> */}
-                      <td className="px-4 py-2 border">{entry.otHrs}</td>
-                      <td className="px-4 py-2 border">{getOvertimeTypeLabel(entry.otType)}</td>
-                      <td className="px-4 py-2 border">{entry.otRemarks || "N/A"}</td>
-                      <td className="px-4 py-2 border text-center">
+                      <td className="p-2 border text-right">{entry.otHrs} hr(s)</td>
+                      <td className="p-2 border text-left">{getOvertimeTypeLabel(entry.otType)}</td>
+                      <td className="p-2 border text-left">{entry.otRemarks || "N/A"}</td>
+                      <td className="p-2 border text-left">{entry.appRemarks || "N/A"}</td>
+                      <td className="p-2 border text-center">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          className={`w-[100px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium ${
                             entry.otStatus === "Pending"
                               ? "bg-yellow-100 text-yellow-600"
                               : entry.otStatus === "Approved"
@@ -455,7 +459,7 @@ useEffect(() => {
                 )}
               </tbody>
             </table>
-          </div>
+          {/* </div> */}
 
           {/* Pagination */}
 <div className="flex justify-between items-center mt-4 border-t pt-4">
@@ -470,7 +474,7 @@ useEffect(() => {
     <button
       onClick={() => setCurrentPage(currentPage - 1)}
       disabled={currentPage === 1}
-      className="px-3 py-1 border-r text-gray-700 hover:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+      className="px-3 py-1 border-r text-gray-700 hover:bg-blue-200 disabled:text-gray-400 disabled:cursor-not-allowed"
     >
       &lt;
     </button>

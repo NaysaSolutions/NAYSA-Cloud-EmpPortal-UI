@@ -120,7 +120,7 @@ const Navbar = () => {
         </div>
 
 {/* Right Side Controls */}
-<div className="flex items-center space-x-4 relative">
+<div className="fixed top-0 left-0 z-50 flex items-center space-x-4 relative">
           {/* Hamburger Icon on Mobile */}
           <button
             onClick={toggleMobileMenu}

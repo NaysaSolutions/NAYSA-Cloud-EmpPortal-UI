@@ -101,38 +101,38 @@ setPendingLeaves(pendingOnly);
   {error && <p className="text-red-500 text-center">{error}</p>}
 
   {/* Scrollable container */}
-  <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
-    <table className="min-w-full text-xs text-center">
-      <thead className="bg-gradient-to-r from-blue-300 to-purple-300">
+  <div className="overflow-x-auto max-h-[460px] overflow-y-auto relative">
+    <table className="min-w-full text-center text-sm sm:text-xs md:text-sm lg:text-base">
+      <thead className="sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300">
         <tr className="border-b">
-          <th className="p-3">Employee Name</th>
+          <th className="p-3 text-left whitespace-nowrap">Employee Name</th>
           {/* <th className="p-2">Department</th> */}
-          <th className="p-2">Leave Start</th>
-          <th className="p-2">Leave End</th>
-          <th className="p-2">Days</th>
-          <th className="p-2">Hours</th>
-          <th className="p-2">Leave Type</th>
-          <th className="p-2">Remarks</th>
-          <th className="p-2">Status</th>
-          <th className="p-2">Action</th>
+          <th className="p-2 text-left whitespace-nowrap">Leave Start</th>
+          <th className="p-2 text-left whitespace-nowrap">Leave End</th>
+          <th className="p-2 text-right whitespace-nowrap">Days</th>
+          <th className="p-2 text-right whitespace-nowrap">Hours</th>
+          <th className="p-2 text-center whitespace-nowrap">Leave Type</th>
+          <th className="p-2 text-left whitespace-nowrap">Remarks</th>
+          <th className="p-2 text-center whitespace-nowrap">Status</th>
+          <th className="p-2 text-center whitespace-nowrap">Action</th>
         </tr>
       </thead>
       <tbody>
         {pendingLeaves.length > 0 ? (
           pendingLeaves.map((leave, index) => (
-            <tr key={index} className="border-b">
-              <td className="px-2 p-2 text-left">{leave.empName}</td>
+            <tr key={index} className="border-b hover:bg-blue-100">
+              <td className="px-2 p-2 text-left whitespace-nowrap">{leave.empName}</td>
               {/* <td className="px-2 p-2 text-left">{leave.department || "N/A"}</td> */}
-              <td className="px-2 p-2 text-center">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
-              <td className="px-2 p-2 text-center">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
+              <td className="px-2 p-2 text-left">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
+              <td className="px-2 p-2 text-left">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
               <td className="px-2 p-2 text-right">{leave.leaveDays}</td>
-              <td className="px-2 p-2 text-right">{leave.leaveHrs} HRS</td>
+              <td className="px-2 p-2 text-right">{leave.leaveHrs}</td>
               <td className="px-2 p-2 text-center">{leave.leaveCode}</td>
               <td className="px-2 p-2 text-left">{leave.leaveRemarks}</td>
               <td className="px-2 p-2 text-orange-500 font-bold">{leave.leaveStatus}</td>
-              <td className="px-2 p-2">
+              <td className="px-2 p-2 text-center">
                 <button
-                  className="bg-blue-500 text-white px-2 py-2 rounded"
+                  className="bg-blue-500 text-white px-4 py-1 rounded-lg hover:bg-blue-600 transition"
                   onClick={() => setSelectedLeave(leave)}
                 >
                   Review
@@ -157,34 +157,36 @@ setPendingLeaves(pendingOnly);
         <div className="mt-6 bg-white p-4 shadow-lg rounded-lg">
           <h2 className="text-lg font-bold mb-4">Leave Approval History</h2>
           {error && <p className="text-red-500 text-center">{error}</p>}
-          <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
-          <table className="min-w-full text-xs text-center">
+          <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
+          <table className="min-w-full text-center text-sm sm:text-xs md:text-sm lg:text-base">
             <thead className="bg-gradient-to-r from-blue-300 to-purple-300">
               <tr className="border-b">
-                <th className="p-3">Employee Name</th>
+                <th className="p-3 text-left whitespace-nowrap">Employee Name</th>
                 {/* <th className="p-3">Department</th> */}
-                <th className="p-2">Leave Start</th>
-                <th className="p-2">Leave End</th>
-                <th className="p-2">Days</th>
-                <th className="p-2">Hours</th>
-                <th className="p-2">Leave Type</th>
-                <th className="p-2">Remarks</th>
-                <th className="p-2">Status</th>
+                <th className="p-2 text-left whitespace-nowrap">Leave Start</th>
+                <th className="p-2 text-left whitespace-nowrap">Leave End</th>
+                <th className="p-2 text-right whitespace-nowrap">Days</th>
+                <th className="p-2 text-right whitespace-nowrap">Hours</th>
+                <th className="p-2 text-center whitespace-nowrap">Leave Type</th>
+                <th className="p-2 text-left whitespace-nowrap">Remarks</th>
+                <th className="p-2 text-left whitespace-nowrap">Approver's Remarks</th>
+                <th className="p-2 text-center whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody>
               {history.length > 0 ? (
                 history.map((record, index) => (
                   <tr key={index} className="border-b">
-                    <td className="p-2 text-left">{record.empName}</td>
+                    <td className="p-2 text-left whitespace-nowrap">{record.empName}</td>
                     {/* <td className="p-2 text-left">{record.department || "N/A"}</td> */}
                     <td className="p-2 text-left">{dayjs(record.leaveStart).format("MM/DD/YYYY")}</td>
                     <td className="p-2 text-left">{dayjs(record.leaveEnd).format("MM/DD/YYYY")}</td>
                     <td className="p-2 text-right">{record.leaveDays}</td>
-                    <td className="p-2 text-right">{record.leaveHrs} HRS</td>
+                    <td className="p-2 text-right">{record.leaveHrs}</td>
                     <td className="p-2 text-center">{record.leaveCode}</td>
                     <td className="p-2 text-left">{record.leaveRemarks || "N/A"}</td>
-                    <td className={`p-2 font-bold ${record.leaveStatus === "Approved" ? "text-green-500" : "text-red-500"}`}>
+                    <td className="p-2 text-left">{record.appRemarks || "N/A"}</td>
+                    <td className={`p-2 text-center font-bold ${record.leaveStatus === "Approved" ? "text-green-500" : "text-red-500"}`}>
                       {record.leaveStatus}
                     </td>
                   </tr>

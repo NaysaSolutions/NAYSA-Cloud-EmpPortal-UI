@@ -82,33 +82,38 @@ const OvertimeApproval = () => {
           <h2 className="text-lg font-bold mb-4">Pending Overtime Applications</h2>
           {error && <p className="text-red-500 text-center">{error}</p>}
 
-          <table className="w-full table-auto border border-gray-200 rounded-lg text-center">
-            <thead className="bg-gray-100 text-gray-700 propercase">
-              <tr className="border-b border-gray-200">
-              <th className="p-3">Employee Name</th>
-                <th className="p-3">Department</th>
-                <th className="p-3">OT Date</th>
+  {/* Scrollable container */}
+  <div className="w-full overflow-x-auto max-h-[450px] overflow-y-auto relative">
+  <table className="min-w-full text-center text-sm sm:text-xs md:text-sm lg:text-base">
+          <thead className="sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300">
+          <tr className="border-b">
+              <th className="p-3 text-left whitespace-nowrap">Employee Name</th>
+                {/* <th className="p-2 text-left">Department</th> */}
+                <th className="p-2 text-left whitespace-nowrap">OT Date</th>
                 {/* <th className="p-3">DURATION (Days)</th> */}
-                <th className="p-3">No. of Hours</th>
-                <th className="p-3">OT Type</th>
-                <th className="p-3">Status</th>
-                <th className="p-3">ACTION</th>
+                <th className="p-2 text-right whitespace-nowrap">No. of Hours</th>
+                <th className="p-2 text-left whitespace-nowrap">OT Type</th>
+                <th className="p-2 text-left whitespace-nowrap">Remarks</th>
+                <th className="p-2 text-left whitespace-nowrap">Status</th>
+                <th className="p-2 text-center whitespace-nowrap">Action</th>
               </tr>
             </thead>
             <tbody>
               {pendingOvertime.length > 0 ? (
                 pendingOvertime.map((overtime, index) => (
-                  <tr key={index} className="border-b hover:bg-gray-50">
-                    <td className="p-3 whitespace-nowrap">{overtime.empName}</td>
-                    <td className="p-3 whitespace-nowrap">{overtime.department || "N/A"}</td>
-                    <td className="p-3 whitespace-nowrap">{dayjs(overtime.otDate).format("MM/DD/YYYY")}</td>
-                    {/* <td className="p-3 whitespace-nowrap">{overtime.otDay}</td> */}
-                    <td className="p-3 whitespace-nowrap">{overtime.otHrs} HRS</td>
-                    <td className="p-3 whitespace-nowrap">{overtime.otDesc}</td>
-                    <td className="p-3 text-orange-500 font-bold whitespace-nowrap">{overtime.otStatus}</td>
-                    <td className="p-3 whitespace-nowrap">
+                  <tr key={index} className="border-b hover:bg-blue-100">
+                    <td className="p-2 text-left whitespace-nowrap">{overtime.empName}</td>
+                    {/* <td className="p-2 text-left whitespace-nowrap">{overtime.department || "N/A"}</td> */}
+                    <td className="p-2 text-left whitespace-nowrap">{dayjs(overtime.otDate).format("MM/DD/YYYY")}</td>
+                    {/* <td className="p-2 text-left whitespace-nowrap">{overtime.otDay}</td> */}
+                    <td className="p-2 text-right whitespace-nowrap">{overtime.otHrs} hr(s)</td>
+                    <td className="p-2 text-left whitespace-nowrap">{overtime.otDesc}</td>
+                    <td className="p-2 text-left">{overtime.otRemarks || "N/A"}</td>
+                    <td className="p-2 text-left text-orange-500 font-bold whitespace-nowrap">{overtime.otStatus}</td>
+                    
+                    <td className="p-2 text-center whitespace-nowrap">
                       <button
-                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition"
+                        className="bg-blue-500 text-white px-4 py-1 rounded-lg hover:bg-blue-600 transition"
                         onClick={() => handleReviewClick(overtime)}
                       >
                         Review
@@ -118,40 +123,47 @@ const OvertimeApproval = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="p-3 text-center text-gray-500">
+                  <td colSpan="8" className="p-2 text-center text-gray-500">
                     No pending overtime applications.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+          </div>
         </div>
 
+        {/* Overtime Approval History Table */}
         <div className="mt-6 bg-white p-4 shadow-lg rounded-lg overflow-x-auto">
           <h2 className="text-lg font-bold mb-4">Overtime Approval History</h2>
-          <table className="w-full table-auto border border-gray-200 rounded-lg text-center">
-            <thead className="bg-gray-100 text-gray-700 propercase">
-              <tr className="border-b border-gray-200">
-                <th className="p-3">Employee Name</th>
-                <th className="p-3">Department</th>
-                <th className="p-3">OT Date</th>
-                {/* <th className="p-3">DURATION (Days)</th> */}
-                <th className="p-3">No. of Hours</th>
-                <th className="p-3">OT Type</th>
-                <th className="p-3">Status</th>
+  <div className="w-full overflow-x-auto max-h-[450px] overflow-y-auto relative">
+  <table className="min-w-full text-center text-sm sm:text-xs md:text-sm lg:text-base">
+          <thead className="sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300">
+          <tr className="border-b">
+                <th className="p-3 text-left whitespace-nowrap">Employee Name</th>
+                {/* <th className="p-2 text-left">Department</th> */}
+                <th className="p-2 text-left whitespace-nowrap">OT Date</th>
+                {/* <th className="p-2 text-left">DURATION (Days)</th> */}
+                <th className="p-2 text-right whitespace-nowrap">No. of Hours</th>
+                <th className="p-2 text-left whitespace-nowrap">OT Type</th>
+                <th className="p-2 text-left whitespace-nowrap">Remarks</th>
+                <th className="p-2 text-left whitespace-nowrap">Approver's Remarks</th>
+                <th className="p-2 text-center whitespace-nowrap">Status</th>
               </tr>
             </thead>
             <tbody>
               {history.length > 0 ? (
                 history.map((record, index) => (
                   <tr key={index} className="border-b hover:bg-gray-50">
-                    <td className="p-3 whitespace-nowrap">{record.empName}</td>
-                    <td className="p-3 whitespace-nowrap">{record.department || "N/A"}</td>
-                    <td className="p-3 whitespace-nowrap">{dayjs(record.otDate).format("MM/DD/YYYY")}</td>
-                    {/* <td className="p-3 whitespace-nowrap">{record.otDay}</td> */}
-                    <td className="p-3 whitespace-nowrap">{record.otHrs} HRS</td>
-                    <td className="p-3 whitespace-nowrap">{record.otDesc}</td>
-                    <td className={`p-3 font-bold whitespace-nowrap ${record.otStatus === "Approved" ? "text-green-500" : "text-red-500"}`}>{record.otStatus}</td>
+                    <td className="p-2 text-left whitespace-nowrap">{record.empName}</td>
+                    {/* <td className="p-2 text-left whitespace-nowrap">{record.department || "N/A"}</td> */}
+                    <td className="p-2 text-left whitespace-nowrap">{dayjs(record.otDate).format("MM/DD/YYYY")}</td>
+                    {/* <td className="p-2 text-left whitespace-nowrap">{record.otDay}</td> */}
+                    <td className="p-2 text-right whitespace-nowrap">{record.otHrs} hr(s)</td>
+                    <td className="p-2 text-left whitespace-nowrap">{record.otDesc}</td>
+                    <td className="p-2 text-left">{record.otRemarks || "N/A"}</td>
+                    <td className="p-2 text-left">{record.appRemarks || "N/A"}</td>
+                    <td className={`p-2 text-center font-bold whitespace-nowrap ${record.otStatus === "Approved" ? "text-green-500" : "text-red-500"}`}>{record.otStatus}</td>
                   </tr>
                 ))
               ) : (
@@ -161,6 +173,7 @@ const OvertimeApproval = () => {
               )}
             </tbody>
           </table>
+        </div>
         </div>
       </div>
       {showModal && (

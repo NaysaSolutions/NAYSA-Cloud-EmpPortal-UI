@@ -304,64 +304,64 @@ const Leave = () => {
             />
             </div>
 
-<div className="flex flex-col">
-  <span className="block font-semibold mb-1">End Date</span>
-  <input 
-  type="date" 
-  className="w-full p-2 border rounded" 
-  value={selectedEndDate} 
-  min={selectedStartDate} // Ensure end date is not before start date
-  // onChange={(e) => setSelectedEndDate(e.target.value)} 
-  onChange={(e) => handleDateChange("end", e.target.value)}
-/>
-</div>
-
-
-<div className="flex flex-col">
-              <span className="block font-semibold mb-1 propercase">Application Type</span>
-              <select
-  className="w-full p-2 border rounded"
-  value={leaveType}
-  onChange={(e) => setLeaveType(e.target.value)}
->
-  <option value="">Select Leave Type</option>
-  <option value="SL">Sick Leave</option>
-  <option value="VL">Vacation Leave</option>
-  <option value="EL">Emergency Leave</option>
-  <option value="BL">Birthday Leave</option>
-  <option value="ML">Maternity Leave</option>
-  <option value="SIL">Service Incentive Leave</option>
-</select>
+            <div className="flex flex-col">                             
+              <span className="block font-semibold mb-1">End Date</span>
+              <input                                                    
+              type="date"                                               
+              className="w-full p-2 border rounded"                     
+              value={selectedEndDate}                                   
+              min={selectedStartDate} // Ensure end date is not before start date
+              // onChange={(e) => setSelectedEndDate(e.target.value)}
+              onChange={(e) => handleDateChange("end", e.target.value)} 
+            />                                                          
             </div>
+
+
+            <div className="flex flex-col">
+                          <span className="block font-semibold mb-1 propercase">Application Type</span>
+                          <select
+              className="w-full p-2 border rounded"
+              value={leaveType}
+              onChange={(e) => setLeaveType(e.target.value)}
+            >
+              <option value="">Select Leave Type</option>
+              <option value="SL">Sick Leave</option>
+              <option value="VL">Vacation Leave</option>
+              <option value="EL">Emergency Leave</option>
+              <option value="BL">Birthday Leave</option>
+              <option value="ML">Maternity Leave</option>
+              <option value="SIL">Service Incentive Leave</option>
+            </select>
+                        </div>
 
             <div className="flex flex-col">
               <span className="block font-semibold mb-1 propercase">Number of Days</span>
               <input 
-  type="number" 
-  className="w-full p-2 border rounded" 
-  value={leaveDays} 
-  min="0" 
-  step="1"
-  placeholder="Enter Leave Days"
-  defaultValue="1"
-  // onChange={(e) => setLeaveDays(e.target.value)} 
-  onChange={handleDaysChange}
-/>
+                type="number" 
+                className="w-full p-2 border rounded" 
+                value={leaveDays} 
+                min="0" 
+                step="1"
+                placeholder="Enter Leave Days"
+                defaultValue="1"
+                // onChange={(e) => setLeaveDays(e.target.value)} 
+                onChange={handleDaysChange}
+              />
             </div>
 
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Number of Hours</span>
               <input 
-  type="number" 
-  className="w-full p-2 border rounded" 
-  min="0" 
-  step="0.5"
-  placeholder="Enter hours"
-  value={leaveHours} 
-  // onChange={(e) => setLeaveHours(e.target.value)} 
-  onChange={handleHoursChange}
+                type="number" 
+                className="w-full p-2 border rounded" 
+                min="0" 
+                step="0.5"
+                placeholder="Enter hours"
+                value={leaveHours} 
+                // onChange={(e) => setLeaveHours(e.target.value)} 
+                onChange={handleHoursChange}
 
-/>
+              />  
             </div>
 
             </div>
@@ -443,7 +443,7 @@ const Leave = () => {
                       <td className="px-4 py-2 border">{leave.leaveDays} Days</td>
                       <td className="px-4 py-2 border">{leave.leaveCode}</td>
                       <td className="px-4 py-2 border">{leave.leaveRemarks || "N/A"}</td>
-                      <td className="px-4 py-2 border">{leave.ApprleaveRemarks || "N/A"}</td>
+                      <td className="px-4 py-2 border">{leave.appRemarks || "N/A"}</td>
                       <td className="px-4 py-2 border text-center">
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
