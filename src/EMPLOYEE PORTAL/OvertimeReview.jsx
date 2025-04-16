@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { AiOutlineClose } from "react-icons/ai"; // ✅ Import X (close) icon from React Icons
 import { useAuth } from "./AuthContext"; // Import AuthContext to get logged-in user data
 // import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
-import API_ENDPOINTS from "/NAYSA-Solutions Inc/Programming/NAYSA Employee Portal Cloud/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
+import API_ENDPOINTS from "@/apiConfig.jsx";
 
 import Swal from 'sweetalert2';
 
