@@ -79,11 +79,11 @@ const Navbar = () => {
         {/* Logo + Portal */}
         <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
           <img src="naysa_logo.png" className="w-[100px] h-[60px]" alt="Naysa Logo" />
-          <span className="text-blue-800 font-bold mt-3 text-base sm:text-base md:text-lg lg:text-xl">Employee Portal</span>
+          <span className="text-blue-800 font-bold mt-3 text-base sm:text-base md:text-lg lg:text-lg">Employee Portal</span>
         </div>
 
         {/* Desktop Nav Links */}
-        <div className="hidden sm:hidden md:hidden lg:flex space-x-12 text-sm sm:text-sm md:text-base lg:text-xl">
+        <div className="hidden sm:hidden md:hidden lg:flex space-x-12 text-sm sm:text-sm md:text-base lg:text-lg lg:ml-20">
         {navItems.map((item, index) => (
   <div key={index} className="relative group">
     {item.children ? (

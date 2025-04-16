@@ -4,6 +4,8 @@ import advancedFormat from "dayjs/plugin/advancedFormat";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext"; // Import AuthContext
 import { useNavigate } from "react-router-dom";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faArrowUp } from '@fortawesome/free-solid-svg-icons';
 import LeaveCreditModal from "./LeaveCreditModal";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import '@/index.css';
@@ -31,6 +33,7 @@ const Dashboard = () => {
   const [error, setError] = useState(null); // Error state
   const { user } = useAuth(); // Get user data from AuthContext
   const navigate = useNavigate();
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
 
   const defaultLeaveTypes = [
@@ -43,6 +46,15 @@ const Dashboard = () => {
     { description: "Bereavement Leave", balance: 0 },
     { description: "Birthday Leave", balance: 0 }
   ];
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 300);
+    };
+  
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
 
   useEffect(() => {
@@ -172,11 +184,13 @@ const Dashboard = () => {
     setCurrentMonth(currentMonth.add(1, "month"));
   };
 
-  // Generate Calendar Days
-  const generateCalendar = () => {
+   // Generate Calendar Days
+   const generateCalendar = () => {
     const startDay = currentMonth.startOf("month").day();
     const daysInMonth = currentMonth.daysInMonth();
     const prevMonthDays = currentMonth.subtract(1, "month").daysInMonth();
+    const today = dayjs().date();
+    const currentMonthNumber = dayjs().month();
 
     let days = [];
 
@@ -218,6 +232,7 @@ const Dashboard = () => {
       days.push({
         day: i,
         currentMonth: true,
+        isToday: i === today && currentMonth.month() === currentMonthNumber,
         isPendingLeave: pendingLeaveDays.has(i),
         isApprovedLeave: approvedLeaveDays.has(i),
       });
@@ -245,10 +260,10 @@ const Dashboard = () => {
 
   {/* Date Section */}
   <div className="text-center sm:text-left">
-      <p className="text-sm sm:text-lg font-light text-black">
+      <p className="text-sm sm:text-lg font-light text-white">
         <span className="kanit-text">Today</span>
       </p>
-      <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-black">
+      <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-white">
         {currentDate.format("MMMM DD, YYYY")}
       </h1>
     </div>
@@ -256,11 +271,11 @@ const Dashboard = () => {
 {/* Entry Time and Break Time Count */}
 <div className="flex flex-col sm:flex-row gap-4 sm:gap-10 items-center sm:items-start text-center sm:text-left">
   <div>
-    <p className="text-sm font-extrabold text-black mb-2">Philippine Standard Time:</p>
+    <p className="text-sm font-extrabold text-white mb-2">Philippine Standard Time:</p>
     <p className="text-xl sm:text-4xl font-bold">{time || "00:00 PM"}</p>
   </div>
   <div>
-    <p className="text-sm font-extrabold text-black mb-2">Break Time Count:</p>
+    <p className="text-sm font-extrabold  text-right mb-2">Break Time Count:</p>
     <p className="text-xl sm:text-4xl font-bold">
       {formatTime(breakTime)}
     </p>
@@ -373,23 +388,35 @@ const Dashboard = () => {
   </div>
 
   {/* Weekday Headers */}
-  <div className="grid grid-cols-7 grid-rows-6 gap-0.5 sm:gap-1 text-center min-h-[300px]">
-    {generateCalendar().map((item, index) => (
-      <div
-      key={index}
-      className={`text-sm sm:text-base p-1 sm:p-2 rounded-full h-[32px] sm:h-[40px] flex items-center justify-center
-        ${item.currentMonth ? "text-black" : "text-gray-400"}
-        ${item.isApprovedLeave ? "bg-blue-500 text-white font-bold" : ""}
-        ${item.isPendingLeave ? "bg-yellow-500 text-white font-bold" : ""}
-      `}
-      >
-        {item.day}
+  <div className="grid grid-cols-7 gap-2 text-center mt-4">
+  {generateCalendar().map((day, index) => {
+    let baseClasses = "w-10 h-10 flex items-center justify-center text-sm font-semibold";
+    let style = "";
+
+    if (!day.currentMonth) {
+      style = "text-gray-300";
+    } else if (day.isToday) {
+      style = "bg-gray-300 text-black rounded-full";
+    } else if (day.isApprovedLeave) {
+      style = "bg-green-500 text-white rounded-full";
+    } else if (day.isPendingLeave) {
+      style = "bg-yellow-400 text-black rounded-full";
+    } else {
+      style = "text-gray-700";
+    }
+
+    return (
+      <div key={index} className={`${baseClasses} ${style}`}>
+        {day.day}
       </div>
-    ))}
-  </div>
+    );
+  })}
+</div>
+
+
 
   {/* Calendar Legend */}
-  <div className="flex justify-between text-sm sm:text-lg mt-2">
+  <div className="flex justify-between text-sm sm:text-md mt-8">
     <div className="flex items-center"><span className="w-2 h-2 bg-red-500 inline-block mr-1"></span> Holiday</div>
     <div className="flex items-center"><span className="w-2 h-2 bg-blue-500 inline-block mr-1"></span> Approved Leave</div>
     <div className="flex items-center"><span className="w-2 h-2 bg-yellow-500 inline-block mr-1"></span> Pending Leave</div>
@@ -802,7 +829,15 @@ const Dashboard = () => {
     </div>
   </>
 )}
-
+{showBackToTop && (
+  <button
+    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+    className="fixed bottom-6 right-6 z-50 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition duration-300"
+    aria-label="Back to top"
+  >
+    <FontAwesomeIcon icon={faArrowUp} size="sm" />
+  </button>
+)}
     </div>
     </div>
     
