@@ -432,7 +432,7 @@ const Leave = () => {
         </div>
 
         {/* Leave History Table */}
-        <div className="mt-6 bg-white p-4 sm:p-6 shadow-md rounded-lg">
+        <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
           <h2 className="text-lg font-semibold mb-4">History</h2>
 
           {error && <p className="text-red-500 text-center">{error}</p>}
@@ -440,10 +440,10 @@ const Leave = () => {
           <div className="overflow-x-auto w-full">
           <div className="min-w-[700px]">
             {/* <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">   */}
-            <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
+          <table className="min-w-[300px] w-full text-sm text-center rounded-lg border">
   
-              <thead className="text-gray-700 propercase bg-gray-100">
-                <tr>
+          <thead className="sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-sm ms:text-sm lg:text-base">
+          <tr>
                   {[
                     { key: "leaveStart", label: "Start Date" },
                     { key: "leaveEnd", label: "End Date" },
@@ -455,7 +455,7 @@ const Leave = () => {
                   ].map(({ key, label }) => (
                     <th
                       key={key}
-                      className="px-4 py-2 border cursor-pointer whitespace-nowrap"
+                      className="py-2 cursor-pointer whitespace-nowrap"
                       onClick={() => sortData(key)}
                     >
                       {label} {getSortIndicator(key)}
@@ -465,29 +465,42 @@ const Leave = () => {
                 {/* Search Row */}
                 <tr>
                   {Object.keys(searchFields).map((key) => (
-                    <td key={key} className="px-2 py-1 border">
+                    <td key={key} className="px-2 py-2">
                       <input
                         type="text"
                         value={searchFields[key]}
                         onChange={(e) => handleSearchChange(e, key)}
-                        className="w-full px-2 py-1 border rounded text-sm"
+                        className="w-full px-2 py-1 rounded text-sm"
                       />
                     </td>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="text-xs sm:text-sm ms:text-sm lg:text-base h-full">
                 {currentRecords.length > 0 ? (
-                  currentRecords.map((leave, index) => (
-                    <tr key={index} className="bg-white hover:bg-gray-100 transition">
-                      <td className="px-4 py-2 border">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
-                      <td className="px-4 py-2 border">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
-                      <td className="px-4 py-2 border">{leave.leaveDays} Days</td>
-                      <td className="px-4 py-2 border">{leave.leaveCode}</td>
-                      <td className="px-4 py-2 border">{leave.leaveRemarks || "N/A"}</td>
-                      <td className="px-4 py-2 border">{leave.ApprleaveRemarks || "N/A"}</td>
-                      <td className="px-4 py-2 border text-center">
-                        <span
+    currentRecords.map((leave, index) => {
+      // Determine row text color based on status
+      const textColor =
+      leave.leaveStatus === "Pending"
+          ? "text-gray-800"
+          : leave.leaveStatus === "Approved"
+          ? "text-green-700"
+          : "text-red-700";
+
+      return (
+                    <tr
+          key={index}
+          className={`hover:bg-blue-100 transition ${textColor} 
+              odd:bg-white even:bg-blue-50`}
+        >
+                      <td className="px-3 py-1">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
+                      <td className="px-3 py-1">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
+                      <td className="px-3 py-1">{leave.leaveDays} Days</td>
+                      <td className="px-3 py-1">{leave.leaveCode}</td>
+                      <td className="px-3 py-1">{leave.leaveRemarks || "N/A"}</td>
+                      <td className="px-3 py-1">{leave.ApprleaveRemarks || "N/A"}</td>
+                      <td className="px-3 py-1 text-center">{leave.leaveStatus || "N/A"}</td>
+                        {/* <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
                             leave.leaveStatus === "Pending"
                               ? "bg-yellow-100 text-yellow-600"
@@ -498,17 +511,20 @@ const Leave = () => {
                         >
                           {leave.leaveStatus}
                         </span>
-                      </td>
+                      </td>*/}
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
-                      No leave applications found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
+
+      );
+    })
+  ) : (
+    <tr>
+      <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
+        No overtime applications found.
+      </td>
+    </tr>
+  )}
+</tbody>
+
             </table>
             </div>
           </div>

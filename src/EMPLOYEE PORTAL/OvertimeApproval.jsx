@@ -85,7 +85,7 @@ const OvertimeApproval = () => {
   {/* Scrollable container */}
   <div className="w-full overflow-x-auto max-h-[450px] overflow-y-auto relative">
   <table className="min-w-full text-center text-sm sm:text-xs md:text-sm lg:text-base">
-          <thead className="sticky top-[0px] z-[10] bg-gradient-to-r from-blue-300 to-purple-300">
+          <thead className="sticky top-[0px] z-[0] bg-gradient-to-r from-blue-300 to-purple-300">
           <tr className="border-b">
               <th className="p-3 text-left whitespace-nowrap">Employee Name</th>
                 {/* <th className="p-2 text-left">Department</th> */}
@@ -138,7 +138,7 @@ const OvertimeApproval = () => {
           <h2 className="text-lg font-bold mb-4">Overtime Approval History</h2>
   <div className="w-full overflow-x-auto max-h-[450px] overflow-y-auto relative">
   <table className="min-w-full text-center text-sm sm:text-xs md:text-sm lg:text-base">
-          <thead className="sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300">
+          <thead className="sticky top-[0px] z-[0] bg-gradient-to-r from-blue-300 to-purple-300">
           <tr className="border-b">
                 <th className="p-3 text-left whitespace-nowrap">Employee Name</th>
                 {/* <th className="p-2 text-left">Department</th> */}

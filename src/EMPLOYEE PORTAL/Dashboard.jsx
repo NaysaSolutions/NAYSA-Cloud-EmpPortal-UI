@@ -213,9 +213,9 @@ const Dashboard = () => {
         let current = startDate;
         while (current.isBefore(endDate) || current.isSame(endDate, 'day')) {
           if (current.month() === currentMonth.month()) {
-            if (leave.leavestatus === 'approved') {
+            if (leave.leavestatus === 'Approved') {
               approvedLeaveDays.add(current.date());
-            } else if (leave.leavestatus === 'pending') {
+            } else if (leave.leavestatus === 'Pending') {
               pendingLeaveDays.add(current.date());
             }
           }
@@ -254,9 +254,9 @@ const Dashboard = () => {
 
 
       {/* Header */}
-      <div className="flex justify-center sm:justify-between items-start w-full max-w-[2000px] mx-auto px-4">
+      <div className="flex justify-center sm:justify-between items-start w-full max-w-[2000px] mx-auto px-2">
   {/* <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex flex-wrap justify-between items-center mb-4 w-full shadow-lg"> */}
-  <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex flex-col sm:flex-row sm:flex-wrap justify-center sm:justify-between items-center gap-4 mb-4 w-full shadow-lg">
+  <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-4 rounded-lg text-white flex flex-col sm:flex-row sm:flex-wrap justify-center sm:justify-between items-center gap-4 mb-4 w-full shadow-lg">
 
   {/* Date Section */}
   <div className="text-center sm:text-left">
@@ -285,73 +285,48 @@ const Dashboard = () => {
 </div>
 
       {/* Main Content */}
-<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 p-2">
-  {/* Daily Time Record Section */}
-<div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full relative">
-  <h2 className="text-lg font-semibold mb-4 text-blue-800">Daily Time Record</h2>
-  <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
+{/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 p-2"> */}
 
-  {/* Table Structure */}
-  <div className="mt-4 overflow-x-auto">
-    <table className="w-full border-collapse">
-      <thead classname ="dashboard-thead">
-        <tr className="dashboard-thead">
-          <th className="p-2 text-left">Date</th>
-          <th className="p-2 text-center">Time In</th>
-          <th className="p-2 text-center">Time Out</th>
-        </tr>
-      </thead>
-      <tbody>
-        {dailyTimeRecord.length > 0 ? (
-          dailyTimeRecord.map((record, index) => (
-            <tr key={index} className="border-b hover:bg-gray-100">
-              <td className="p-2 text-left text-sm">{dayjs(record.trandate).format("MM/DD/YYYY")}</td>
-              <td className="p-2 text-center text-sm">{record.time_in ? dayjs(record.time_in).format("hh:mm A") : "N/A"}</td>
-              <td className="p-2 text-center text-sm">{record.time_out ? dayjs(record.time_out).format("hh:mm A") : "N/A"}</td>
-            </tr>
-          ))
-        ) : (
-          <tr>
-            <td colSpan="3" className="p-4 text-center text-gray-600 text-sm">No records found.</td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-
-  {/* Fixed View All Button */}
-  <button
-    onClick={() => navigate("/timekeeping")}
-    className="absolute bottom-4 right-4 text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
-  >
-    View All <span className="ml-1">→</span>
-  </button>
-</div>
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-2">
 
   {/* Leave Credit Section */}
   <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full">
     <h2 className="text-lg font-semibold mb-4 text-blue-800">Leave Credit</h2>
-    <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
+    {/* <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span> */}
+  
 
     {/* Table Structure */}
     <div className="mt-4 overflow-x-auto">
-      <table className="w-full border-collapse">
+    <table className="dashboard-table">
       <thead classname ="dashboard-thead">
-          <tr className="dashboard-thead">
-            <th className="p-2 text-left">Leave Type</th>
+          <tr className="dashboard-thead ">
+            
+            {/* <th className="p-2 text-left">Leave Type</th>
             <th className="p-2 text-center">Credit</th>
             <th className="p-2 text-center">Used</th>
-            <th className="p-2 text-center">Actual Balance</th>
+            <th className="p-2 text-center">Actual Balance</th> */}
+            <th className="dashboard-th cursor-pointer">Leave Type</th>
+                <th className="dashboard-th cursor-pointer">Credit</th>
+                <th className="dashboard-th cursor-pointer">Applied</th>
+                <th className="dashboard-th cursor-pointer">Used</th>
+                <th className="dashboard-th cursor-pointer">Remaining Balance</th>
+                <th className="dashboard-th cursor-pointer">Actual Balance</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody classname="dashboard-tbody">
           {leaveCredit.length > 0 ? (
             leaveCredit.map((leave, index) => (
-              <tr key={index} className="border-b hover:bg-gray-100">
-                <td className="p-2 text-left text-sm">{leave.description}</td>
+              <tr key={index} className="dashboard-tbody dashboard-tr">
+                {/* <td className="p-2 text-left text-sm">{leave.description}</td>
                 <td className="p-2 text-center text-sm">{leave.credit}</td>
                 <td className="p-2 text-center text-sm">{leave.availed}</td>
-                <td className="p-2 text-center text-sm">{leave.balance}</td>
+                <td className="p-2 text-center text-sm">{leave.balance}</td> */}
+                <td className="dashboard-td whitespace-nowrap">{leave.description}</td>
+                    <td className="dashboard-td text-center">{leave.credit}</td>
+                    <td className="dashboard-td text-center">{leave.applied}</td>
+                    <td className="dashboard-td text-center">{leave.availed}</td>
+                    <td className="dashboard-td text-center">{leave.rembal}</td>
+                    <td className="dashboard-td text-center">{leave.balance}</td>
               </tr>
             ))
           ) : (
@@ -363,14 +338,14 @@ const Dashboard = () => {
       </table>
     </div>
 
-    {/* View All Button */}
+    {/* View All Button
     {leaveCredit.length > 0 && (
       <div className="flex justify-end mt-20">
         <button onClick={() => setIsModalOpen(true)} className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
           View All <span className="ml-1">→</span>
         </button>
       </div>
-    )}
+    )} */}
 
     {/* Leave Credit Modal */}
     <LeaveCreditModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} leaveCredit={leaveCredit} />
@@ -418,110 +393,55 @@ const Dashboard = () => {
   {/* Calendar Legend */}
   <div className="flex justify-between text-sm sm:text-md mt-8">
     <div className="flex items-center"><span className="w-2 h-2 bg-red-500 inline-block mr-1"></span> Holiday</div>
-    <div className="flex items-center"><span className="w-2 h-2 bg-blue-500 inline-block mr-1"></span> Approved Leave</div>
+    <div className="flex items-center"><span className="w-2 h-2 bg-green-500 inline-block mr-1"></span> Approved Leave</div>
     <div className="flex items-center"><span className="w-2 h-2 bg-yellow-500 inline-block mr-1"></span> Pending Leave</div>
   </div>
 </div>
 </div>
 
 
+
       <hr className="mt-2 mb-2" />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-2 min-h-screen">
-  {/* Overtime Applications */}
-  <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
-    <h2 className="text-lg font-semibold mb-4 text-blue-800">My Overtime Applications</h2>
 
-    {/* Responsive Table */}
-    <div className="overflow-x-auto flex-grow">
-      <table className="min-w-full border border-gray-200 rounded-lg">
-        {/* <thead className="bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-xs md:text-xs lg:text-base"> */}
-        <thead className="dashboard-thead">
-        <tr>
-            <th className="py-2 px-2 text-left">OT Date</th>
-            <th className="py-2 px-2 text-left">OT Type</th>
-            <th className="py-2 px-2 text-left">Duration</th>
-            <th className="py-2 px-2 text-center">Status</th>
-          </tr>
-        </thead>
-        <tbody className="text-gray-700 text-xs sm:text-xs md:text-xs lg:text-base h-full">
-          {otApplication.length > 0 ? (
-            otApplication.slice(0, 5).map((ot, index) => (
-              <tr key={index} className="border-b hover:bg-gray-50">
-                <td className="py-2 px-2">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
-                <td className="py-2 px-2">{ot.ottype}</td>
-                <td className="py-2 px-2">{ot.duration}</td>
-                <td className="py-2 px-2 text-center">
-                  <span className={`inline-block w-[90px] px-2 py-1 rounded-full 
-                    ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                      ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
-                      "bg-red-100 text-red-600"}`}>
-                    {ot.otstatus}
-                  </span>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="4">
-                <div className="dashboard-div-norecords">
-                  No overtime applications found.
-                </div>
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
 
-    {/* View All Button - Fixed on Small Screens */}
-    {otApplication.length > 0 && (
-      <div className="relative md:static flex justify-end">
-      <button 
-        onClick={() => navigate("/overtime")} 
-        className="fixed bottom-4 right-4 md:static text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex items-center md:mt-4 bg-white shadow-md md:shadow-none px-3 py-2 rounded-full md:rounded-none"
-      >
-        View All <span className="ml-1">→</span>
-      </button>
-    </div>
-    )}
-  </div>
+  {/* Daily Time Record Section */}
+  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full relative">
 
-  <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
-    <h2 className="text-lg font-semibold mb-4 text-blue-800">My Leave Applications</h2>
+  <h2 className="text-lg font-semibold mb-4 text-blue-800">Daily Time Record</h2>
+  <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
 
-  {/* Responsive Table */}
-    <div className="overflow-x-auto flex-grow">
-      <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="dashboard-thead">
-        <tr>
-          <th className="py-2 px-2 text-left">Leave Date</th>
-          <th className="py-2 px-2 text-left">Leave Type</th>
-          <th className="py-2 px-2 text-left">Duration</th>
-          <th className="py-2 px-2 text-left">Status</th>
+  {/* <div className="flex items-center justify-between">
+  <h2 className="text-lg font-semibold text-blue-800">Daily Time Record</h2>
+  <span className="text-gray-500 text-sm font-normal uppercase">
+    Recent Transactions
+  </span>
+</div> */}
+
+  {/* Table Structure */}
+  <div className="mt-4 overflow-x-auto">
+  <table className="dashboard-table">
+      <thead classname ="dashboard-thead">
+        <tr className="dashboard-thead">
+          <th className="dashboard-th text-left">Date</th>
+          <th className="dashboard-th text-center">Time In</th>
+          <th className="dashboard-th text-center">Time Out</th>
         </tr>
-      </thead>
-      <tbody className="text-gray-700 text-xs sm:text-sm">
-        {leaveApplication.length > 0 ? (
-          leaveApplication.slice(0, 5).map((leave, index) => (
-            <tr key={index} className="border-b hover:bg-gray-50">
-              <td className="py-2 px-2">{leave.dateapplied}</td>
-              <td className="py-2 px-2">{leave.leavetype}</td>
-              <td className="py-2 px-2">{leave.duration}</td>
-              <td className="py-2 px-2">
-                <span className={`inline-block w-[90px] px-2 py-1 rounded-full text-center text-xs sm:text-sm font-medium
-                  ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                    leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
-                    "bg-red-100 text-red-600"}`}>
-                  {leave.leavestatus}
-                </span>
-              </td>
+      </thead>     
+      <tbody classname="dashboard-tbody">
+        {dailyTimeRecord.length > 0 ? (
+          dailyTimeRecord.map((record, index) => (
+            <tr key={index} className="border-b hover:bg-gray-100">
+              <td className="p-2 text-left text-sm">{dayjs(record.trandate).format("MM/DD/YYYY")}</td>
+              <td className="p-2 text-center text-sm">{record.time_in ? dayjs(record.time_in).format("hh:mm A") : "N/A"}</td>
+              <td className="p-2 text-center text-sm">{record.time_out ? dayjs(record.time_out).format("hh:mm A") : "N/A"}</td>
             </tr>
           ))
         ) : (
           <tr>
             <td colSpan="4">
               <div className="dashboard-div-norecords">
-                No leave applications found.
+                No DTR records found.
               </div>
             </td>
           </tr>
@@ -530,96 +450,46 @@ const Dashboard = () => {
     </table>
   </div>
 
-  {/* View All Button - Fixed on Small Screens */}
-{leaveApplication.length > 0 && (
-  <div className="relative md:static flex justify-end">
-    <button 
-      onClick={() => navigate("/leave")} 
-      className="fixed bottom-4 right-4 md:static text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex items-center md:mt-4 bg-white shadow-md md:shadow-none px-3 py-2 rounded-full md:rounded-none"
-    >
-      View All <span className="ml-1">→</span>
-    </button>
-  </div>
-)}
-
-</div>
-
-      {/* Official Business Applications */}
-      <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
-      <h2 className="text-lg font-semibold mb-4 text-blue-800">My Official Business Applications</h2>
-
-  {/* Responsive Table Container */}
-  <div className="overflow-x-auto flex-grow">
-      <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="dashboard-thead">
-        <tr>
-          <th className="py-2 px-2 text-left">OB Date</th>
-          <th className="py-2 px-2 text-center">Start Datetime</th>
-          <th className="py-2 px-2 text-center">End Datetime</th>
-          <th className="py-2 px-2 text-center">Duration</th>
-          <th className="py-2 px-2 text-center">Status</th>
-        </tr>
-      </thead>
-      <tbody className="text-gray-700 text-sm">
-        {obApplication.length > 0 ? (
-          obApplication.slice(0, 5).map((ob, index) => (
-            <tr key={index} className="border-b hover:bg-gray-50">
-              <td className="py-2 px-2">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
-              <td className="py-2 px-2 text-center">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm A")}</td>
-              <td className="py-2 px-2 text-center">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm A")}</td>
-              <td className="py-2 px-2 text-center">{ob.duration}</td>
-              <td className="py-2 px-2 text-center">
-                <span className={`inline-block w-[100px] px-2 py-1 rounded-full text-xs sm:text-sm font-medium
-                  ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                    ob.obstatus === "Approved" ? "bg-green-100 text-green-600" : 
-                    "bg-red-100 text-red-600"}`}>
-                  {ob.obstatus}
-                </span>
-              </td>
-            </tr>
-          ))
-        ) : (
-          <tr>
-            <td colSpan="5">
-              <div className="dashboard-div-norecords">
-                No official business applications found.
-              </div>
-            </td>
-          </tr>
-        )}
-      </tbody>
-    </table>
-  </div>
-
-  {/* View All Button */}
-  {obApplication.length > 0 && (
-    <div className="flex justify-end mt-4">
+  {/* Fixed View All Button */}
+  {/* <button
+    onClick={() => navigate("/timekeeping")}
+    className="absolute bottom-4 right-4 text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+  >
+    View All <span className="ml-1">→</span>
+  </button> */}
+  <div className="relative flex justify-end">
       <button 
-        onClick={() => navigate("/official-business")} 
-        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+        onClick={() => navigate("/timekeeping")} 
+        className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex items-center md:mt-4 bg-white shadow-md md:shadow-none px-3 py-2 rounded-full md:rounded-none"
       >
         View All <span className="ml-1">→</span>
       </button>
     </div>
-  )}
 </div>
 
+
 {/* Loan Balance Inquiry */}
-<div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
-    <h2 className="text-lg font-semibold mb-4 text-blue-800">My Loan Balance</h2>
+{/* <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative"> */}
+    {/* <h2 className="text-lg font-semibold mb-2 text-blue-800">My Loan Balance</h2>
+  <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span> */}
+
+  
+<div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full relative">
+  <h2 className="text-lg font-semibold mb-4 text-blue-800">My Loan Balance</h2>
+  <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span>
 
   {/* Responsive Table */}
-  <div className="overflow-x-auto flex-grow">
-      <table className="min-w-full border border-gray-200 rounded-lg">
-        <thead className="dashboard-thead">
-        <tr>
-          <th className="py-2 px-2 text-left">Loan Type</th>
-          <th className="py-2 px-2 text-right">Loan Amount</th>
-          <th className="py-2 px-2 text-right">Balance</th>
-          <th className="py-2 px-2 text-right">Total Paid</th>
+  <div className="mt-4 overflow-x-auto">
+  <table className="dashboard-table">
+      <thead classname ="dashboard-thead">
+        <tr className="dashboard-thead">
+          <th className="dashboard-th text-left">Loan Type</th>
+          <th className="dashboard-th text-right">Loan Amount</th>
+          <th className="dashboard-th text-right">Balance</th>
+          <th className="dashboard-th text-right">Total Paid</th>
         </tr>
       </thead>
-      <tbody className="text-gray-700 text-sm">
+      <tbody classname="dashboard-tbody">
         {loanBalance.length > 0 ? (
           loanBalance.slice(0, 5).map((loan, index) => (
             <tr key={index} className="border-b hover:bg-gray-50">
@@ -663,6 +533,184 @@ const Dashboard = () => {
 
 
 
+  {/* Overtime Applications */}
+  <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+    <h2 className="text-lg font-semibold mb-4 text-blue-800">My Overtime Applications</h2>
+
+    {/* Responsive Table */}
+    <div className="overflow-x-auto flex-grow">
+      <table className="dashboard-table">
+        {/* <thead className="bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-xs md:text-xs lg:text-base"> */}
+        <thead className="dashboard-thead">
+        <tr>
+            <th className="dashboard-th text-left">OT Date</th>
+            <th className="dashboard-th text-left">OT Type</th>
+            <th className="dashboard-th text-right">Duration</th>
+            <th className="dashboard-th text-center">Status</th>
+          </tr>
+        </thead>
+        <tbody className="dashboard-tbody">
+          {otApplication.length > 0 ? (
+            otApplication.slice(0, 5).map((ot, index) => (
+              <tr key={index} className="hover:bg-blue-200 odd:bg-white even:bg-blue-50">
+                <td className="dashboard-td">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
+                <td className="dashboard-td">{ot.ottype}</td>
+                <td className="dashboard-td text-right">{ot.duration}</td>
+                <td className="dashboard-td text-center">
+                  <span className={`inline-block w-[90px] px-2 py-1 rounded-full 
+                    ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                      ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
+                      "bg-red-100 text-red-600"}`}>
+                    {ot.otstatus}
+                  </span>
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan="4">
+                <div className="dashboard-div-norecords">
+                  No overtime applications found.
+                </div>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+
+    {/* View All Button - Fixed on Small Screens */}
+    {otApplication.length > 0 && (
+      <div className="relative flex justify-end">
+      <button 
+        onClick={() => navigate("/overtime")} 
+        className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex items-center md:mt-4 bg-white shadow-md md:shadow-none px-3 py-2 rounded-full md:rounded-none"
+      >
+        View All <span className="ml-1">→</span>
+      </button>
+    </div>
+    )}
+  </div>
+
+  <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+    <h2 className="text-lg font-semibold mb-4 text-blue-800">My Leave Applications</h2>
+
+  {/* Responsive Table */}
+    <div className="overflow-x-auto flex-grow">
+    <table className="dashboard-table">
+        <thead className="dashboard-thead">
+        <tr>
+          <th className="dashboard-th text-left">Leave Date</th>
+          <th className="dashboard-th text-left">Leave Type</th>
+          <th className="dashboard-th text-right">Duration</th>
+          <th className="dashboard-th text-center">Status</th>
+        </tr>
+      </thead>
+      <tbody className="dashboard-tbody">
+        {leaveApplication.length > 0 ? (
+          leaveApplication.slice(0, 5).map((leave, index) => (
+            <tr key={index} className="dashboard-tr">
+              <td className="dashboard-td">{leave.dateapplied}</td>
+              <td className="dashboard-td">{leave.leavetype}</td>
+              <td className="dashboard-td text-right">{leave.duration}</td>
+              <td className="dashboard-td text-center">
+                  <span className={`inline-block w-[90px] px-2 py-1 rounded-full 
+                    ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                      leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
+                      "bg-red-100 text-red-600"}`}>
+                    {leave.leavestatus}
+                  </span>
+                </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="4">
+              <div className="dashboard-div-norecords">
+                No leave applications found.
+              </div>
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  {/* View All Button - Fixed on Small Screens */}
+{leaveApplication.length > 0 && (
+  <div className="relative flex justify-end">
+    <button 
+      onClick={() => navigate("/leave")} 
+      className="text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex items-center md:mt-4 bg-white shadow-md md:shadow-none px-3 py-2 rounded-full md:rounded-none"
+    >
+      View All <span className="ml-1">→</span>
+    </button>
+  </div>
+)}
+
+</div>
+
+      {/* Official Business Applications */}
+      <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+      <h2 className="text-lg font-semibold mb-4 text-blue-800">My Official Business Applications</h2>
+
+  {/* Responsive Table Container */}
+  <div className="overflow-x-auto flex-grow">
+  <table className="dashboard-table">
+        <thead className="dashboard-thead">
+        <tr>
+          <th className="py-2 px-2 text-left">OB Date</th>
+          <th className="py-2 px-2 text-center">Start Datetime</th>
+          <th className="py-2 px-2 text-center">End Datetime</th>
+          <th className="py-2 px-2 text-center">Duration</th>
+          <th className="py-2 px-2 text-center">Status</th>
+        </tr>
+      </thead>
+      <tbody classname="dashboard-tbody">
+        {obApplication.length > 0 ? (
+          obApplication.slice(0, 5).map((ob, index) => (
+            <tr key={index} className="border-b hover:bg-gray-50">
+              <td className="py-2 px-2">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
+              <td className="py-2 px-2 text-center">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm A")}</td>
+              <td className="py-2 px-2 text-center">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm A")}</td>
+              <td className="py-2 px-2 text-center">{ob.duration}</td>
+              <td className="py-2 px-2 text-center">
+                <span className={`inline-block w-[100px] px-2 py-1 rounded-full text-xs sm:text-sm font-medium
+                  ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                    ob.obstatus === "Approved" ? "bg-green-100 text-green-600" : 
+                    "bg-red-100 text-red-600"}`}>
+                  {ob.obstatus}
+                </span>
+              </td>
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td colSpan="5">
+              <div className="dashboard-div-norecords">
+                No official business applications found.
+              </div>
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  </div>
+
+  {/* View All Button */}
+  {obApplication.length > 0 && (
+    <div className="flex justify-end mt-4">
+      <button 
+        onClick={() => navigate("/official-business")} 
+        className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+      >
+        View All <span className="ml-1">→</span>
+      </button>
+    </div>
+  )}
+</div>
+
+
   
 {user.approver === "1" && (
   <>
@@ -670,32 +718,32 @@ const Dashboard = () => {
     <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
     <h2 className="text-lg font-semibold mb-4 text-blue-800">Overtime for Approval</h2>
       <div className="overflow-x-auto flex-grow">
-      <table className="min-w-full border border-gray-200 rounded-lg">
+      <table className="dashboard-table">
         <thead className="dashboard-thead">
             <tr>
-              <th className="py-2 px-2 text-left">OT Date</th>
-              <th className="py-2 px-2 text-left">OT Type</th>
-              <th className="py-2 px-2 text-left">Duration (hrs)</th>
-              <th className="py-2 px-2 text-left">Employee Name</th>
-              <th className="py-2 px-2 text-center">Status</th>
+              <th className="dashboard-th text-left">OT Date</th>
+              <th className="dashboard-th text-left">OT Type</th>
+              <th className="dashboard-th text-right">Duration</th>
+              <th className="dashboard-th text-left">Employee Name</th>
+              <th className="dashboard-th text-center">Status</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700 text-xs sm:text-sm h-full">
+          <tbody classname="dashboard-tbody">
             {otApproval.length > 0 ? (
               otApproval.slice(0, 5).map((ot, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="py-2 px-2">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
-                  <td className="py-2 px-2">{ot.ottype}</td>
-                  <td className="py-2 px-2">{ot.duration}</td>
-                  <td className="py-2 px-2">{ot.empname}</td>
-                  <td className="py-2 px-2">
-                    <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium
-                      ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                <tr key={index} className="dashboard-tbody dashboard-tr">
+                  <td className="dashboard-td text-left">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
+                  <td className="dashboard-td text-left">{ot.ottype}</td>
+                  <td className="dashboard-td text-right">{ot.duration}</td>
+                  <td className="dashboard-td text-left">{ot.empname}</td>
+                  <td className="dashboard-td text-center">
+                  <span className={`inline-block w-[90px] px-2 py-1 rounded-full 
+                    ${ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                       ot.otstatus === "Approved" ? "bg-green-100 text-green-600" : 
                       "bg-red-100 text-red-600"}`}>
-                      {ot.otstatus}
-                    </span>
-                  </td>
+                    {ot.otstatus}
+                  </span>
+                </td>
                 </tr>
               ))
             ) : (
@@ -727,32 +775,32 @@ const Dashboard = () => {
     <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
     <h2 className="text-lg font-semibold mb-4 text-blue-800">Leave for Approval</h2>
       <div className="overflow-x-auto flex-grow">
-      <table className="min-w-full border border-gray-200 rounded-lg">
+      <table className="dashboard-table">
         <thead className="dashboard-thead">
             <tr>
               <th className="py-2 px-2 text-left">Leave Date</th>
               <th className="py-2 px-2 text-left">Leave Type</th>
-              <th className="py-2 px-2 text-left">Duration (days)</th>
+              <th className="py-2 px-2 text-left">Duration</th>
               <th className="py-2 px-2 text-left">Employee</th>
               <th className="py-2 px-2 text-left">Status</th>
             </tr>
           </thead>
-          <tbody className="text-gray-700 text-xs sm:text-sm h-full">
+          <tbody classname="dashboard-tbody">
             {leaveApproval.length > 0 ? (
               leaveApproval.slice(0, 5).map((leave, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
+                <tr key={index} className="dashboard-tbody dashboard-tr">
                   <td className="py-2 px-2">{leave.dateapplied}</td>
                   <td className="py-2 px-2">{leave.leavetype}</td>
                   <td className="py-2 px-2">{leave.duration}</td>
                   <td className="py-2 px-2">{leave.empname}</td>
-                  <td className="py-2 px-2">
-                    <span className={`inline-block w-[100px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium
-                      ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+                  <td className="dashboard-td text-center">
+                  <span className={`inline-block w-[90px] px-2 py-1 rounded-full 
+                    ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
                       leave.leavestatus === "Approved" ? "bg-green-100 text-green-600" : 
                       "bg-red-100 text-red-600"}`}>
-                      {leave.leavestatus}
-                    </span>
-                  </td>
+                    {leave.leavestatus}
+                  </span>
+                </td>
                 </tr>
               ))
             ) : (
@@ -784,7 +832,7 @@ const Dashboard = () => {
     <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
     <h2 className="text-lg font-semibold mb-4 text-blue-800">Official Business for Approval</h2>
       <div className="overflow-x-auto flex-grow">      
-      <table className="min-w-full border border-gray-200 rounded-lg">
+      <table className="dashboard-table">
         <thead className="dashboard-thead">
             <tr>
               <th className="py-2 px-2">OB Date</th>
@@ -795,7 +843,7 @@ const Dashboard = () => {
               <th className="py-2 px-2">Status</th>
             </tr>
           </thead>        
-          <tbody className="text-gray-700 text-sm h-full">
+          <tbody classname="dashboard-tbody">
             {obApproval.length > 0 ? (
               obApproval.slice(0, 5).map((ob, index) => (              
                 <tr key={index} className="border-b hover:bg-gray-50 propercase">

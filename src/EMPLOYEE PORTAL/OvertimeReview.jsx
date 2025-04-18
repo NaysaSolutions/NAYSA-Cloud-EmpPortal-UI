@@ -183,19 +183,20 @@ const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-gray-700">Employee Name</label>
-            <input className="border p-2 w-full" value={overtimeData.empName || ""} readOnly />
+            <input className="border p-2 w-full" value={formData.empName || ""} readOnly />
           </div>
           <div>
             <label className="block text-gray-700">Department</label>
-            <input className="border p-2 w-full" value={overtimeData.department || ""} readOnly />
+            <input className="border p-2 w-full" value={formData.department || ""} readOnly />
           </div>
           <div>
             <label className="block text-gray-700">Overtime Date</label>
-            <input className="border p-2 w-full" value={overtimeData.otDate || ""} readOnly />
+            <input className="border p-2 w-full" 
+                type="date" value={formData.otDate || ""} readOnly />
           </div>
           <div>
             <label className="block text-gray-700">Hours</label>
-            <input className="border p-2 w-full" value={overtimeData.otHrs || ""} readOnly />
+            <input className="border p-2 w-full" value={formData.otHrs || ""} readOnly />
             
           </div>
         </div>

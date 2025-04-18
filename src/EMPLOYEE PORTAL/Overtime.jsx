@@ -292,7 +292,7 @@ useEffect(() => {
     <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen">
       <div className="mx-auto">
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
+        <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-6 rounded-lg text-white shadow-lg">
           <h1 className="text-lg sm:text-2xl font-semibold">My Overtime Applications</h1>
         </div>
 
@@ -374,9 +374,9 @@ useEffect(() => {
 
           {/* Submit Button */}
           <div className="mt-6 flex justify-center">
-            <button className="bg-blue-700 text-white px-6 py-3 rounded-md text-md sm:text-lg hover:bg-blue-700 w-full sm:w-auto mx-auto"
+            <button className="bg-blue-500 text-white px-12 py-2 rounded-md text-md sm:text-lg hover:bg-blue-600 w-full sm:w-auto mx-auto"
             onClick={handleSubmit}>
-              Submit to Approver
+              Submit
             </button>
           </div>
         </div>
@@ -389,14 +389,14 @@ useEffect(() => {
           {error && <p className="text-red-500 text-center">{error}</p>}
 
           {/* <div className="w-full overflow-x-auto max-h-[460px] overflow-y-auto relative"> */}
-          <table className="min-w-[300px] w-full text-sm text-center border border-gray-200 rounded-lg">
+          <table className="min-w-[300px] w-full text-sm text-center rounded-lg border">
               {/* <thead className="bg-gradient-to-r from-blue-300 to-purple-300"> */}
               <thead className="sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-sm ms:text-sm lg:text-base">
                 <tr>
                   {[
                     { key: "date", label: "OT Date" },
                     // { key: "durationDays", label: "Duration (Days)" },
-                    { key: "durationHours", label: "Duration (Hours)" },
+                    { key: "durationHours", label: "Duration" },
                     { key: "type", label: "Overtime Type" },
                     { key: "remark", label: "Remarks" },
                     { key: "appRemarks", label: "Approver's Remarks" },
@@ -404,7 +404,7 @@ useEffect(() => {
                   ].map(({ key, label }) => (
                     <th
                       key={key}
-                      className="px-4 py-2 border cursor-pointer"
+                      className="py-2 cursor-pointer"
                       onClick={() => sortData(key)}
                     >
                       {label} {getSortIndicator(key)}
@@ -414,7 +414,7 @@ useEffect(() => {
                 {/* Search Row */}
                 <tr>
                   {Object.keys(searchFields).map((key) => (
-                    <td key={key} className="px-2 py-1 border">
+                    <td key={key} className="px-2 py-2">
                       <input
                         type="text"
                         value={searchFields[key]}
@@ -433,20 +433,21 @@ useEffect(() => {
         entry.otStatus === "Pending"
           ? "text-gray-800"
           : entry.otStatus === "Approved"
-          ? "text-green-800 font-bold"
-          : "text-red-800 font-bold";
+          ? "text-green-700"
+          : "text-red-700";
 
       return (
         <tr
           key={index}
-          className={`bg-white hover:bg-blue-100 transition ${textColor}`}
+          className={`hover:bg-blue-100 transition ${textColor} 
+              odd:bg-white even:bg-blue-50`}
         >
-          <td className="p-1 border text-center">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
-          <td className="p-1 border text-right">{entry.otHrs} hr(s)</td>
-          <td className="p-1 border text-left">{getOvertimeTypeLabel(entry.otType)}</td>
-          <td className="p-1 border text-left">{entry.otRemarks || "N/A"}</td>
-          <td className="p-1 border text-left">{entry.appRemarks || "N/A"}</td>
-          <td className="p-1 border text-center">{entry.otStatus || "N/A"}</td>
+          <td className="px-3 py-1 text-center">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
+          <td className="px-3 py-1 text-right">{entry.otHrs} hr(s)</td>
+          <td className="px-3 py-1 text-left">{getOvertimeTypeLabel(entry.otType)}</td>
+          <td className="px-3 py-1 text-left">{entry.otRemarks || "N/A"}</td>
+          <td className="px-3 py-1 text-left">{entry.appRemarks || "N/A"}</td>
+          <td className="px-3 py-1 text-center">{entry.otStatus || "N/A"}</td>
           {/* <td className="p-2 border text-center">
             <span
               className={`w-[100px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium ${
@@ -476,7 +477,7 @@ useEffect(() => {
           {/* </div> */}
 
           {/* Pagination */}
-<div className="flex justify-between items-center mt-4 border-t pt-4">
+<div className="flex justify-between items-center mt-2 pt-4">
   {/* Left: Showing Text */}
   <div className="text-sm text-gray-600">
     Showing <b>{indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries

@@ -5,6 +5,9 @@
 
 body {
     font-family: 'Roboto', sans-serif;
+    /* font-family: 'Outfit', sans-serif; */
+    /* font-family: 'Quicksand', sans-serif; */
+
   }
 
   .oswald-text {
@@ -13,14 +16,30 @@ body {
 
   @layer components {
     .dashboard-thead {
-      @apply bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-xs md:text-xs lg:text-base;
+      @apply bg-gradient-to-r from-blue-300 to-purple-300 text-black text-[11px] sm:text-xs md:text-xs lg:text-base;
     }
     .dashboard-div-norecords {
-      @apply h-[300px] flex justify-center items-center text-gray-600 text-xs sm:text-xs md:text-xs lg:text-base;
+      @apply h-[300px] flex justify-center items-center text-gray-600 text-[11px] sm:text-xs md:text-xs lg:text-base;
     }
-    .dashboard-div-norecords {
-      @apply h-[300px] flex justify-center items-center text-gray-600 text-xs sm:text-xs md:text-xs lg:text-base;
+    .dashboard-th {
+      @apply py-2 px-2;
     }
+    .dashboard-td {
+      @apply py-1 px-2;
+    }
+    .dashboard-tr {
+      @apply hover:bg-blue-200 odd:bg-white even:bg-blue-50;
+    }
+    .dashboard-tbody {
+      @apply text-gray-800 text-[11px] sm:text-xs md:text-xs lg:text-base h-full;
+    }
+    .dashboard-table {
+      @apply min-w-full border border-gray-200 rounded-lg;
+    }
+
+    
+    
+    
   }
   
 
