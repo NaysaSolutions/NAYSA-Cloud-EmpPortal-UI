@@ -15,8 +15,15 @@ body {
   }
 
   @layer components {
+    .dashboard-text-header {
+      @apply font-semibold mb-2 text-blue-800 text-[14px] sm:text-[14px] md:text-base lg:text-lg;
+    }
+    .dashboard-text-span {
+      @apply font-normal text-gray-500 text-[12px] sm:text-[12px] md:text-base lg:text-base ;
+    }
+
     .dashboard-thead {
-      @apply bg-gradient-to-r from-blue-300 to-purple-300 text-black text-[11px] sm:text-xs md:text-xs lg:text-base;
+      @apply bg-gradient-to-r from-blue-300 to-purple-300 text-black text-[9px] sm:text-xs md:text-xs lg:text-base text-nowrap;
     }
     .dashboard-div-norecords {
       @apply h-[300px] flex justify-center items-center text-gray-600 text-[11px] sm:text-xs md:text-xs lg:text-base;
@@ -31,11 +38,67 @@ body {
       @apply hover:bg-blue-200 odd:bg-white even:bg-blue-50;
     }
     .dashboard-tbody {
-      @apply text-gray-800 text-[11px] sm:text-xs md:text-xs lg:text-base h-full;
+      @apply text-gray-800 text-[9px] sm:text-[9px] md:text-[12px] lg:text-[15px] h-full;
     }
     .dashboard-table {
       @apply min-w-full border border-gray-200 rounded-lg;
     }
+    .dashboard-button-viewall {
+      @apply text-blue-600 hover:text-blue-800 text-xs sm:text-sm font-medium flex items-center md:mt-4 bg-white shadow-md md:shadow-none mt-3 px-3 py-2 rounded-full md:rounded-none;
+    }
+
+
+
+
+    .global-div-header-ui {
+      @apply bg-gradient-to-r from-blue-400 to-purple-500 p-6 rounded-lg text-white shadow-lg;
+    }
+
+    .global-div-headertext-ui {
+      @apply text-lg sm:text-2xl font-semibold;
+    }
+
+    .global-thead-approval {
+      @apply sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300 text-black text-[12px] sm:text-xs md:text-xs lg:text-base text-nowrap;
+    }
+
+    .global-tbody {
+      @apply text-gray-800 text-[0.85rem] sm:text-[0.75rem] md:text-[0.85rem] lg:text-[16px] h-full;
+    }
+
+    .global-tr {
+      @apply hover:bg-blue-100 transition odd:bg-white even:bg-blue-50;
+    }
+
+    .global-th {
+      @apply py-2 px-2 text-nowrap;
+    }
+
+    .global-td {
+      @apply px-[0.30rem] py-[0.20rem] sm:py-[0.10rem] md:py-[0.20rem] lg:px-[0.50rem] lg:py-[0.40rem];
+    }
+   
+    .global-td-approval {
+      @apply text-gray-800 text-[0.85rem] px-[0.30rem] py-[0.20rem] sm:py-[0.10rem] md:py-[0.20rem] lg:px-[0.50rem] lg:py-[0.30rem] sm:text-[0.80rem] md:text-[0.85rem] lg:text-[15px];
+    }
+
+    .global-td-status {
+      @apply px-[0.30rem] py-[0.20rem] sm:py-[0.10rem] md:py-[0.20rem] lg:px-[0.50rem] lg:py-[0.40rem] font-semibold text-center whitespace-nowrap;
+    }
+
+    .global-td-status-pending {
+      @apply text-gray-800;
+    }
+
+    .global-td-status-approved {
+      @apply text-blue-600;
+    }
+
+    .global-td-status-disapproved {
+      @apply text-red-600;
+    }
+
+    
 
     
     

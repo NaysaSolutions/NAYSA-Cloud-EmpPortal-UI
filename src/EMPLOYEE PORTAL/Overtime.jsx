@@ -292,8 +292,8 @@ useEffect(() => {
     <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen">
       <div className="mx-auto">
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-6 rounded-lg text-white shadow-lg">
-          <h1 className="text-lg sm:text-2xl font-semibold">My Overtime Applications</h1>
+        <div className="global-div-header-ui">
+          <h1 className="global-div-headertext-ui">My Overtime Applications</h1>
         </div>
 
         {/* Overtime Details Section */}
@@ -384,140 +384,120 @@ useEffect(() => {
 
         {/* Overtime History Table */}
         <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-          <h2 className="text-lg font-semibold mb-4">Overtime Application History</h2>
+  <h2 className="text-lg font-semibold mb-4">Overtime Application History</h2>
 
-          {error && <p className="text-red-500 text-center">{error}</p>}
+  {error && <p className="text-red-500 text-center">{error}</p>}
 
-          {/* <div className="w-full overflow-x-auto max-h-[460px] overflow-y-auto relative"> */}
-          <table className="min-w-[300px] w-full text-sm text-center rounded-lg border">
-              {/* <thead className="bg-gradient-to-r from-blue-300 to-purple-300"> */}
-              <thead className="sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-sm ms:text-sm lg:text-base">
-                <tr>
-                  {[
-                    { key: "date", label: "OT Date" },
-                    // { key: "durationDays", label: "Duration (Days)" },
-                    { key: "durationHours", label: "Duration" },
-                    { key: "type", label: "Overtime Type" },
-                    { key: "remark", label: "Remarks" },
-                    { key: "appRemarks", label: "Approver's Remarks" },
-                    { key: "status", label: "Status" },
-                  ].map(({ key, label }) => (
-                    <th
-                      key={key}
-                      className="py-2 cursor-pointer"
-                      onClick={() => sortData(key)}
-                    >
-                      {label} {getSortIndicator(key)}
-                    </th>
-                  ))}
-                </tr>
-                {/* Search Row */}
-                <tr>
-                  {Object.keys(searchFields).map((key) => (
-                    <td key={key} className="px-2 py-2">
-                      <input
-                        type="text"
-                        value={searchFields[key]}
-                        onChange={(e) => handleSearchChange(e, key)}
-                        className="w-full px-2 py-1 border rounded text-sm"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="text-xs sm:text-sm ms:text-sm lg:text-base h-full">
-  {currentRecords.length > 0 ? (
-    currentRecords.map((entry, index) => {
-      // Determine row text color based on status
-      const textColor =
-        entry.otStatus === "Pending"
-          ? "text-gray-800"
-          : entry.otStatus === "Approved"
-          ? "text-green-700"
-          : "text-red-700";
-
-      return (
-        <tr
-          key={index}
-          className={`hover:bg-blue-100 transition ${textColor} 
-              odd:bg-white even:bg-blue-50`}
-        >
-          <td className="px-3 py-1 text-center">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
-          <td className="px-3 py-1 text-right">{entry.otHrs} hr(s)</td>
-          <td className="px-3 py-1 text-left">{getOvertimeTypeLabel(entry.otType)}</td>
-          <td className="px-3 py-1 text-left">{entry.otRemarks || "N/A"}</td>
-          <td className="px-3 py-1 text-left">{entry.appRemarks || "N/A"}</td>
-          <td className="px-3 py-1 text-center">{entry.otStatus || "N/A"}</td>
-          {/* <td className="p-2 border text-center">
-            <span
-              className={`w-[100px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium ${
-                entry.otStatus === "Pending"
-                  ? "bg-yellow-100"
-                  : entry.otStatus === "Approved"
-                  ? "bg-green-100"
-                  : "bg-red-100"
-              }`}
+  {/* Scrollable Table Container */}
+  <div className="w-full overflow-x-auto">
+    <table className="min-w-[800px] w-full text-sm text-center border">
+      <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-sm lg:text-base">
+        <tr>
+          {[
+            { key: "date", label: "OT Date" },
+            { key: "durationHours", label: "Duration" },
+            { key: "type", label: "Overtime Type" },
+            { key: "remark", label: "Remarks" },
+            { key: "appRemarks", label: "Approver's Remarks" },
+            { key: "status", label: "Status" },
+          ].map(({ key, label }) => (
+            <th
+              key={key}
+              className="py-2 px-3 cursor-pointer whitespace-nowrap"
+              onClick={() => sortData(key)}
             >
-              {entry.otStatus}
-            </span>
-          </td> */}
+              {label} {getSortIndicator(key)}
+            </th>
+          ))}
         </tr>
-      );
-    })
-  ) : (
-    <tr>
-      <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
-        No overtime applications found.
-      </td>
-    </tr>
-  )}
-</tbody>
 
-            </table>
-          {/* </div> */}
+        <tr>
+          {Object.keys(searchFields).map((key) => (
+            <td key={key} className="px-2 py-2 whitespace-nowrap">
+              <input
+                type="text"
+                value={searchFields[key]}
+                onChange={(e) => handleSearchChange(e, key)}
+                className="w-full px-2 py-1 border rounded text-sm"
+              />
+            </td>
+          ))}
+        </tr>
+      </thead>
 
-          {/* Pagination */}
-<div className="flex justify-between items-center mt-2 pt-4">
-  {/* Left: Showing Text */}
-  <div className="text-sm text-gray-600">
-    Showing <b>{indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries
+      <tbody className="global-tbody">
+        {currentRecords.length > 0 ? (
+          currentRecords.map((entry, index) => {
+            const textColor =
+              entry.otStatus === "Pending"
+              ? "global-td-status-pending"
+              : entry.otStatus === "Approved"
+              ? "global-td-status-approved"
+              : "global-td-status-disapproved";
+
+            return (
+              <tr
+                key={index}
+                className={`global-tr ${textColor}`}
+              >
+                <td className="global-td text-center whitespace-nowrap">
+                  {dayjs(entry.otDate).format("MM/DD/YYYY")}
+                </td>
+                <td className="global-td text-right whitespace-nowrap">{entry.otHrs} hr(s)</td>
+                <td className="global-td text-left whitespace-nowrap">{getOvertimeTypeLabel(entry.otType)}</td>
+                <td className="global-td text-left">{entry.otRemarks || "N/A"}</td>
+                <td className="global-td text-left">{entry.appRemarks || "N/A"}</td>
+                <td className="global-td-status">{entry.otStatus || "N/A"}</td>
+              </tr>
+            );
+          })
+        ) : (
+          <tr>
+            <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
+              No overtime applications found.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
   </div>
 
-  {/* Right: Pagination Controls */}
-  <div className="flex items-center border rounded-lg overflow-hidden">
-    {/* Previous Button */}
-    <button
-      onClick={() => setCurrentPage(currentPage - 1)}
-      disabled={currentPage === 1}
-      className="px-3 py-1 border-r text-gray-700 hover:bg-blue-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-    >
-      &lt;
-    </button>
-
-    {/* Page Numbers */}
-    {[...Array(totalPages)].map((_, i) => (
+  {/* Pagination */}
+  <div className="flex justify-between items-center mt-2 pt-4">
+    <div className="text-sm text-gray-600">
+      Showing <b>{indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries
+    </div>
+    <div className="flex items-center border rounded-lg overflow-hidden">
       <button
-        key={i}
-        onClick={() => setCurrentPage(i + 1)}
-        className={`px-3 py-1 border-r ${
-          currentPage === i + 1 ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-200"
-        }`}
+        onClick={() => setCurrentPage(currentPage - 1)}
+        disabled={currentPage === 1}
+        className="px-3 py-1 border-r text-gray-700 hover:bg-blue-200 disabled:text-gray-400 disabled:cursor-not-allowed"
       >
-        {i + 1}
+        &lt;
       </button>
-    ))}
-
-    {/* Next Button */}
-    <button
-      onClick={() => setCurrentPage(currentPage + 1)}
-      disabled={currentPage === totalPages}
-      className="px-3 py-1 text-gray-700 hover:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-    >
-      &gt;
-    </button>
+      {[...Array(totalPages)].map((_, i) => (
+        <button
+          key={i}
+          onClick={() => setCurrentPage(i + 1)}
+          className={`px-3 py-1 border-r ${
+            currentPage === i + 1 ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-200"
+          }`}
+        >
+          {i + 1}
+        </button>
+      ))}
+      <button
+        onClick={() => setCurrentPage(currentPage + 1)}
+        disabled={currentPage === totalPages}
+        className="px-3 py-1 text-gray-700 hover:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
+      >
+        &gt;
+      </button>
+    </div>
   </div>
 </div>
-        </div>
+
+
       </div>
     </div>
   );

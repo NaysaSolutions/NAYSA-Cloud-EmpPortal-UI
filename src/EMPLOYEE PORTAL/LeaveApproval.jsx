@@ -101,38 +101,38 @@ setPendingLeaves(pendingOnly);
   {error && <p className="text-red-500 text-center">{error}</p>}
 
   {/* Scrollable container */}
-  <div className="overflow-x-auto max-h-[460px] overflow-y-auto relative">
-    <table className="min-w-full text-center text-sm sm:text-xs md:text-sm lg:text-base">
-      <thead className="sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300">
+  <div className="overflow-x-auto max-h-[480px] overflow-y-auto relative">
+    <table className="min-w-full text-center text-sm sm:text-xs md:text-sm lg:text-base border">
+      <thead className="global-thead-approval">
         <tr className="border-b">
-          <th className="p-3 text-left whitespace-nowrap">Employee Name</th>
+          <th className="global-th text-left whitespace-nowrap">Employee Name</th>
           {/* <th className="p-2">Department</th> */}
-          <th className="p-2 text-left whitespace-nowrap">Leave Start</th>
-          <th className="p-2 text-left whitespace-nowrap">Leave End</th>
-          <th className="p-2 text-right whitespace-nowrap">Days</th>
-          <th className="p-2 text-right whitespace-nowrap">Hours</th>
-          <th className="p-2 text-center whitespace-nowrap">Leave Type</th>
-          <th className="p-2 text-left whitespace-nowrap">Remarks</th>
-          <th className="p-2 text-center whitespace-nowrap">Status</th>
-          <th className="p-2 text-center whitespace-nowrap">Action</th>
+          <th className="global-th text-left whitespace-nowrap">Leave Start</th>
+          <th className="global-th text-left whitespace-nowrap">Leave End</th>
+          <th className="global-th text-right whitespace-nowrap">Days</th>
+          <th className="global-th text-right whitespace-nowrap">Hours</th>
+          <th className="global-th text-center whitespace-nowrap">Leave Type</th>
+          <th className="global-th text-left whitespace-nowrap">Remarks</th>
+          {/* <th className="global-th text-center whitespace-nowrap">Status</th> */}
+          <th className="global-th text-center whitespace-nowrap">Action</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody classname="global-tbody">
         {pendingLeaves.length > 0 ? (
           pendingLeaves.map((leave, index) => (
-            <tr key={index} className="border-b hover:bg-blue-100">
-              <td className="px-2 p-2 text-left whitespace-nowrap">{leave.empName}</td>
-              {/* <td className="px-2 p-2 text-left">{leave.department || "N/A"}</td> */}
-              <td className="px-2 p-2 text-left">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
-              <td className="px-2 p-2 text-left">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
-              <td className="px-2 p-2 text-right">{leave.leaveDays}</td>
-              <td className="px-2 p-2 text-right">{leave.leaveHrs}</td>
-              <td className="px-2 p-2 text-center">{leave.leaveCode}</td>
-              <td className="px-2 p-2 text-left">{leave.leaveRemarks}</td>
-              <td className="px-2 p-2 text-orange-500 font-bold">{leave.leaveStatus}</td>
-              <td className="px-2 p-2 text-center">
+            <tr key={index} className="global-tr">
+              <td className="global-td-approval text-left whitespace-nowrap">{leave.empName}</td>
+              {/* <td className="global-td-approval text-left">{leave.department || "N/A"}</td> */}
+              <td className="global-td-approval text-left">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
+              <td className="global-td-approval text-left">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
+              <td className="global-td-approval text-right">{leave.leaveDays}</td>
+              <td className="global-td-approval text-right">{leave.leaveHrs}</td>
+              <td className="global-td-approval text-center">{leave.leaveCode}</td>
+              <td className="global-td-approval text-left">{leave.leaveRemarks}</td>
+              {/* <td className="global-td-approval text-orange-500 font-bold">{leave.leaveStatus}</td> */}
+              <td className="text-center">
                 <button
-                  className="bg-blue-500 text-white px-4 py-1 rounded-lg hover:bg-blue-600 transition"
+                  className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition"
                   onClick={() => setSelectedLeave(leave)}
                 >
                   Review
@@ -157,36 +157,36 @@ setPendingLeaves(pendingOnly);
         <div className="mt-6 bg-white p-4 shadow-lg rounded-lg">
           <h2 className="text-lg font-bold mb-4">Leave Approval History</h2>
           {error && <p className="text-red-500 text-center">{error}</p>}
-          <div className="overflow-x-auto max-h-[460px] overflow-y-auto">
-          <table className="min-w-full text-center text-sm sm:text-xs md:text-sm lg:text-base">
-            <thead className="bg-gradient-to-r from-blue-300 to-purple-300">
+          <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
+          <table className="min-w-full text-center text-sm sm:text-xs md:text-sm lg:text-base border">
+          <thead className="global-thead-approval">
               <tr className="border-b">
-                <th className="p-3 text-left whitespace-nowrap">Employee Name</th>
-                {/* <th className="p-3">Department</th> */}
-                <th className="p-2 text-left whitespace-nowrap">Leave Start</th>
-                <th className="p-2 text-left whitespace-nowrap">Leave End</th>
-                <th className="p-2 text-right whitespace-nowrap">Days</th>
-                <th className="p-2 text-right whitespace-nowrap">Hours</th>
-                <th className="p-2 text-center whitespace-nowrap">Leave Type</th>
-                <th className="p-2 text-left whitespace-nowrap">Remarks</th>
-                <th className="p-2 text-left whitespace-nowrap">Approver's Remarks</th>
-                <th className="p-2 text-center whitespace-nowrap">Status</th>
+                <th className="global-th text-left whitespace-nowrap">Employee Name</th>
+                {/* <th className="global-th">Department</th> */}
+                <th className="global-th text-left whitespace-nowrap">Leave Start</th>
+                <th className="global-th text-left whitespace-nowrap">Leave End</th>
+                <th className="global-th text-right whitespace-nowrap">Days</th>
+                <th className="global-th text-right whitespace-nowrap">Hours</th>
+                <th className="global-th text-center whitespace-nowrap">Leave Type</th>
+                <th className="global-th text-left whitespace-nowrap">Remarks</th>
+                <th className="global-th text-left whitespace-nowrap">Approver's Remarks</th>
+                <th className="global-th text-center whitespace-nowrap">Status</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody classname="global-tbody">
               {history.length > 0 ? (
                 history.map((record, index) => (
-                  <tr key={index} className="border-b">
-                    <td className="p-2 text-left whitespace-nowrap">{record.empName}</td>
-                    {/* <td className="p-2 text-left">{record.department || "N/A"}</td> */}
-                    <td className="p-2 text-left">{dayjs(record.leaveStart).format("MM/DD/YYYY")}</td>
-                    <td className="p-2 text-left">{dayjs(record.leaveEnd).format("MM/DD/YYYY")}</td>
-                    <td className="p-2 text-right">{record.leaveDays}</td>
-                    <td className="p-2 text-right">{record.leaveHrs}</td>
-                    <td className="p-2 text-center">{record.leaveCode}</td>
-                    <td className="p-2 text-left">{record.leaveRemarks || "N/A"}</td>
-                    <td className="p-2 text-left">{record.appRemarks || "N/A"}</td>
-                    <td className={`p-2 text-center font-bold ${record.leaveStatus === "Approved" ? "text-green-500" : "text-red-500"}`}>
+                  <tr key={index} className="global-tr">
+                    <td className="global-td-approval text-left whitespace-nowrap">{record.empName}</td>
+                    {/* <td className="global-td-approval text-left">{record.department || "N/A"}</td> */}
+                    <td className="global-td-approval text-left">{dayjs(record.leaveStart).format("MM/DD/YYYY")}</td>
+                    <td className="global-td-approval text-left">{dayjs(record.leaveEnd).format("MM/DD/YYYY")}</td>
+                    <td className="global-td-approval text-right">{record.leaveDays}</td>
+                    <td className="global-td-approval text-right">{record.leaveHrs}</td>
+                    <td className="global-td-approval text-center">{record.leaveCode}</td>
+                    <td className="global-td-approval text-left">{record.leaveRemarks || "N/A"}</td>
+                    <td className="global-td-approval text-left">{record.appRemarks || "N/A"}</td>
+                    <td className={`global-td-approval text-center font-bold ${record.leaveStatus === "Approved" ? "text-blue-600" : "text-red-600"}`}>
                       {record.leaveStatus}
                     </td>
                   </tr>

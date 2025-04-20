@@ -171,16 +171,16 @@ const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
   
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="relative bg-white p-6 rounded-lg shadow-lg w-[600px]">
-        {/* ✅ Close Button (X) in Top-Right */}
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-[9999] p-4 sm:p-6">
+    <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md sm:max-w-4xl relative overflow-y-auto max-h-[90vh]">
+          {/* ✅ Close Button (X) in Top-Right */}
         <button className="absolute top-3 right-3 text-gray-600 hover:text-gray-900" onClick={onClose}>
           <AiOutlineClose size={24} />
         </button>
 
         <h2 className="text-xl font-bold mb-4">Overtime Details</h2>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-gray-700">Employee Name</label>
             <input className="border p-2 w-full" value={formData.empName || ""} readOnly />
@@ -222,12 +222,13 @@ const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
         </div>
 
         {/* <div className="flex justify-end space-x-4 mt-6">
-          <button className="bg-green-500 text-white px-4 py-2 rounded">Approve</button>
+          <button className="bg-blue-500 text-white px-4 py-2 rounded">Approve</button>
           <button className="bg-red-500 text-white px-4 py-2 rounded">Disapprove</button>
         </div> */}
 
 {/* Buttons */}
-<div className="flex justify-end mt-4 space-x-2">
+<div className="flex flex-col sm:flex-row justify-end mt-4 gap-2 sm:gap-2">
+
           <button
             className="bg-red-500 text-white px-4 py-2 rounded"
             onClick={handleDisapprove}
@@ -235,7 +236,7 @@ const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
             Disapprove
           </button>
           <button
-            className="bg-green-500 text-white px-4 py-2 rounded"
+            className="bg-blue-500 text-white px-4 py-2 rounded"
             onClick={handleApprove}
           >
             Approve

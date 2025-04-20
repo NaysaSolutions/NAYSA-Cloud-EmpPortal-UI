@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faXmark } from '@fortawesome/free-solid-svg-icons';
@@ -15,6 +16,21 @@ const Navbar = () => {
   // Function to toggle dropdown
   const toggleDropdown = () => setIsDropdownOpen(prev => !prev);
   const toggleMobileMenu = () => setIsMobileMenuOpen(prev => !prev);
+
+  const dropdownRef = useRef();
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+  
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Function to check if a link is active
   const isActive = (path) => location.pathname === path;
@@ -79,11 +95,11 @@ const Navbar = () => {
         {/* Logo + Portal */}
         <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
           <img src="naysa_logo.png" className="w-[100px] h-[60px]" alt="Naysa Logo" />
-          <span className="text-blue-800 font-bold mt-3 text-base sm:text-base md:text-lg lg:text-lg">Employee Portal</span>
+          <span className="text-blue-800 font-bold mt-1 text-base sm:text-base md:text-lg lg:text-xl">Employee Portal</span>
         </div>
 
         {/* Desktop Nav Links */}
-        <div className="hidden sm:hidden md:hidden lg:flex space-x-12 text-sm sm:text-sm md:text-base lg:text-lg lg:ml-20">
+        <div className="hidden sm:hidden md:hidden lg:flex space-x-12 text-sm sm:text-sm md:text-base lg:text-xl">
         {navItems.map((item, index) => (
   <div key={index} className="relative group">
     {item.children ? (
@@ -120,37 +136,51 @@ const Navbar = () => {
         </div>
 
 {/* Right Side Controls */}
-<div className="fixed top-0 left-0 z-50 flex items-center space-x-4 relative">
-          {/* Hamburger Icon on Mobile */}
-          <button
-            onClick={toggleMobileMenu}
-            className="lg:hidden p-2 text-gray-600 focus:outline-none"
-          >
-            <FontAwesomeIcon icon={isMobileMenuOpen ? faXmark : faBars} size="lg" />
-          </button>
+<div className="flex items-center space-x-4 relative" ref={dropdownRef}>
+<h2 className="text-blue-800 mt-1 font-bold text-base sm:text-base md:text-lg lg:text-xl hidden sm:block">
+  {user.empName || "Employee"}
+</h2>
 
-          {/* Profile Picture */}
-          <div
-            className="w-10 h-10 bg-gray-200 rounded-full overflow-hidden shadow-md cursor-pointer"
-            onClick={toggleDropdown}
-          >
-            <img src="3135715.png" alt="Profile" className="w-full h-full object-cover" />
-          </div>
 
-          {/* Profile Dropdown */}
-          {isDropdownOpen && (
-            <div className="absolute right-0 mt-12 w-48 bg-white rounded-lg shadow-md py-2 z-30">
-              <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Account Management</button>
-              <button className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">Settings</button>
-              <button
-                className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
-                onClick={() => navigate("/")}
-              >
-                Logout
-              </button>
-            </div>
-          )}
-        </div>
+  {/* Profile Picture */}
+  <div
+    className="w-10 h-10 rounded-full overflow-hidden cursor-pointer"
+    onClick={toggleDropdown}
+  >
+    {user && user.empNo && (
+      <img
+        src={`/public/${user.empNo}.jpg`}
+        alt="Profile"
+        onError={(e) => {
+          e.currentTarget.onerror = null;
+          e.currentTarget.src = '/public/Default.jpg';
+        }}
+        className="w-full h-full object-cover shadow-md"
+      />
+    )}
+  </div>
+
+  {/* Hamburger Icon on Mobile */}
+  <button
+    onClick={toggleMobileMenu}
+    className="lg:hidden p-2 text-gray-600 focus:outline-none"
+  >
+    <FontAwesomeIcon icon={isMobileMenuOpen ? faXmark : faBars} size="lg" />
+  </button>
+
+  {/* Profile Dropdown */}
+  {isDropdownOpen && (
+    <div className="absolute right-0 mt-12 w-48 bg-white rounded-lg py-2 z-30">
+      <button
+        className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
+        onClick={() => navigate("/")}
+      >
+        Logout
+      </button>
+    </div>
+  )}
+</div>
+
       </div>
 
 

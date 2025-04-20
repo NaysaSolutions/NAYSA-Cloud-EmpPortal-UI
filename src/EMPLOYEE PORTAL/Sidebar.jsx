@@ -86,16 +86,30 @@ const Sidebar = () => {
  
   {/* Profile Section */}
   <div className="flex flex-col items-center text-center">
-    <img
+    {/* <img
        src={"Default.jpg"}
       className="w-[130px] h-[130px] rounded-full object-cover mb-4"
-    />
+    /> */}
 
 {/* <img
   src={`${employeeInfo.empNo}.jpg`}
   onError={(e) => { e.target.onerror = null; e.target.src = 'Default.jpg'; }}
   className="w-[130px] h-[130px] rounded-full object-cover mb-4"
-/> */}
+/>  */}
+
+{employeeInfo && employeeInfo.empNo && (
+  <img
+    src={`/public/${employeeInfo.empNo}.jpg`}
+    onError={(e) => {
+      e.currentTarget.onerror = null;
+      e.currentTarget.src = '/public/Default.jpg';
+    }}
+    className="w-[130px] h-[130px] rounded-full object-cover mb-4"
+  />
+)}
+
+
+
 
 
     {/* <img src="naysa_logo.png" className="w-[100px] h-[60px]" alt="Naysa Logo" /> */}

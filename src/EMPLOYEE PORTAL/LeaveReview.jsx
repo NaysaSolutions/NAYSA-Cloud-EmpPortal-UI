@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { User, X } from "lucide-react";
 import { useAuth } from "./AuthContext";
-// import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 
 import Swal from 'sweetalert2';
@@ -200,8 +199,8 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
   
   
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-[9999]">
-  <div className="bg-white p-6 rounded-lg shadow-xl max-w-4xl w-full relative">
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50 z-[9999] p-4 sm:p-6">
+  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-xl w-full max-w-md sm:max-w-4xl relative overflow-y-auto max-h-[90vh]">
         {/* Close Button */}
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-600 hover:text-gray-900">
           <X size={24} />
@@ -209,7 +208,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
     <h2 className="text-2xl font-bold mb-5">Leave Review</h2>
 
         {/* Grid Layout for Inputs */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Left Column */}
           <div className="space-y-3">
             <div>
@@ -332,7 +331,8 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
       
 
         {/* Buttons */}
-        <div className="flex justify-end mt-4 space-x-2">
+        <div className="flex flex-col sm:flex-row justify-end mt-4 gap-2 sm:gap-2">
+
           <button
             className="bg-red-500 text-white px-4 py-2 rounded"
             onClick={handleDisapprove}
@@ -340,7 +340,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
             Disapprove
           </button>
           <button
-            className="bg-green-500 text-white px-4 py-2 rounded"
+            className="bg-blue-500 text-white px-4 py-2 rounded"
             onClick={handleApprove}
           >
             Approve

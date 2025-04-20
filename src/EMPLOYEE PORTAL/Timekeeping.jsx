@@ -244,51 +244,63 @@ const Timekeeping = () => {
     };
   
   return (    
-  <div className="ml-[260px] mt-[110px] p-6 bg-gray-100 min-h-screen">
+  // <div className="ml-[260px] mt-[110px] p-6 bg-gray-100 min-h-screen">
+         
+         <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen">
+      {/* <div className="mx-auto"> */}
      
-      {/* Header */}
-      <div className="max-w-[1150px] mx-auto">
-        <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white flex justify-between items-center mb-6 w-full shadow-lg">
-          <div>
-            <p className="text-md font-light mb-1 text-[#424554]">Today</p>
-            <h1 className="text-4xl font-extrabold text-[#495057]">
-              {currentDate.format("MMMM DD YYYY")}
-            </h1>
-          </div>
-          <div className="flex flex-col items-center">
-            <p className="text-sm font-medium">Philippine Standard Time:</p>
-            <p className="text-4xl font-bold">{time}</p>
-          </div>
-          <div className="flex space-x-4">
-            {/* Time In Button */}
-            <button
-              className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded shadow-md transition duration-300"
-              onClick={() => handleTimeEvent("TIME IN")}
-            >
-              TIME IN
-            </button>
-            {/* Time Out Button (Disabled if No Time In Image) */}
-            <button
-  className={`${
-    !timeInImage ? "bg-gray-400 cursor-not-allowed" : "bg-blue-500 hover:bg-blue-600"
-  } text-white font-bold py-2 px-4 rounded shadow-md transition duration-300`}
-  onClick={() => handleTimeEvent("TIME OUT")}
-  disabled={!timeInImage}
->
-  TIME OUT
-</button>
+     {/* Header */}
+<div className="max-w-[1150px] mx-auto px-4">
+  <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6 w-full shadow-lg">
+    {/* Date Section */}
+    <div>
+      <p className="text-md font-light mb-1 text-[#424554]">Today</p>
+      <h1 className="text-3xl md:text-4xl font-extrabold text-[#495057]">
+        {currentDate.format("MMMM DD YYYY")}
+      </h1>
+    </div>
 
-            <button className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded shadow-md transition duration-300"
-            onClick={() => handleTimeEvent("BREAK IN")}>
-              BREAK IN
-            </button>
-            <button className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded shadow-md transition duration-300"
-            onClick={() => handleTimeEvent("BREAK OUT")}>
-              BREAK OUT
-            </button>
-          </div>
-        </div>
-      </div>
+    {/* Time Section */}
+    <div className="flex flex-col items-start md:items-center">
+      <p className="text-sm font-medium">Philippine Standard Time:</p>
+      <p className="text-3xl md:text-4xl font-bold">{time}</p>
+    </div>
+
+    {/* Button Section */}
+    <div className="flex flex-wrap gap-2 justify-center md:justify-end">
+      <button
+        className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded shadow-md transition duration-300"
+        onClick={() => handleTimeEvent("TIME IN")}
+      >
+        TIME IN
+      </button>
+      <button
+        className={`${
+          !timeInImage
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-blue-500 hover:bg-blue-600"
+        } text-white font-bold py-2 px-4 rounded shadow-md transition duration-300`}
+        onClick={() => handleTimeEvent("TIME OUT")}
+        disabled={!timeInImage}
+      >
+        TIME OUT
+      </button>
+      <button
+        className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded shadow-md transition duration-300"
+        onClick={() => handleTimeEvent("BREAK IN")}
+      >
+        BREAK IN
+      </button>
+      <button
+        className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded shadow-md transition duration-300"
+        onClick={() => handleTimeEvent("BREAK OUT")}
+      >
+        BREAK OUT
+      </button>
+    </div>
+  </div>
+</div>
+
 
       {/* Content Section */}
       <div className="grid grid-cols-2 gap-10">

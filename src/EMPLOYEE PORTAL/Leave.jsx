@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css"; // already installed
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -13,12 +15,17 @@ const Leave = () => {
   const [error, setError] = useState(null);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [applicationDate, setApplicationDate] = useState("");
-  const [selectedStartDate, setSelectedStartDate] = useState("");
-  const [selectedEndDate, setSelectedEndDate] = useState("");
+
+  // const [selectedStartDate, setSelectedStartDate] = useState("");
+  // const [selectedEndDate, setSelectedEndDate] = useState("");
+  const [selectedStartDate, setSelectedStartDate] = useState(null);
+  const [selectedEndDate, setSelectedEndDate] = useState(null);
+
   const [leaveHours, setLeaveHours] = useState("8");
   const [leaveDays, setLeaveDays] = useState("1");
   const [leaveType, setLeaveType] = useState("");
   const [remarks, setRemarks] = useState("");
+  const [holidays, setHolidays] = useState([]);
 
   // Search State
   const [searchFields, setSearchFields] = useState({
@@ -38,6 +45,7 @@ const Leave = () => {
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
   const currentRecords = filteredApplications.slice(indexOfFirstRecord, indexOfLastRecord);
+
 
   useEffect(() => {
     if (!user || !user.empNo) return;
@@ -86,7 +94,8 @@ const Leave = () => {
   }, [user]); // Depend on user to re-run when user changes
 
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
+    // const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
+    const today = new Date();
     setApplicationDate(today);
     setSelectedStartDate(today);
     setSelectedEndDate(today);
@@ -144,7 +153,75 @@ const Leave = () => {
   
 
    // List of holidays (Modify this array based on your holidays)
-   const holidays = ["2025-04-01", "2025-05-04"]; // Example holidays (New Year, Christmas, etc.)
+  //  const holidays = ["2025-04-01", "2025-05-04"]; // Example holidays (New Year, Christmas, etc.)
+ 
+  const fetchHolidays = async () => {
+    try {
+      const response = await fetch(API_ENDPOINTS.dashBoard, { // Use dynamic API endpoint here
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ EMP_NO: user.empNo }),
+      });
+      const holidayDates = response.data.map((holiday) =>
+        dayjs(holiday.holdate).format("YYYY-MM-DD")
+      );
+      // setHolidays(holidays);
+      setHolidays(parsedData[0]?.holidays || []);
+    } catch (error) {
+      console.error("Error fetching holidays:", error);
+    }
+  };
+
+  const toUTCDate = (dateStr) => {
+    const [year, month, day] = dateStr.split("-");
+    return new Date(Date.UTC(year, month, day));
+  };
+  
+  // excludeDates={holidays.map(toUTCDate)}
+  
+
+
+  // const fetchHolidays = async () => {
+  //   if (user?.empNo) {
+  //     fetchHolidays();
+  //   }
+  
+  //     try {
+  //       const response = await fetch(API_ENDPOINTS.dashBoard, { // Use dynamic API endpoint here
+  //         method: "POST",
+  //         headers: { "Content-Type": "application/json" },
+  //         body: JSON.stringify({ EMP_NO: user.empNo }),
+  //       });
+  
+  //       const result = await response.json();
+  //       console.log("Raw API Response:", result);
+  
+  //       if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
+  //         const parsedData = JSON.parse(result.data[0].result);
+  //         console.log("Parsed Employee Summary:", parsedData);
+  
+  //         let apiLeaveCredits = parsedData[0]?.leaveCredit || [];
+  
+  //         // Merge API leave credits with default leave types
+  //         const mergedLeaveCredits = defaultLeaveTypes.map((defaultLeave) => {
+  //           const foundLeave = apiLeaveCredits.find(
+  //             (apiLeave) => apiLeave.description === defaultLeave.description
+  //           );
+  //           return foundLeave ? foundLeave : defaultLeave;
+  //         });
+        
+  //         setHolidays(parsedData[0]?.holidays || []);
+  //         // console.log("Holidays:", parsedData[0]?.holidays);
+  
+  //       } else {
+  //         setError("API response format is incorrect or no data found.");
+  //       }
+  //     } catch (err) {
+  //       console.error("Error fetching daily time records:", err);
+  //       setError("An error occurred while fetching the records.");
+  //     }
+  //   };
+
 
 
    // Function to calculate leave days excluding weekends & holidays
@@ -171,50 +248,71 @@ const Leave = () => {
   };
   
   
-    // Update leave days when start or end date changes
-    const handleDateChange = (field, value) => {
-      if (field === "start") {
-        setSelectedStartDate(value);
-        
-        // Adjust the end date to be at least the same as the start date
-        let adjustedEndDate = selectedEndDate;
-        if (!selectedEndDate || new Date(value) > new Date(selectedEndDate)) {
-          adjustedEndDate = value;
-          setSelectedEndDate(value);
-        }
-    
-        // Only calculate leave days if both start and end dates are provided
-        if (adjustedEndDate) {
-          const days = calculateLeaveDays(value, adjustedEndDate);
-          setLeaveDays(days);
-          setLeaveHours(days * 8);
-        }
-      }
-      
-      if (field === "end") {
-        // Only validate the end date if both start and end dates are set
-        if (selectedStartDate && value) {
-          if (new Date(value) < new Date(selectedStartDate)) {
-            Swal.fire({
-              icon: "warning",
-              title: "Invalid End Date",
-              text: "End date cannot be earlier than start date.",
-            });
-            return; // Exit early if validation fails
-          }
-        }
-    
-        // Proceed to set the end date only if it's valid
+  const handleDateChange = (field, value) => {
+    if (!value) return;
+  
+    if (field === "start") {
+      setSelectedStartDate(value);
+  
+      let adjustedEndDate = selectedEndDate;
+      if (!selectedEndDate || value > selectedEndDate) {
+        adjustedEndDate = value;
         setSelectedEndDate(value);
-    
-        // Calculate and set leave days and hours after validating dates
-        if (selectedStartDate && value) {
-          const days = calculateLeaveDays(selectedStartDate, value);
-          setLeaveDays(days);
-          setLeaveHours(days * 8);
-        }
       }
-    };
+  
+      if (adjustedEndDate) {
+        const days = calculateLeaveDays(value, adjustedEndDate);
+        if (days === 0) {
+          Swal.fire({
+            icon: "warning",
+            title: "Invalid Leave Duration",
+            text: "Leave duration must be at least one valid working day.",
+          });
+          setLeaveDays(0);
+          setLeaveHours(0);
+          return;
+        }
+        setLeaveDays(days);
+        setLeaveHours(days * 8);
+      }
+    }
+  
+    if (field === "end") {
+      if (selectedStartDate && value < selectedStartDate) {
+        Swal.fire({
+          icon: "warning",
+          title: "Invalid End Date",
+          text: "End date cannot be earlier than start date.",
+        });
+        return;
+      }
+  
+  
+      if (selectedStartDate && value) {
+        const days = calculateLeaveDays(selectedStartDate, value);
+        if (days === 0) {
+          Swal.fire({
+            icon: "warning",
+            title: "Invalid Leave Duration",
+            text: "Leave duration must be at least one valid working day.",
+          });
+          setLeaveDays(1);
+          setLeaveHours(8);
+          return;
+        }
+        setLeaveDays(days);
+        setLeaveHours(days * 8);
+      }
+
+      
+      setSelectedEndDate(value);
+
+    }
+  };
+  
+  
+ 
+    
     
       const handleHoursChange = (e) => {
         const hours = e.target.value;
@@ -308,13 +406,12 @@ const Leave = () => {
 
   return (
       
-    <div className="ml-0 lg:ml-[260px] mt-[110px] px-4 sm:px-6 py-4 bg-gray-100 min-h-screen">
-
+    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen overflow-x-hidden">
       <div className="mx-auto">
         
         {/* Header Section */}
-        <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 sm:p-6 rounded-lg text-white shadow-lg">
-          <h1 className="text-lg sm:text-2xl font-semibold">My Leave Applications</h1>
+        <div className="global-div-header-ui">
+          <h1 className="global-div-headertext-ui">My Leave Applications</h1>
         </div>
 
         {/* Leave Details Section */}
@@ -324,36 +421,61 @@ const Leave = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div className="flex flex-col">
             <span className="block font-semibold mb-1 propercase">Date</span>
-            <input
+            {/* <input
               type="date"
               className="w-full p-2 border rounded"
               value={applicationDate}
               onChange={(e) => setApplicationDate(e.target.value)}
+            /> */}
+            <DatePicker 
+              selected={applicationDate ? new Date(applicationDate) : null}
+              onChange={(date) => setApplicationDate(date)}
+              dateFormat="MM/dd/yyyy"
+              placeholderText="Select Application date"
+              className="w-full p-2 border rounded"
             />
           </div>
 
-            <div className="flex flex-col">
-              <span className="block font-semibold mb-1">Start Date</span>
-            <input 
-              type="date" 
-              className="w-full p-2 border rounded" 
-              value={selectedStartDate} 
-              min={applicationDate}
-              // onChange={(e) => setSelectedStartDate(e.target.value)} 
-              onChange={(e) => handleDateChange("start", e.target.value)}
+          <div className="flex flex-col">
+            <span className="block font-semibold mb-1">Start Date</span>
+            {/* <input 
+            type="date" 
+            className="w-full p-2 border rounded" 
+            value={selectedStartDate} 
+            min={selectedStartDate}
+            onChange={(e) => handleDateChange("start", e.target.value)}
+          /> */}
+            <DatePicker 
+              selected={selectedStartDate ? new Date(selectedStartDate) : null}
+              onChange={(date) => handleDateChange("start", date)}
+              excludeDates={holidays.map(toUTCDate)}
+              minDate={new Date(applicationDate)}
+              dateFormat="MM/dd/yyyy"
+              placeholderText="Select Leave Start Date"
+              className="w-full p-2 border rounded"
             />
-            </div>
 
-<div className="flex flex-col">
-  <span className="block font-semibold mb-1">End Date</span>
-  <input 
-  type="date" 
-  className="w-full p-2 border rounded" 
-  value={selectedEndDate} 
-  min={selectedStartDate}
-  onChange={(e) => handleDateChange("end", e.target.value)}
-/>
-</div>
+          </div>
+
+          <div className="flex flex-col">
+            <span className="block font-semibold mb-1">End Date</span>
+            {/* <input 
+            type="date" 
+            className="w-full p-2 border rounded" 
+            value={selectedEndDate} 
+            min={selectedStartDate}
+            onChange={(e) => handleDateChange("end", e.target.value)}
+          /> */}
+          <DatePicker
+              selected={selectedEndDate ? new Date(selectedEndDate) : null}
+              onChange={(date) => handleDateChange("end", date)}
+              excludeDates={holidays.map(toUTCDate)}
+              minDate={new Date(selectedStartDate)}
+              dateFormat="MM/dd/yyyy"
+              placeholderText="Select Leave End Date"
+              className="w-full p-2 border rounded"
+            />
+          </div>
 
 
 <div className="flex flex-col">
@@ -385,6 +507,7 @@ const Leave = () => {
   defaultValue="1"
   // onChange={(e) => setLeaveDays(e.target.value)} 
   onChange={handleDaysChange}
+  
 />
             </div>
 
@@ -423,24 +546,23 @@ const Leave = () => {
 
           {/* Submit Button */}
           <div className="mt-6 flex justify-center">
-            {/* <button className="bg-blue-700 text-white px-6 py-2 rounded hover:bg-blue-700" */}
-            <button className="bg-blue-700 text-white px-6 py-3 rounded-md text-md sm:text-lg hover:bg-blue-700 w-full sm:w-auto mx-auto"
+            <button className="bg-blue-500 text-white px-12 py-2 rounded-md text-md sm:text-lg hover:bg-blue-600 w-full sm:w-auto mx-auto"
             onClick={handleSubmit}>
-              Submit to Approver
+              Submit
             </button>
           </div>
         </div>
 
         {/* Leave History Table */}
         <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-          <h2 className="text-lg font-semibold mb-4">History</h2>
+          <h2 className="text-lg font-semibold mb-4">Leave Application History</h2>
 
           {error && <p className="text-red-500 text-center">{error}</p>}
 
-          <div className="overflow-x-auto w-full">
-          <div className="min-w-[700px]">
+          <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
+          <div>
             {/* <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">   */}
-          <table className="min-w-[300px] w-full text-sm text-center rounded-lg border">
+          <table className="w-full text-sm text-center rounded-lg border">
   
           <thead className="sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-sm ms:text-sm lg:text-base">
           <tr>
@@ -476,30 +598,29 @@ const Leave = () => {
                   ))}
                 </tr>
               </thead>
-              <tbody className="text-xs sm:text-sm ms:text-sm lg:text-base h-full">
+              <tbody className="global-tbody">
                 {currentRecords.length > 0 ? (
     currentRecords.map((leave, index) => {
       // Determine row text color based on status
       const textColor =
       leave.leaveStatus === "Pending"
-          ? "text-gray-800"
+          ? "global-td-status-pending"
           : leave.leaveStatus === "Approved"
-          ? "text-green-700"
-          : "text-red-700";
+          ? "global-td-status-approved"
+          : "global-td-status-disapproved";
 
       return (
                     <tr
           key={index}
-          className={`hover:bg-blue-100 transition ${textColor} 
-              odd:bg-white even:bg-blue-50`}
+          className={`global-tr ${textColor}`}
         >
-                      <td className="px-3 py-1">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
-                      <td className="px-3 py-1">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
-                      <td className="px-3 py-1">{leave.leaveDays} Days</td>
-                      <td className="px-3 py-1">{leave.leaveCode}</td>
-                      <td className="px-3 py-1">{leave.leaveRemarks || "N/A"}</td>
-                      <td className="px-3 py-1">{leave.ApprleaveRemarks || "N/A"}</td>
-                      <td className="px-3 py-1 text-center">{leave.leaveStatus || "N/A"}</td>
+                      <td className="global-td text-center whitespace-nowrap">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
+                      <td className="global-td text-center whitespace-nowrap">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
+                      <td className="global-td text-right whitespace-nowrap">{leave.leaveDays} Days</td>
+                      <td className="global-td text-center whitespace-nowrap">{leave.leaveCode}</td>
+                      <td className="global-td text-left">{leave.leaveRemarks || "N/A"}</td>
+                      <td className="global-td text-left">{leave.ApprleaveRemarks || "N/A"}</td>
+                      <td className="global-td-status">{leave.leaveStatus || "N/A"}</td>
                         {/* <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${
                             leave.leaveStatus === "Pending"
@@ -554,7 +675,7 @@ const Leave = () => {
         key={i}
         onClick={() => setCurrentPage(i + 1)}
         className={`px-3 py-1 border-r ${
-          currentPage === i + 1 ? "bg-blue-700 text-white" : "text-gray-700 hover:bg-gray-200"
+          currentPage === i + 1 ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-200"
         }`}
       >
         {i + 1}
