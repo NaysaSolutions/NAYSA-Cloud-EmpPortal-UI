@@ -387,8 +387,14 @@ const Dashboard = () => {
     <button onClick={handlePrevMonth} className="text-gray-400">◀</button>
     <h3 className="text-md sm:text-lg font-semibold">{currentMonth.format("MMMM YYYY")}</h3>
     <button onClick={handleNextMonth} className="text-gray-600">▶</button>
-  </div>
+  </div>  
 
+{/* Weekday Names */}
+<div className="grid grid-cols-7 gap-2 text-center font-semibold text-sm text-gray-600 mb-2">
+  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, idx) => (
+    <div key={idx}>{day}</div>
+  ))}
+</div>
 
 {/* Weekday Headers */}
 <div className="grid grid-cols-7 gap-2 text-center mt-4">
