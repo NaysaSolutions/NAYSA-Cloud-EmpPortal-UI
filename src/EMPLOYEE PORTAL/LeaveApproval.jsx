@@ -130,7 +130,7 @@ setPendingLeaves(pendingOnly);
               <td className="global-td-approval text-center">{leave.leaveCode}</td>
               <td className="global-td-approval text-left">{leave.leaveRemarks}</td>
               {/* <td className="global-td-approval text-orange-500 font-bold">{leave.leaveStatus}</td> */}
-              <td className="text-center">
+              <td className="global-td-approval text-center">
                 <button
                   className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition"
                   onClick={() => setSelectedLeave(leave)}

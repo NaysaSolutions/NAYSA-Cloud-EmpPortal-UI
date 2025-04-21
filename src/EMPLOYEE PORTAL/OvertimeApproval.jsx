@@ -111,7 +111,7 @@ const OvertimeApproval = () => {
                     <td className="global-td-approval text-left">{overtime.otRemarks || "N/A"}</td>
                     {/* <td className="global-td-approval text-left text-orange-500 font-bold whitespace-nowrap">{overtime.otStatus}</td> */}
                     
-                    <td className="text-center whitespace-nowrap">
+                    <td className="global-td-approval text-center whitespace-nowrap">
                       <button
                         className="bg-blue-500 text-white px-3 py-1 rounded-lg hover:bg-blue-600 transition"
                         onClick={() => handleReviewClick(overtime)}

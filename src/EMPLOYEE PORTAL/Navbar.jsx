@@ -149,7 +149,7 @@ const Navbar = () => {
   >
     {user && user.empNo && (
       <img
-        src={`/public/${user.empNo}.jpg`}
+        src={`/dist/${user.empNo}.jpg`}
         alt="Profile"
         onError={(e) => {
           e.currentTarget.onerror = null;

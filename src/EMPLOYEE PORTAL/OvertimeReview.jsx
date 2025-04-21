@@ -6,7 +6,7 @@ import API_ENDPOINTS from "@/apiConfig.jsx";
 
 import Swal from 'sweetalert2';
 
-const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
+const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refreshData }) => {
   if (!overtimeData) return null;
 
   const { user } = useAuth(); // Get logged-in user data
@@ -40,10 +40,13 @@ const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
     try {
       if (!formData.otStamp) {
         console.error("Error: otStamp is missing!");
-        Swal.fire({
+        await Swal.fire({
           title: "Error",
           text: "otStamp is missing. Please try again.",
           icon: "error",
+          customClass: {
+            popup: 'z-[10050]',
+          },
           confirmButtonText: "OK",
         });
         return;
@@ -75,34 +78,48 @@ const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
       const result = await response.json();
   
       if (response.ok) {
-        Swal.fire({
-          title: "Success",
-          text: "Approval successful!",
-          icon: "success",
-          confirmButtonText: "OK",
-        }).then(() => {
-          refreshData(); // ✅ Refresh parent list
-          onClose();     // ✅ Close modal
-        });
-      } else {
-        Swal.fire({
-          title: "Error",
-          text: result.message || "Something went wrong",
-          icon: "error",
-          confirmButtonText: "OK",
-        });
-      }
-    } catch (error) {
-      console.error("Approval failed:", error);
-      Swal.fire({
-        title: "Error",
-        text: "Failed to send approval. Please try again.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
-    }
-  };
-  
+              onClose(); // Close modal
+              await Swal.fire({
+                title: "Success",
+                text: "Approval successful!",
+                icon: "success",
+                customClass: {
+                  popup: 'z-[10050]',
+                },
+              });
+        
+              // setPendingOt((prevOt) =>
+              //   prevOt.filter((overtime) => overtime.otStamp !== overtimeData.otStamp)
+              // );
+        
+              // setHistory((prevHistory) => [
+              //   ...prevHistory,
+              //   { ...overtimeData, otStatus: "Approved" },
+              // ]);
+              
+            } else {
+              await Swal.fire({
+                title: "Error",
+                text: result.message || "Something went wrong.",
+                icon: "error",
+                customClass: {
+                  popup: 'z-[10050]',
+                },
+              });
+            }
+          } catch (error) {
+            console.error("Approval failed:", error);
+            await Swal.fire({
+              title: "Error",
+              text: "Failed to send approval. Please try again.",
+              icon: "error",
+              customClass: {
+                popup: 'z-[10050]',
+              },
+            });
+          }
+        };
+
   const handleDisapprove = async () => {
     try {
       if (!formData.otStamp) {
@@ -111,6 +128,9 @@ const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
           title: "Error",
           text: "otStamp is missing. Please try again.",
           icon: "error",
+          customClass: {
+            popup: 'z-[10050]',
+          },
           confirmButtonText: "OK",
         });
         return;
@@ -141,32 +161,46 @@ const OvertimeReview = ({ overtimeData, onClose, refreshData }) => {
       const result = await response.json();
   
       if (response.ok) {
-        Swal.fire({
-          title: "Success",
-          text: "Leave disapproved successfully!",
-          icon: "success",
-          confirmButtonText: "OK",
-        }).then(() => {
-          refreshData(); // ✅ Refresh parent list
-          onClose();     // ✅ Close modal
-        });
-      } else {
-        Swal.fire({
-          title: "Error",
-          text: result.message || "Something went wrong",
-          icon: "error",
-          confirmButtonText: "OK",
-        });
-      }
-    } catch (error) {
-      console.error("Disapproval failed:", error);
-      Swal.fire({
-        title: "Error",
-        text: "Failed to send disapproval. Please try again.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
-    }
+              onClose(); // Close modal
+              await Swal.fire({
+                title: "Success",
+                text: "Leave disapproved successfully!",
+                icon: "success",
+                customClass: {
+                  popup: 'z-[10050]',
+                },
+              });
+        
+              // setPendingLeaves((prevLeaves) =>
+              //   prevLeaves.filter((leave) => leave.LV_STAMP !== leaveData.LV_STAMP)
+              // );
+        
+              // setHistory((prevHistory) => [
+              //   ...prevHistory,
+              //   { ...leaveData, leaveStatus: "Disapproved" },
+              // ]);
+      
+            } else {
+              await Swal.fire({
+                title: "Error",
+                text: result.message || "Something went wrong.",
+                icon: "error",
+                customClass: {
+                  popup: 'z-[10050]',
+                },
+              });
+            }
+          } catch (error) {
+            console.error("Disapproval failed:", error);
+            await Swal.fire({
+              title: "Error",
+              text: "Failed to send disapproval. Please try again.",
+              icon: "error",
+              customClass: {
+                popup: 'z-[10050]',
+              },
+            });
+          }
   };
   
 

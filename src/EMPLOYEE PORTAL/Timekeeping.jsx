@@ -253,21 +253,25 @@ const Timekeeping = () => {
 <div className="max-w-[1150px] mx-auto px-4">
   <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6 w-full shadow-lg">
     {/* Date Section */}
-    <div>
-      <p className="text-md font-light mb-1 text-[#424554]">Today</p>
-      <h1 className="text-3xl md:text-4xl font-extrabold text-[#495057]">
-        {currentDate.format("MMMM DD YYYY")}
+
+<div className="text-center sm:text-left">
+      <p className="text-sm sm:text-lg font-light text-white">
+        <span className="kanit-text">Today</span>
+      </p>
+      <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-white">
+        {currentDate.format("MMMM DD, YYYY")}
       </h1>
     </div>
 
     {/* Time Section */}
-    <div className="flex flex-col items-start md:items-center">
-      <p className="text-sm font-medium">Philippine Standard Time:</p>
-      <p className="text-3xl md:text-4xl font-bold">{time}</p>
-    </div>
+    <div>
+    <p className="text-sm text-center sm:text-left font-extrabold text-white mb-2">Philippine Standard Time:</p>
+    <p className="text-xl text-center sm:text-left sm:text-4xl font-bold">{time || "00:00 PM"}</p>
+  </div>
 
     {/* Button Section */}
-    <div className="flex flex-wrap gap-2 justify-center md:justify-end">
+    {/* <div className="flex flex-wrap gap-2 justify-center md:justify-end"> */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <button
         className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded shadow-md transition duration-300"
         onClick={() => handleTimeEvent("TIME IN")}
@@ -303,7 +307,8 @@ const Timekeeping = () => {
 
 
       {/* Content Section */}
-      <div className="grid grid-cols-2 gap-10">
+      {/* <div className="grid grid-cols-2 gap-10"> */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Time In */}
         <div className="flex flex-col items-center">
           <label className="mb-2 font-semibold">Time In:</label>
@@ -317,13 +322,13 @@ const Timekeeping = () => {
             <img
               src={timeInImage}
               alt="Time In Capture"
-              className="w-[300px] h-[200px] rounded shadow-lg"
+              className="w-[500px] h-[400px] rounded shadow-lg"
             />
           ) : (
             <div className="relative">
               <video
                 ref={videoRef}
-                className="w-[300px] h-[200px] rounded shadow-lg transform scale-x-[-1]"
+                className="w-[500px] h-[400px] rounded shadow-lg transform scale-x-[-1]"
                 autoPlay
                 muted
               />
@@ -367,18 +372,18 @@ const Timekeeping = () => {
     <img
       src={timeOutImage}
       alt="Time Out Capture"
-      className="w-[300px] h-[200px] rounded shadow-lg"
+      className="w-[500px] h-[400px] rounded shadow-lg"
     />
   ) : (
     <div className="relative">
       {!timeInImage ? (
-        <div className="w-[300px] h-[200px] flex items-center justify-center bg-gray-300 rounded shadow-lg">
+        <div className="w-[500px] h-[400px] flex items-center justify-center bg-gray-300 rounded shadow-lg">
           <p className="text-gray-500">Camera Disabled</p>
         </div>
       ) : (
         <video
           ref={videoRef}
-          className="w-[300px] h-[200px] rounded shadow-lg transform scale-x-[-1]"
+          className="w-[500px] h-[400px] rounded shadow-lg transform scale-x-[-1]"
           autoPlay
           muted
         />
@@ -417,13 +422,14 @@ const Timekeeping = () => {
       <canvas ref={canvasRef} width="300" height="200" style={{ display: "none" }}></canvas>
       {/* Timekeeping History Table */}
               <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-                <h2 className="text-lg font-semibold mb-4">History</h2>
+                <h2 className="text-lg font-semibold mb-4">DTR History</h2>
       
                 {error && <p className="text-red-500 text-center">{error}</p>}
       
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">
-                    <thead className="text-gray-700 propercase bg-gray-100">
+                <table className="min-w-[800px] w-full text-sm text-center border">
+                  <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-sm lg:text-base">
+        
                       <tr>
                         {[
                           { key: "trandate", label: "Date" },
@@ -434,7 +440,7 @@ const Timekeeping = () => {
                         ].map(({ key, label }) => (
                           <th
                             key={key}
-                            className="px-4 py-2 border cursor-pointer"
+                            className="px-4 py-2 cursor-pointer"
                             onClick={() => sortData(key)}
                           >
                             {label} {getSortIndicator(key)}
@@ -444,21 +450,21 @@ const Timekeeping = () => {
                       {/* Search Row */}
                       <tr>
                         {Object.keys(searchFields).map((key) => (
-                          <td key={key} className="px-2 py-1 border">
+                          <td key={key} className="px-2 py-1">
                             <input
                               type="text"
                               value={searchFields[key]}
                               onChange={(e) => handleSearchChange(e, key)}
-                              className="w-full px-2 py-1 border rounded text-sm"
+                              className="w-full px-2 py-1 rounded text-sm"
                             />
                           </td>
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="global-tbody">
   {fetchRecords.length > 0 ? (
     fetchRecords.map((record, index) => (
-      <tr key={index} className="bg-white hover:bg-gray-100 text-gray-700 transition">
+      <tr key={index} className="global-tr">
         <td className="px-4 py-2 border">{dayjs(record.trandate).format("MM/DD/YYYY")}</td>
         <td className="px-4 py-2 border">{formatDateTime(record.time_in)}</td>
 <td className="px-4 py-2 border">{formatDateTime(record.time_out)}</td>
