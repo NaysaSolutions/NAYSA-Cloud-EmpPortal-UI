@@ -488,10 +488,10 @@ const Leave = () => {
   <option value="">Select Leave Type</option>
   <option value="SL">Sick Leave</option>
   <option value="VL">Vacation Leave</option>
-  <option value="EL">Emergency Leave</option>
-  <option value="BL">Birthday Leave</option>
-  <option value="ML">Maternity Leave</option>
   <option value="SIL">Service Incentive Leave</option>
+  <option value="PL">Paternity Leave</option>
+  <option value="ML">Maternity Leave</option>
+  <option value="BL">Birthday Leave</option>
 </select>
             </div>
 
@@ -572,7 +572,7 @@ const Leave = () => {
                     { key: "leaveDays", label: "Duration" },
                     { key: "leaveCode", label: "Leave Type" },
                     { key: "leaveRemarks", label: "Remarks" },
-                    { key: "ApprRemarks", label: "Approver's Remarks" },
+                    { key: "AppRemarks", label: "Approver's Remarks" },
                     { key: "leaveStatus", label: "Status" },
                   ].map(({ key, label }) => (
                     <th
@@ -619,7 +619,7 @@ const Leave = () => {
                       <td className="global-td text-right whitespace-nowrap">{leave.leaveDays} Days</td>
                       <td className="global-td text-center whitespace-nowrap">{leave.leaveCode}</td>
                       <td className="global-td text-left">{leave.leaveRemarks || "N/A"}</td>
-                      <td className="global-td text-left">{leave.ApprleaveRemarks || "N/A"}</td>
+                      <td className="global-td text-left">{leave.appRemarks || "N/A"}</td>
                       <td className="global-td-status">{leave.leaveStatus || "N/A"}</td>
                         {/* <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold ${

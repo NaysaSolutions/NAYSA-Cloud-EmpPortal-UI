@@ -193,7 +193,8 @@ setPendingLeaves(pendingOnly);
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="p-2 text-center text-gray-500">No approved or disapproved records found.</td>
+                  <td colSpan="10" className="p-2 text-center text-gray-500">
+                    No approved or disapproved records found.</td>
                 </tr>
               )}
             </tbody>

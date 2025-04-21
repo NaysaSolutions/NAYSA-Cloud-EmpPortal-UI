@@ -41,8 +41,8 @@ const Dashboard = () => {
   const defaultLeaveTypes = [
     { description: "Vacation Leave", balance: 0 },
     { description: "Sick Leave", balance: 0 },
-    { description: "Personal Leave", balance: 0 },
-    { description: "Emergency Leave", balance: 0 },
+    // { description: "Personal Leave", balance: 0 },
+    // { description: "Emergency Leave", balance: 0 },
     { description: "Maternity Leave", balance: 0 },
     { description: "Paternity Leave", balance: 0 },
     { description: "Bereavement Leave", balance: 0 },
@@ -283,6 +283,7 @@ const Dashboard = () => {
       {/* Header */}
       <div className="flex justify-center sm:justify-between items-start w-full max-w-[2000px] mx-auto px-2">
   {/* <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex flex-wrap justify-between items-center mb-4 w-full shadow-lg"> */}
+  {/* <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-4 rounded-lg text-white flex flex-col sm:flex-row sm:flex-wrap justify-center sm:justify-between items-center gap-4 mb-4 w-full shadow-lg"> */}
   <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-4 rounded-lg text-white flex flex-col sm:flex-row sm:flex-wrap justify-center sm:justify-between items-center gap-4 mb-4 w-full shadow-lg">
 
   {/* Date Section */}
@@ -383,23 +384,24 @@ const Dashboard = () => {
   <h2 className="text-md sm:text-lg font-semibold mb-4 text-blue-800 text-center">Personal Calendar</h2>
   
   {/* Navigation */}
-  <div className="flex justify-between items-center mb-2">
+  <div className="flex justify-between items-center mb-4">
     <button onClick={handlePrevMonth} className="text-gray-400">◀</button>
-    <h3 className="text-md sm:text-lg font-semibold">{currentMonth.format("MMMM YYYY")}</h3>
+    <h3 className="text-sm sm:text-lg font-semibold">{currentMonth.format("MMMM YYYY")}</h3>
     <button onClick={handleNextMonth} className="text-gray-600">▶</button>
   </div>  
 
+  {/* <div className="items-center justify-center"> */}
 {/* Weekday Names */}
-<div className="grid grid-cols-7 gap-2 text-center font-semibold text-sm text-gray-600 mb-2">
+<div className="grid grid-cols-7 text-center font-semibold text-gray-600 mb-1 ml-6 mx-auto text-[0.80rem] sm:text-[0.80rem] md:text-[0.90rem] lg:text-[16px]">
   {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, idx) => (
-    <div key={idx}>{day}</div>
+    <div key={idx} className="w-10 h-6 flex items-center justify-center ">{day}</div>
   ))}
 </div>
 
-{/* Weekday Headers */}
-<div className="grid grid-cols-7 gap-2 text-center mt-4">
+{/* Calendar Days */}
+<div className="grid grid-cols-7 gap-1 text-center mt-2 ml-6 mx-auto text-[0.70rem] sm:text-[0.70rem] md:text-[0.80rem] lg:text-[16px]">
   {generateCalendar().map((day, index) => {
-    let baseClasses = "w-10 h-9 flex items-center justify-center text-sm font-semibold";
+    let baseClasses = "w-7 h-7 sm:w-8 md:w-9 lg:w-9 sm:h-8 md:h-9 lg:h-9 flex items-center justify-center font-semibold";
     let style = "";
     let tooltipText = "";
 
@@ -408,19 +410,16 @@ const Dashboard = () => {
     } else if (day.isToday) {
       style = "bg-gray-300 text-black rounded-full";
     } else if (day.isHoliday) {
-      style = "bg-red-500 text-white rounded-full";
-
+      style = "text-red-500 font-bold";
       const holiday = holidays.find(h =>
         dayjs(h.holdate).date() === day.day && dayjs(h.holdate).month() === currentMonth.month()
       );
-
-
       tooltipText = holiday?.holtype || "Holiday";
     } else if (day.isApprovedLeave) {
-      style = "bg-blue-600 text-white rounded-full";
+      style = "bg-blue-300 text-black rounded-full";
       tooltipText = `Approved: ${day.leaveType}`;
     } else if (day.isPendingLeave) {
-      style = "bg-yellow-300 text-black rounded-full";
+      style = "text-black rounded-full border border-4 border-yellow-300";
       tooltipText = `Pending: ${day.leaveType}`;
     } else {
       style = "text-gray-700";
@@ -444,15 +443,17 @@ const Dashboard = () => {
 </div>
 
 
+{/* </div> */}
 
 
 
 
   {/* Calendar Legend */}
   <div className="flex justify-between text-sm sm:text-sm md:text-sm lg:text-base mt-8">
-    <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-red-500 inline-block mr-1"></span> Holiday</div>
-    <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-blue-600 inline-block mr-1"></span> Approved Leave</div>
-    <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-yellow-300 inline-block mr-1"></span> Pending Leave</div>
+    {/* <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-red-400 inline-block mr-1"></span> Holiday</div> */}
+    <div className="flex items-center text-red-500 font-bold">Holiday</div>
+    <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-blue-300 inline-block mr-1"></span> Approved Leave</div>
+    <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-yellow-200 inline-block mr-1"></span> Pending Leave</div>
   </div>
 </div>
 </div>
@@ -482,10 +483,10 @@ const Dashboard = () => {
       <tbody classname="dashboard-tbody">
         {dailyTimeRecord.length > 0 ? (
           dailyTimeRecord.map((record, index) => (
-            <tr key={index} className="border-b hover:bg-gray-100">
-              <td className="p-2 text-left text-sm">{dayjs(record.trandate).format("MM/DD/YYYY")}</td>
-              <td className="p-2 text-center text-sm">{record.time_in ? dayjs(record.time_in).format("hh:mm A") : "N/A"}</td>
-              <td className="p-2 text-center text-sm">{record.time_out ? dayjs(record.time_out).format("hh:mm A") : "N/A"}</td>
+            <tr key={index} className="dashboard-tbody dashboard-tr">
+              <td className="dashboard-td text-left">{dayjs(record.trandate).format("MM/DD/YYYY")}</td>
+              <td className="dashboard-td text-center">{record.time_in ? dayjs(record.time_in).format("hh:mm A") : "N/A"}</td>
+              <td className="dashboard-td text-center">{record.time_out ? dayjs(record.time_out).format("hh:mm A") : "N/A"}</td>
             </tr>
           ))
         ) : (
@@ -540,7 +541,7 @@ const Dashboard = () => {
       <tbody classname="dashboard-tbody">
         {loanBalance.length > 0 ? (
           loanBalance.slice(0, 5).map((loan, index) => (
-            <tr key={index} className="border-b hover:bg-gray-50">
+            <tr key={index} className="dashboard-tbody dashboard-tr">
               <td className="dashboard-td">{loan.loantype}</td>
               <td className="dashboard-td text-right">
                 {loan.loanamt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -602,7 +603,7 @@ const Dashboard = () => {
         <tbody className="dashboard-tbody">
           {otApplication.length > 0 ? (
             otApplication.slice(0, 5).map((ot, index) => (
-              <tr key={index} className="hover:bg-blue-200 odd:bg-white even:bg-blue-50">
+              <tr key={index} className="dashboard-tbody dashboard-tr">
                 <td className="dashboard-td">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
                 <td className="dashboard-td">{ot.ottype}</td>
                 <td className="dashboard-td text-right">{ot.duration}</td>
@@ -660,7 +661,7 @@ const Dashboard = () => {
       <tbody className="dashboard-tbody">
         {leaveApplication.length > 0 ? (
           leaveApplication.slice(0, 5).map((leave, index) => (
-            <tr key={index} className="dashboard-tr">
+            <tr key={index} className="dashboard-tbody dashboard-tr">
               <td className="dashboard-td">{leave.dateapplied}</td>
               <td className="dashboard-td">{leave.leavetype}</td>
               <td className="dashboard-td text-right">{leave.duration}</td>
@@ -705,13 +706,14 @@ const Dashboard = () => {
 </div>
 
       {/* Official Business Applications */}
-      <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
-      <h2 className="dashboard-text-header">My Official Business Applications</h2>
-      <span className="dashboard-text-span">Recent Transactions</span>
+    
+<div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+    <h2 className="dashboard-text-header">My Official Business Applications</h2>
+    <span className="dashboard-text-span">Recent Transactions</span>
 
-{/* Responsive Table */}
-<div className="mt-2 overflow-x-auto flex-grow">
-  <table className="dashboard-table">
+    {/* Responsive Table */}
+    <div className="mt-2 overflow-x-auto flex-grow">
+    <table className="dashboard-table">
         <thead className="dashboard-thead">
         <tr>
           <th className="dashboard-th text-left">OB Date</th>
@@ -721,27 +723,30 @@ const Dashboard = () => {
           <th className="dashboard-th text-center">Status</th>
         </tr>
       </thead>
-      <tbody classname="dashboard-tbody">
+      <tbody className="dashboard-tbody">
         {obApplication.length > 0 ? (
           obApplication.slice(0, 5).map((ob, index) => (
-            <tr key={index} className="border-b hover:bg-gray-50">
-              <td className="dashboard-td">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
-              <td className="dashboard-td text-center">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm A")}</td>
-              <td className="dashboard-td text-center">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm A")}</td>
-              <td className="dashboard-td text-center">{ob.duration}</td>
-              <td className="dashboard-td text-center">
-                <span className={`inline-block w-[100px] px-2 py-1 rounded-full text-xs sm:text-sm font-medium
-                  ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                    ob.obstatus === "Approved" ? "bg-blue-100 text-blue-600" : 
-                    "bg-red-100 text-red-600"}`}>
-                  {ob.obstatus}
-                </span>
-              </td>
+            <tr key={index} className="dashboard-tbody dashboard-tr">
+            <td className="dashboard-td text-nowrap">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
+            <td className="dashboard-td text-nowrap text-center">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm A")}</td>
+            <td className="dashboard-td text-nowrap text-center">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm A")}</td>
+            <td className="dashboard-td text-nowrap text-right">{ob.duration} hr(s)</td>
+            <td className="dashboard-td text-center">
+  <span
+    className={`dashboard-td inline-block px-3 py-1 w-[100px] rounded-full
+      ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-700" :
+        ob.obstatus === "Approved" ? "bg-blue-100 text-blue-700" :
+        "bg-red-100 text-red-700"}`}
+  >
+    {ob.obstatus}
+  </span>
+</td>
+
             </tr>
           ))
         ) : (
           <tr>
-            <td colSpan="5">
+            <td colSpan="4">
               <div className="dashboard-div-norecords">
                 No official business applications found.
               </div>
@@ -752,21 +757,19 @@ const Dashboard = () => {
     </table>
   </div>
 
-   {/* View All Button - Fixed on Small Screens */}
-   {obApplication.length > 0 && (
-      <div className="relative flex justify-end">
-      <button 
-        onClick={() => navigate("/official-business")} 
-        className="dashboard-button-viewall"
+  {/* View All Button - Fixed on Small Screens */}
+{obApplication.length > 0 && (
+  <div className="relative flex justify-end">
+    <button 
+      onClick={() => navigate("/official-business")} 
+      className="dashboard-button-viewall"
     >
-        View All <span className="ml-1">→</span>
-      </button>
-    </div>
-    )}
+      View All <span className="ml-1">→</span>
+    </button>
+  </div>
+)}
 
 </div>
-
-
   
 {user.approver === "1" && (
   <>
@@ -908,7 +911,7 @@ const Dashboard = () => {
               <th className="dashboard-th">Start Datetime</th>
               <th className="dashboard-th">End Datetime</th>
               <th className="dashboard-th">Duration</th>
-              <th className="dashboard-th">Employee</th>
+              <th className="dashboard-th text-left">Employee</th>
               <th className="dashboard-th text-center">Status</th>
             </tr>
           </thead>        
@@ -916,11 +919,11 @@ const Dashboard = () => {
             {obApproval.length > 0 ? (
               obApproval.slice(0, 5).map((ob, index) => (              
                 <tr key={index} className="dashboard-tbody dashboard-tr">
-                  <td className="dashboard-td">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
-                  <td className="dashboard-td">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm a")}</td>
-                  <td className="dashboard-td">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm a")}</td>
-                  <td className="dashboard-td text-right">{ob.duration}</td>
-                  <td className="dashboard-td">{ob.empname}</td>
+                  <td className="dashboard-td text-nowrap">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
+                  <td className="dashboard-td text-nowrap">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm a")}</td>
+                  <td className="dashboard-td text-nowrap">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm a")}</td>
+                  <td className="dashboard-td text-right">{ob.duration} hr(s)</td>
+                  <td className="dashboard-td text-nowrap">{ob.empname}</td>
                   <td className="dashboard-td">
                     <span className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium
                       ${ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 

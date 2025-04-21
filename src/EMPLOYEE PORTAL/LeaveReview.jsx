@@ -208,78 +208,80 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
     <h2 className="text-2xl font-bold mb-5">Leave Review</h2>
 
         {/* Grid Layout for Inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Left Column */}
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium">Employee Name:</label>
-              <input
-                type="text"
-                name="empName"
-                value={formData.empName}
-                className="w-full border rounded p-2"
-                disabled
-              />
-            </div>
+        <div className="space-y-4">
+  {/* Row: Employee Name & Department (Stacked on mobile) */}
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div>
+      <label className="block text-sm font-medium">Employee Name:</label>
+      <input
+        type="text"
+        name="empName"
+        value={formData.empName}
+        className="w-full border rounded p-2"
+        disabled
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium">Department:</label>
+      <input
+        type="text"
+        name="department"
+        value={formData.department}
+        className="w-full border rounded p-2"
+        disabled
+      />
+    </div>
+  </div>
 
-            <div>
-              <label className="block text-sm font-medium">Department:</label>
-              <input
-                type="text"
-                name="department"
-                value={formData.department}
-                className="w-full border rounded p-2"
-                disabled
-              />
-            </div>
+  {/* Row: Leave Start & Leave End */}
+  <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
+    <div>
+      <label className="block text-sm font-medium">Leave Start:</label>
+      <input
+        type="date"
+        name="leaveStart"
+        value={formData.leaveStart}
+        className="w-full border rounded p-2"
+        disabled
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium">Leave End:</label>
+      <input
+        type="date"
+        name="leaveEnd"
+        value={formData.leaveEnd}
+        className="w-full border rounded p-2"
+        disabled
+      />
+    </div>
+  </div>
 
-            <div>
-              <label className="block text-sm font-medium">Leave Start:</label>
-              <input
-                type="date"
-                name="leaveStart"
-                value={formData.leaveStart}
-                className="w-full border rounded p-2"
-                disabled
-              />
-            </div>
-          </div>
+  {/* Row: Leave Days & Leave Hours */}
+  <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
+    <div>
+      <label className="block text-sm font-medium">Number of Days:</label>
+      <input
+        type="number"
+        name="leaveDays"
+        value={formData.leaveDays}
+        className="w-full border rounded p-2"
+        disabled
+      />
+    </div>
+    <div>
+      <label className="block text-sm font-medium">Number of Hours:</label>
+      <input
+        type="number"
+        name="leaveHrs"
+        value={formData.leaveHrs}
+        className="w-full border rounded p-2"
+        disabled
+      />
+    </div>
+  </div>
+</div>
 
-          {/* Right Column */}
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium">Number of Days:</label>
-              <input
-                type="number"
-                name="leaveDays"
-                value={formData.leaveDays}
-                className="w-full border rounded p-2"
-                disabled
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Number of Hours:</label>
-              <input
-                type="number"
-                name="leaveHrs"
-                value={formData.leaveHrs}
-                className="w-full border rounded p-2"
-                disabled
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium">Leave End:</label>
-              <input
-                type="date"
-                name="leaveEnd"
-                value={formData.leaveEnd}
-                className="w-full border rounded p-2"
-                disabled
-              />
-            </div>
-          </div>
-        </div>
 
         {/* Full-Width Text Areas */}
         <div className="mt-4">
@@ -288,7 +290,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
             name="leaveRemarks"
             value={formData.leaveRemarks}
             onChange={handleChange}
-            className="w-full border rounded p-2"
+            className="w-full border rounded p-2 text-sm"
             disabled
             required
           />
@@ -325,7 +327,7 @@ const LeaveReview = ({ leaveData, onClose, pendingLeaves, setPendingLeaves, setH
             name="approverRemarks"
             value={formData.approverRemarks}
             onChange={handleChange}
-            className="w-full border rounded p-2"
+            className="w-full border rounded p-2 text-sm"
           />
         </div>
       
