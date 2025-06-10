@@ -136,6 +136,7 @@ import LeaveReview from "./EMPLOYEE PORTAL/LeaveReview";
 import OvertimeApproval from "./EMPLOYEE PORTAL/OvertimeApproval";
 import OvertimeReview from "./EMPLOYEE PORTAL/OvertimeReview";
 import OfficialBusiness from "./EMPLOYEE PORTAL/OfficialBusiness";
+import Register from "./NAYSA Cloud/Register"; // correct path
 
 const App = () => {
   return (
@@ -143,6 +144,8 @@ const App = () => {
       <Router>
         <Routes>
           <Route path="/" element={<LoginPortal />} />
+          <Route path="/" element={<Register />} />
+          {/* <Route path="/register" element={<ProtectedRoute><Layout><Register /></Layout></ProtectedRoute>} /> */}
           <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
           <Route path="/timekeeping" element={<ProtectedRoute><Layout><Timekeeping /></Layout></ProtectedRoute>} />
           <Route path="/leave" element={<ProtectedRoute><Layout><Leave /></Layout></ProtectedRoute>} />

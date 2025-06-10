@@ -4,8 +4,10 @@ import { Link } from 'react-router-dom';
 function Login() {
 
     return (
-        <div className="bg-[linear-gradient(to_bottom,#7392b7,#d8e1e9)] flex items-center justify-center min-h-screen px-4">
-            <div className="relative px-20 py-10 rounded-3xl shadow-md" style={{ width: '530px', height: '565px' }}>
+        // <div className="bg-[linear-gradient(to_bottom,#7392b7,#d8e1e9)] flex items-center justify-center min-h-screen px-4">
+            <div className="bg-gradient-to-r from-blue-400 to-purple-500 flex items-center justify-center min-h-screen px-4">
+        
+           <div className="relative px-20 py-10 rounded-3xl shadow-md" style={{ width: '530px', height: '565px' }}>
                 <div className="absolute inset-0 rounded-3xl" style={{ backgroundColor: '#5882C1', opacity: 0.5, zIndex: 0 }}></div>
     
                 <div className="relative z-10">
