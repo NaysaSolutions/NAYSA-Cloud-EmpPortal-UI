@@ -36,6 +36,8 @@ const officialBusiness = () => {
     // const [selectedEndDate, setSelectedEndDate] = useState("");
       const [selectedStartDate, setSelectedStartDate] = useState(null);
       const [selectedEndDate, setSelectedEndDate] = useState(null);
+      // Add this near the top of your component, with other state declarations
+const [holidays, setHolidays] = useState([]);
 
     const [obHrs, setOBHrs] = useState("0");
     const [remarks, setRemarks] = useState("");
@@ -114,6 +116,52 @@ const officialBusiness = () => {
   
 // }, [user]);
 
+const fetchHolidays = async () => {
+  try {
+    const response = await fetch(API_ENDPOINTS.fetchHolidays, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    // First check if the response is OK
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    // Check if response has content
+    const contentLength = response.headers.get('content-length');
+    if (contentLength && Number(contentLength) === 0) {
+      throw new Error('Empty response received');
+    }
+
+    const result = await response.json();
+    
+    if (result.success && result.data) {
+      setHolidays(result.data);
+    } else {
+      console.warn("No holidays data received, using fallback");
+      // Use a fallback set of holidays if API fails
+      setHolidays(getFallbackHolidays());
+    }
+  } catch (err) {
+    console.error("Error fetching holidays:", err);
+    // Use fallback holidays in case of error
+    setHolidays(getFallbackHolidays());
+  }
+};
+
+// Fallback holidays data
+const getFallbackHolidays = () => {
+  return [
+    "2023-01-01", "2023-01-22", "2023-02-25", "2023-04-06", 
+    "2023-04-07", "2023-04-08", "2023-04-09", "2023-05-01",
+    "2023-06-28", "2023-08-28", "2023-11-27", "2023-12-25",
+    "2024-01-01", "2024-02-10", "2024-03-29", "2024-03-31",
+    "2024-04-09", "2024-04-10", "2024-05-01", "2024-06-12",
+    "2024-08-26", "2024-11-30", "2024-12-25", "2024-12-30"
+  ];
+};
+
 
 const fetchOBApplications = async () => {
   if (!user || !user.empNo) return;
@@ -147,8 +195,6 @@ const fetchOBApplications = async () => {
     setError("An error occurred while fetching Official Business applications.");
   }
 };
-
-
   
 
 
@@ -156,6 +202,7 @@ useEffect(() => {
   if (!user || !user.empNo) return;
   
   fetchOBApplications();
+  fetchHolidays(); // Fetch holidays when component mounts
 
   const interval = setInterval(() => {
     fetchOBApplications();
@@ -224,219 +271,172 @@ useEffect(() => {
     };
   
   
-    const handleSubmit = async () => {
-      // Validation checks
-      if (!selectedStartDate || !selectedEndDate|| !obHrs || !remarks.trim()) {
-        Swal.fire({
-          title: "Incomplete Form",
-          text: "Please select both start and end dates",
-          icon: "warning",
-          confirmButtonText: "OK",
-        });
-        return;
-      }
-    
-// Format start/end datetime before sending
-// const formattedStart = dayjs(selectedStartDate).format("YYYY-MM-DD HH:mm:ss");
-// const formattedEnd = dayjs(selectedEndDate).format("YYYY-MM-DD HH:mm:ss");
-const formattedStart = dayjs(selectedStartDate).toISOString();
-const formattedEnd = dayjs(selectedEndDate).toISOString();
+   const handleSubmit = async () => {
+  // Validation checks
+  if (!selectedStartDate || !selectedEndDate || !obHrs || !remarks.trim()) {
+    Swal.fire({
+      title: "Incomplete Form",
+      text: "Please fill all required fields",
+      icon: "warning",
+      confirmButtonText: "OK",
+    });
+    return;
+  }
 
-      const obData = {
-        json_data: {
-          empNo: user.empNo,
-          detail: [
-            {
-              obDate: applicationDate,
-              obStart: formattedStart,
-              obEnd: formattedEnd,
-              // obStart: selectedStartDate,
-              // obEnd: selectedEndDate,
-              obRemarks: remarks,
-              obHrs: obHrs ? parseFloat(obHrs) : 0,
-            },
-          ],
-        },
-      };
-    
-      // console.log("Sending Official Business Data:", obData);
-      console.log("Sending ob Data:", JSON.stringify(obData, null, 2));
-    
-      try {
-        // const response = await fetch(API_ENDPOINTS.saveOfficialBusinessApplication, {
-          const response = await fetch("https://api.nemarph.com:81/api/upsertOB", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(obData),
-        });
-    
-        // // Check if response is OK
-        // if (!response.ok) {
-        //         const errorText = await response.text();
-        //         console.error("API Error Response:", errorText);
-        //         Swal.fire({
-        //           title: "Error!",
-        //           text: "An error occurred with the API. Please check the API endpoint or try again later.",
-        //           icon: "error",
-        //           confirmButtonText: "OK",
-        //         });
-        //         return;
-        //       }
-    
-        
-        // Safely parse JSON
-      const result = await response.json();
-      console.log("API Response:", result);
-    
-    
-        if (result.status === "success") {
-                    Swal.fire({
-                        title: "Success!",
-                        text: "Leave application submitted successfully.",
-                        icon: "success",
-                        confirmButtonText: "OK",
-                    }).then(() => {
-            // Reset form
-            const now = dayjs().format("YYYY-MM-DDTHH:mm");
-            setSelectedStartDate(now);
-            setSelectedEndDate(now);
+  // Format dates in local time instead of UTC
+  const formattedStart = dayjs(selectedStartDate).format('YYYY-MM-DDTHH:mm:ss');
+  const formattedEnd = dayjs(selectedEndDate).format('YYYY-MM-DDTHH:mm:ss');
 
-            // setSelectedStartDate("");
-            // setSelectedEndDate("");
-            setRemarks("");
-            setOBHrs("");
-            
-            setOBApplications(); // Refresh applications list
-            // await fetchOBApplications(); // Refresh applications list after successful submission
+  const obData = {
+    json_data: {
+      empNo: user.empNo,
+      detail: [{
+        obDate: applicationDate,
+        obStart: formattedStart,
+        obEnd: formattedEnd,
+        obRemarks: remarks,
+        obHrs: parseFloat(obHrs) || 0,
+      }],
+    },
+  };
 
-            // Refresh data
-            // fetchOBApplications();
+  console.log("Sending OB Data:", JSON.stringify(obData, null, 2));
 
-          // Refresh the data
-                    });
-                            } else {
-                                Swal.fire({
-                                    title: "Failed!",
-                                    text: "Failed to submit ob. Please try again.",
-                                    icon: "error",
-                                    confirmButtonText: "OK",
-                                });
-                            }
-                        } catch (err) {
-                            console.error("Error submitting ob application:", err);
-                            Swal.fire({
-                                title: "Error!",
-                                text: "An error occurred while submitting. Please check your connection and try again.",
-                                icon: "error",
-                                confirmButtonText: "OK",
-                            });
-                        }
-        };
+  try {
+    const response = await fetch("http://127.0.0.1:8000/api/upsertOB", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(obData),
+    });
+
+    // First check if response is OK
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+
+    // Try to parse JSON only if there's content
+    const contentLength = response.headers.get('content-length');
+    const result = contentLength && Number(contentLength) > 0 
+      ? await response.json() 
+      : { status: "success" }; // Assume success if no content
+
+    if (result.status === "success") {
+      Swal.fire({
+        title: "Success!",
+        text: "OB application submitted successfully.",
+        icon: "success",
+        confirmButtonText: "OK",
+      }).then(() => {
+        // Reset form
+        const now = dayjs().format("YYYY-MM-DDTHH:mm");
+        setSelectedStartDate(now);
+        setSelectedEndDate(now);
+        setRemarks("");
+        setOBHrs("0");
+        fetchOBApplications(); // Refresh the list
+      });
+    } else {
+      throw new Error(result.message || "Unknown error occurred");
+    }
+  } catch (err) {
+    console.error("Error submitting OB application:", err);
+    Swal.fire({
+      title: "Error!",
+      text: err.message || "Failed to submit OB application",
+      icon: "error",
+      confirmButtonText: "OK",
+    });
+  }
+};
   
      // Function to calculate leave days excluding weekends & holidays
      const calculateObHrs = (startDate, endDate) => {
-      if (!startDate || !endDate) return 0;
-    
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-    
-      let totalMs = 0;
-      const msInHour = 1000 * 60 * 60;
-    
-      let current = new Date(start);
-    
-      while (current <= end) {
-        const day = current.getDay(); // 0 = Sunday, 6 = Saturday
-        const formatted = current.toISOString().split("T")[0];
-    
-        // If it's a working day
-        if (day !== 0 && day !== 6 && !holidays.includes(formatted)) {
-          let dayStart = new Date(current);
-          let dayEnd = new Date(current);
-          dayStart.setHours(8, 0, 0, 0); // working start (e.g. 8 AM)
-          dayEnd.setHours(17, 0, 0, 0);  // working end (e.g. 5 PM)
-    
-          // Adjust range on first day
-          if (current.toDateString() === start.toDateString()) {
-            if (start > dayStart) dayStart = start;
-          }
-    
-          // Adjust range on last day
-          if (current.toDateString() === end.toDateString()) {
-            if (end < dayEnd) dayEnd = end;
-          }
-    
-          // Only count positive durations
-          if (dayEnd > dayStart) {
-            totalMs += dayEnd - dayStart;
-          }
-        }
-    
-        // Move to the next day
-        current.setDate(current.getDate() + 1);
-        current.setHours(0, 0, 0, 0);
-      }
-    
-      return +(totalMs / msInHour).toFixed(2); // convert ms to hours and round
-    };
+  if (!startDate || !endDate) return 0;
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  // If end is before start, return 0
+  if (end < start) return 0;
+
+  // Calculate total milliseconds difference
+  const totalMs = end - start;
+
+  // Convert milliseconds to hours
+  const totalHours = totalMs / (1000 * 60 * 60);
+
+  // Check if it's a weekend or holiday
+  const startDay = start.getDay();
+  const endDay = end.getDay();
+  const startDateStr = start.toISOString().split('T')[0];
+  const endDateStr = end.toISOString().split('T')[0];
+
+  // If it's a weekend or holiday, return 0
+  if (startDay === 0 || startDay === 6 || holidays.includes(startDateStr) || 
+      endDay === 0 || endDay === 6 || holidays.includes(endDateStr)) {
+    return 0;
+  }
+
+  // Return the total hours, rounded to 2 decimal places
+  return parseFloat(totalHours.toFixed(2));
+};
     
     
 
-    const handleDateChange = (field, value) => {
-      if (!value) return;
-    
-      if (field === "start") {
-        setSelectedStartDate(value);
-    
-        let adjustedEndDate = selectedEndDate;
-    
-        if (!selectedEndDate || value > selectedEndDate) {
-          adjustedEndDate = value;
-          setSelectedEndDate(value);
-        }
-    
-        if (adjustedEndDate) {
-          const hours = calculateObHrs(value, adjustedEndDate);
-          if (hours <= 0) {
-            Swal.fire({
-              icon: "warning",
-              title: "Invalid Duration",
-              text: "Duration must be during valid working hours.",
-            });
-            setOBHrs(0);
-            return;
-          }
-          setOBHrs(hours);
-        }
+   const handleDateChange = (field, value) => {
+  if (!value) return;
+
+  if (field === "start") {
+    setSelectedStartDate(value);
+
+    if (!selectedEndDate || value > selectedEndDate) {
+      setSelectedEndDate(value);
+      setOBHrs(0); // Reset OB hrs since it's same date
+    } else {
+      const hours = calculateObHrs(value, selectedEndDate);
+      setOBHrs(hours);
+    }
+  } else if (field === "end") {
+    if (selectedStartDate && value < selectedStartDate) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid End Time",
+        text: "End datetime cannot be earlier than start.",
+      });
+      return;
+    }
+
+    setSelectedEndDate(value);
+
+    if (selectedStartDate) {
+      const hours = calculateObHrs(selectedStartDate, value);
+      setOBHrs(hours);
+    }
+  }
+};
+
+
+    // Add this useEffect to fetch holidays (similar to your other data fetches)
+useEffect(() => {
+  const fetchHolidays = async () => {
+    try {
+      const response = await fetch(API_ENDPOINTS.fetchHolidays, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ YEAR: new Date().getFullYear() }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setHolidays(result.data.map(h => h.holidate));
       }
-    
-      if (field === "end") {
-        setSelectedEndDate(value); // ✅ Always set the end date first!
-    
-        if (selectedStartDate && value < selectedStartDate) {
-          Swal.fire({
-            icon: "warning",
-            title: "Invalid End Time",
-            text: "End datetime cannot be earlier than start.",
-          });
-          return;
-        }
-    
-        if (selectedStartDate && value) {
-          const hours = calculateObHrs(selectedStartDate, value);
-          if (hours <= 0) {
-            Swal.fire({
-              icon: "warning",
-              title: "Invalid Duration",
-              text: "Duration must be during valid working hours.",
-            });
-            setOBHrs(0);
-            return;
-          }
-          setOBHrs(hours);
-        }
-      }
-    };
+    } catch (err) {
+      console.error("Error fetching holidays:", err);
+    }
+  };
+  
+  fetchHolidays();
+}, []);
     
     
     return (
@@ -472,17 +472,15 @@ const formattedEnd = dayjs(selectedEndDate).toISOString();
       <label className="font-semibold mb-1">Start Datetime</label>
       <div className="relative flex flex-col">
         <DatePicker
-          selected={selectedStartDate ? new Date(selectedStartDate) : null}
-          // onChange={(date) => setSelectedStartDate(date)}
-          onChange={(date) => handleDateChange("start", date)}
-          minDate={new Date(applicationDate)}
-          showTimeSelect
-          timeFormat="hh:mm a"
-          timeIntervals={15}
-          dateFormat="MM/dd/yyyy hh:mm a"
-          placeholderText="Select Start Datetime"
-          className="w-full p-2 pl-10 border rounded h-[42px]"
-        />
+  selected={selectedStartDate ? new Date(selectedStartDate) : null}
+  onChange={(date) => handleDateChange("start", date)}
+  showTimeSelect
+  timeFormat="HH:mm"
+  timeIntervals={15}
+  dateFormat="MM/dd/yyyy hh:mm aa"
+  placeholderText="Select Start Datetime"
+  className="w-full p-2 pl-10 border rounded h-[42px]"
+/>
         <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
       </div>
     </div>
@@ -492,17 +490,16 @@ const formattedEnd = dayjs(selectedEndDate).toISOString();
       <label className="font-semibold mb-1">End Datetime</label>
       <div className="relative flex flex-col">
         <DatePicker
-          selected={selectedEndDate ? new Date(selectedEndDate) : null}
-          // onChange={(date) => setSelectedEndDate(date)}
-          onChange={(date) => handleDateChange("end", date)}
-          minDate={new Date(selectedStartDate)}
-          showTimeSelect
-          timeFormat="hh:mm"
-          timeIntervals={15}
-          dateFormat="MM/dd/yyyy hh:mm a"
-          placeholderText="Select End Datetime"
-          className="w-full p-2 pl-10 border rounded h-[42px]"
-        />
+  selected={selectedEndDate ? new Date(selectedEndDate) : null}
+  onChange={(date) => handleDateChange("end", date)}
+  showTimeSelect
+  timeFormat="HH:mm"
+  timeIntervals={15}
+  dateFormat="MM/dd/yyyy hh:mm aa"
+  placeholderText="Select End Datetime"
+  className="w-full p-2 pl-10 border rounded h-[42px]"
+  minDate={selectedStartDate || new Date()}
+/>
         <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
       </div>
     </div>
@@ -591,9 +588,9 @@ const formattedEnd = dayjs(selectedEndDate).toISOString();
                 {currentRecords.length > 0 ? (
                   currentRecords.map((officialbusiness, index) => {
                     const textColor =
-                    officialbusiness.obStatus === "Pending"
+                    officialbusiness.obstatus === "Pending"
                         ? "global-td-status-pending"
-                        : officialbusiness.obStatus === "Approved"
+                        : officialbusiness.obstatus === "Approved"
                         ? "global-td-status-approved"
                         : "global-td-status-disapproved";
 
@@ -602,13 +599,14 @@ const formattedEnd = dayjs(selectedEndDate).toISOString();
                         key={index}
                         className={`global-tr ${textColor}`}
                       >
-                        <td className="global-td">{dayjs(officialbusiness.obDate).format("MM/DD/YYYY")}</td>
-                        <td className="global-td">{dayjs(officialbusiness.obStart).format("MM/DD/YYYY hh:mm a")}</td>
-                        <td className="global-td">{dayjs(officialbusiness.obEnd).format("MM/DD/YYYY hh:mm a")}</td>
-                        <td className="global-td">{officialbusiness.obHrs} Hours</td>
-                        <td className="global-td">{officialbusiness.obRemarks || "N/A"}</td>
-                        <td className="global-td">{officialbusiness.appRemarks || "N/A"}</td>
-                        <td className="global-td-status">{officialbusiness.obStatus || "N/A"}</td>
+                        <td className="global-td">{dayjs(officialbusiness.obdate).format("MM/DD/YYYY")}</td>
+<td className="global-td">{dayjs(officialbusiness.obstart).format("MM/DD/YYYY hh:mm a")}</td>
+<td className="global-td">{dayjs(officialbusiness.obend).format("MM/DD/YYYY hh:mm a")}</td>
+<td className="global-td">{officialbusiness.obhrs} Hours</td>
+<td className="global-td">{officialbusiness.obremarks || "N/A"}</td>
+<td className="global-td">{officialbusiness.App_Remarks || "N/A"}</td>
+<td className="global-td-status">{officialbusiness.obstatus || "N/A"}</td>
+
                         {/* <td className="global-td text-center">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-semibold ${

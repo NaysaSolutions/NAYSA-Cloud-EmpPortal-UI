@@ -1,75 +1,65 @@
 import React, { useEffect, useState } from "react";
-import { useAuth } from "./AuthContext"; // Import AuthContext to get logged-in user data
-import { Menu, X } from "lucide-react"; // Optional: Lucide icons for hamburger
+import { useAuth } from "./AuthContext";
+import { Menu, X } from "lucide-react";
 
 const Sidebar = () => {
-  const { user } = useAuth(); // Get logged-in user data
-  const [employeeInfo, setEmployeeInfo] = useState(null); // To store employee data
-  const [error, setError] = useState(null); // Error state
-  const [isOpen, setIsOpen] = useState(false); // Mobile toggle
+  const { user } = useAuth();
+  const [employeeInfo, setEmployeeInfo] = useState(null);
+  const [error, setError] = useState(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Check if user and empNo are available before making the API request
-    if (user && user.empNo) {
-      const fetchEmployeeInfo = async () => {
-        try {
-          // Send the employee number to the API
-          const response = await fetch("https://api.nemarph.com:81/api/dashBoard", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ EMP_NO: user.empNo }), // Send empNo from logged-in user
-          });
+    console.log("Auth user object:", user);
+  if (user?.empNo) {
+    const fetchEmployeeInfo = async () => {
+      try {
+        console.log("Sending request with:", { EMP_NO: user.empNo });
 
-          const result = await response.json(); // Parse the response into JSON
+        const response = await fetch("http://127.0.0.1:8000/api/dashBoard", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ EMP_NO: user.empNo }),
+        });
 
-          // Check if the result is successful
-          if (result.success) {
-            const parsedData = JSON.parse(result.data[0]?.result || '[]'); // Parse result string to JSON
-            setEmployeeInfo(parsedData[0]); // Set employee data to state
-          } else {
-            throw new Error(result.message); // If not successful, throw an error with message
-          }
-        } catch (err) {
-          setError(err.message); // Set error message if fetch fails
-        }
-      };
+        const result = await response.json();
+        console.log("Raw response from API:", result);
 
-      fetchEmployeeInfo(); // Call the function to fetch employee info
-    }
-  }, [user]); // Re-run effect when user data changes
+        if (result.success && result.data) {
+  console.log("Employee info from API:", result.data);
+  setEmployeeInfo(result.data[0]); // Access the first object from the array
+} else {
+  throw new Error(result.message || "Failed to retrieve employee info.");
+}
+
+      } catch (err) {
+        console.error("Error fetching employee info:", err);
+        setError(err.message);
+      }
+    };
+
+    fetchEmployeeInfo();
+  }
+}, [user?.empNo]);
 
 
- // Toggle sidebar visibility on small screens
- const toggleSidebar = () => setIsOpen(!isOpen);
+  const toggleSidebar = () => setIsOpen(!isOpen);
 
- if (error) {
-   return (
-     <div className="fixed top-[90px] left-0 w-full bg-white p-4 shadow-md z-50">
-       Error: {error}
-     </div>
-   );
- }
-
-  // Render error message if there is an issue
   if (error) {
     return (
-      <div className="h-screen w-65 bg-white shadow-md fixed top-[120px] left-0 p-6">
+      <div className="fixed top-[90px] left-0 w-full bg-white p-4 shadow-md z-50">
         Error: {error}
       </div>
     );
   }
 
-  // Render sidebar with employee details (or empty state if not available)
   return (
-    // <div className="h-screen w-[260px] bg-white shadow-md fixed top-[90px] left-0 p-5">
- 
     <>
       {/* Mobile Toggle Button */}
       <button
         onClick={toggleSidebar}
-        // className="md:hidden fixed top-12 left-6 z-50 bg-white shadow-md p-2 rounded-full"
         className="hidden fixed top-12 left-6 z-50 bg-white shadow-md p-2 rounded-full"
       >
         {isOpen ? <X size={24} /> : <Menu size={24} />}
@@ -79,98 +69,50 @@ const Sidebar = () => {
       <div
         className={`
           fixed top-[90px] left-0 h-screen w-[260px] bg-white shadow-md p-5 z-40 transition-transform duration-300
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 lg:block mt-7 
+          ${isOpen ? "translate-x-0" : "-translate-x-full"}
+          lg:translate-x-0 lg:block mt-7
         `}
       >
- 
-  {/* Profile Section */}
-  <div className="flex flex-col items-center text-center">
-    {/* <img
-       src={"Default.jpg"}
-      className="w-[130px] h-[130px] rounded-full object-cover mb-4"
-    /> */}
+        {/* Profile Section */}
+        <div className="flex flex-col items-center text-center">
+          <img
+            src={`/public/${user?.empNo || "Default"}.jpg`}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = "/public/Default.jpg";
+            }}
+            className="w-[130px] h-[130px] rounded-full object-cover mb-4"
+            alt="Profile"
+          />
 
-{/* <img
-  src={`${employeeInfo.empNo}.jpg`}
-  onError={(e) => { e.target.onerror = null; e.target.src = 'Default.jpg'; }}
-  className="w-[130px] h-[130px] rounded-full object-cover mb-4"
-/>  */}
+          <h2 className="text-lg font-semibold text-[#1c394e] break-words">
+            Welcome Back,<br /> {employeeInfo?.empName || "Employee"}!
+          </h2>
+        </div>
 
-{employeeInfo && employeeInfo.empNo && (
-  <img
-    src={`/public/${employeeInfo.empNo}.jpg`}
-    onError={(e) => {
-      e.currentTarget.onerror = null;
-      e.currentTarget.src = '/public/Default.jpg';
-    }}
-    className="w-[130px] h-[130px] rounded-full object-cover mb-4"
-  />
-)}
+        <hr className="my-4" />
 
-
-
-
-
-    {/* <img src="naysa_logo.png" className="w-[100px] h-[60px]" alt="Naysa Logo" /> */}
-    <h2 className="text-lg font-semibold text-[#1c394e] break-words">
-      Welcome Back, <br /> {user.empName || "Employee"}!
-    </h2>
-  </div>
-  <hr />
-  {/* Employee Details Section */}
-  <div className="mt-5 text-md text-gray-700">
-    <p className="mb-1">
-      <span className="font-semibold">Employee No.:</span> 
-      <br />
-      {employeeInfo ? employeeInfo.empNo : "Loading..."}
-    </p>
-    <p className="mb-2">
-      <span className="font-semibold">Branch:</span> 
-      <br />
-      <span className="block break-words">
-        {employeeInfo ? employeeInfo.branchName : "Loading..."}
-      </span>
-    </p>
-    <p className="mb-2">
-      <span className="font-semibold">Payroll Group:</span> 
-      <br />
-      <span className="block break-words">
-        {employeeInfo ? employeeInfo.payrollGroup : "Loading..."}
-      </span>
-    </p>
-    <p className="mb-2">
-      <span className="font-semibold">Department:</span> 
-      <br />
-      <span className="block break-words">
-        {employeeInfo ? employeeInfo.department : "Loading..."}
-      </span>
-    </p>
-    <p className="mb-2">
-      <span className="font-semibold">Position:</span> 
-      <br />
-      <span className="block break-words">
-        {employeeInfo ? employeeInfo.position : "Loading..."}
-      </span>
-    </p>
-    <p className="mb-2">
-      <span className="font-semibold">Employee Status:</span> 
-      <br />
-      <span className="block break-words">
-        {employeeInfo ? employeeInfo.employeeStatus : "Loading..."}
-      </span>
-    </p>
-    <p className="mb-2">
-      <span className="font-semibold">Shift Schedule:</span> 
-      <br />
-      <span className="block break-words">
-        {employeeInfo ? employeeInfo.shiftSchedule : "Loading..."}
-      </span>
-    </p>
-  </div>
-</div>
-</>
+        {/* Employee Details Section */}
+        <div className="text-md text-gray-700 space-y-2">
+          <DetailItem label="Employee No." value={employeeInfo?.empNo} />
+<DetailItem label="Branch" value={employeeInfo?.branchName} />
+<DetailItem label="Payroll Group" value={employeeInfo?.payrollGroup} />
+<DetailItem label="Department" value={employeeInfo?.department} />
+<DetailItem label="Position" value={employeeInfo?.position} />
+<DetailItem label="Employee Status" value={employeeInfo?.employeeStatus} />
+<DetailItem label="Shift Schedule" value={employeeInfo?.shiftSchedule} />
+        </div>
+      </div>
+    </>
   );
 };
+
+// Reusable component for displaying label-value pairs
+const DetailItem = ({ label, value }) => (
+  <p>
+    <span className="font-semibold">{label}:</span><br />
+    <span className="break-words">{value || "Loading..."}</span>
+  </p>
+);
 
 export default Sidebar;

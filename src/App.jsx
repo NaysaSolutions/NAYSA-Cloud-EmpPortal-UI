@@ -136,6 +136,8 @@ import LeaveReview from "./EMPLOYEE PORTAL/LeaveReview";
 import OvertimeApproval from "./EMPLOYEE PORTAL/OvertimeApproval";
 import OvertimeReview from "./EMPLOYEE PORTAL/OvertimeReview";
 import OfficialBusiness from "./EMPLOYEE PORTAL/OfficialBusiness";
+import OfficialBusinessApproval from "./EMPLOYEE PORTAL/OfficialBusinessApproval";
+import OfficialBusinessReview from "./EMPLOYEE PORTAL/OBReview";
 import Register from "./NAYSA Cloud/Register"; // correct path
 
 const App = () => {
@@ -144,7 +146,7 @@ const App = () => {
       <Router>
         <Routes>
           <Route path="/" element={<LoginPortal />} />
-          <Route path="/" element={<Register />} />
+          <Route path="/register" element={<Register />} />
           {/* <Route path="/register" element={<ProtectedRoute><Layout><Register /></Layout></ProtectedRoute>} /> */}
           <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
           <Route path="/timekeeping" element={<ProtectedRoute><Layout><Timekeeping /></Layout></ProtectedRoute>} />
@@ -155,6 +157,8 @@ const App = () => {
           <Route path="/leaveApproval" element={<ProtectedRoute><Layout><LeaveApproval /></Layout></ProtectedRoute>} />
           <Route path="/leave-review" element={<ProtectedRoute><Layout><LeaveReview /></Layout></ProtectedRoute>} />
           <Route path="/official-business" element={<ProtectedRoute><Layout><OfficialBusiness /></Layout></ProtectedRoute>} />
+          <Route path="/OfficialBusinessApproval" element={<ProtectedRoute><Layout><OfficialBusinessApproval /></Layout></ProtectedRoute>} />
+          <Route path="/OfficialBusinessReview" element={<ProtectedRoute><Layout><OfficialBusinessReview /></Layout></ProtectedRoute>} />
         </Routes>
       </Router>
     </AuthProvider>

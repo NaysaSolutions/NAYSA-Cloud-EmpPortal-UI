@@ -12,10 +12,14 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
   const { user } = useAuth(); // Get logged-in user data
 
   const formatDate = (date) => {
-    if (!date) return ""; // Ensure it's not null/undefined
+    if (!date) return "";
     const d = new Date(date);
-    return d.toISOString().split("T")[0]; // Convert to YYYY-MM-DD format
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`; // ✅ Local date in YYYY-MM-DD
   };
+  
   
    const [formData, setFormData] = useState({
     empNo: overtimeData.empNo || "",

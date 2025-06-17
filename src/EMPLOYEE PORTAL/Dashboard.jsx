@@ -33,9 +33,10 @@ const Dashboard = () => {
   const [time, setTime] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState(null); // Error state
-  const { user } = useAuth(); // Get user data from AuthContext
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const [showBackToTop, setShowBackToTop] = useState(false);
+  
 
 
   const defaultLeaveTypes = [
@@ -57,6 +58,13 @@ const Dashboard = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (user?.empNo) {
+      fetchDashboardData(user.empNo); // Pass empNo explicitly
+    }
+  }, [user?.empNo]); // Run effect when empNo changes
+
 
 
   useEffect(() => {
@@ -82,68 +90,71 @@ const Dashboard = () => {
     return <div className="p-6">Loading...</div>;
   }
 
-  const fetchDashboardData = async () => {
-    if (!user || !user.empNo) {
-      return; // Don't fetch if user or empNo is missing
-    }
+   const fetchDashboardData = async () => {
+  if (!user || !user.empNo) return;
 
-    try {
-      const response = await fetch(API_ENDPOINTS.dashBoard, { // Use dynamic API endpoint here
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ EMP_NO: user.empNo }),
+  try {
+    const response = await fetch(API_ENDPOINTS.dashBoard, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({ EMP_NO: user.empNo }),
+    });
+
+    const result = await response.json();
+    console.log("Raw API Response:", result);
+
+    if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+      // Find the employee that matches the logged-in user
+      const employee = result.data.find(emp => emp.empNo === user.empNo) || result.data[0];
+
+      // Update user state to include approver
+  setUser(prev => ({
+    ...prev,
+    approver: employee.approver // make sure this is a string "1" or "0"
+  }));
+
+      // Merge API leave credits with default leave types
+      const apiLeaveCredits = employee.leaveCredit || [];
+      const mergedLeaveCredits = defaultLeaveTypes.map((defaultLeave) => {
+        const match = apiLeaveCredits.find(
+          (apiLeave) => apiLeave.description === defaultLeave.description
+        );
+        return match ? match : defaultLeave;
       });
 
-      const result = await response.json();
-      console.log("Raw API Response:", result);
-
-      if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
-        const parsedData = JSON.parse(result.data[0].result);
-        console.log("Parsed Employee Summary:", parsedData);
-
-        let apiLeaveCredits = parsedData[0]?.leaveCredit || [];
-
-        // Merge API leave credits with default leave types
-        const mergedLeaveCredits = defaultLeaveTypes.map((defaultLeave) => {
-          const foundLeave = apiLeaveCredits.find(
-            (apiLeave) => apiLeave.description === defaultLeave.description
-          );
-          return foundLeave ? foundLeave : defaultLeave;
-        });
-
-        setLeaveCredit(mergedLeaveCredits);
-        setDailyTimeRecord(parsedData[0]?.dailyTimeRecord || []);
-        setLeaveCredit(parsedData[0]?.leaveCredit || []);
-        setLoanBalance(parsedData[0]?.loanBalance || []);
-        setOtApproval(parsedData[0]?.otApproval || []);
-        setLeaveApproval(parsedData[0]?.leaveApproval || []);
-        setOfficialBusinessApproval(parsedData[0]?.obApproval || []);
-        setHolidays(parsedData[0]?.holidays || []);
-        // console.log("Holidays:", parsedData[0]?.holidays);
-
-        // Extract Leave Applications
-        console.log("Leave Applications:", parsedData[0].leaveApplication);
-        setLeaveApplication(parsedData[0]?.leaveApplication || []);
-
-        // Extract Overtime Applications
-        console.log("Overtime Applications:", parsedData[0].otApplication);
-        setOtApplication(parsedData[0]?.otApplication || []);
-
-        // Extract Official Business Applications
-        console.log("Official Business Applications:", parsedData[0]?.obApplication);
-        setOfficialBusinessApplication(parsedData[0]?.obApplication || []);
-      } else {
-        setError("API response format is incorrect or no data found.");
-      }
-    } catch (err) {
-      console.error("Error fetching daily time records:", err);
-      setError("An error occurred while fetching the records.");
+      // Set all state values
+      setLeaveCredit(mergedLeaveCredits);
+      setDailyTimeRecord(employee.dailyTimeRecord || []);
+      setLoanBalance(employee.loanBalance || []);
+      setOtApproval(employee.otApproval || []);
+      setLeaveApproval(employee.leaveApproval || []);
+      setOfficialBusinessApproval(employee.obApproval || []);
+      setHolidays(employee.holidays || []);
+      setLeaveApplication(employee.leaveApplication || []);
+      setOtApplication(employee.otApplication || []);
+      setOfficialBusinessApplication(employee.obApplication || []);
+    } else {
+      setError("API response format is incorrect or no data found.");
     }
-  };
+  } catch (err) {
+    console.error("Error fetching dashboard data:", err);
+    setError("An error occurred while fetching the records.");
+  }
+};
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [user.empNo]); // Dependency on user.empNo
+useEffect(() => {
+  fetchDashboardData();
+}, [user.empNo]);
+
+
+useEffect(() => {
+  console.log("Leave Approval Data:", leaveApproval);
+  console.log("OT Approval Data:", otApproval);
+  console.log("OB Approval Data:", obApproval);
+}, [leaveApproval, otApproval, obApproval]);
 
   // Current Date and Time
   useEffect(() => {
@@ -326,7 +337,7 @@ const Dashboard = () => {
     {/* Table Structure */}
     <div className="mt-4 overflow-x-auto">
     <table className="dashboard-table">
-      <thead classname ="dashboard-thead">
+      <thead className ="dashboard-thead">
           <tr className="dashboard-thead ">
             
             {/* <th className="p-2 text-left">Leave Type</th>
@@ -341,7 +352,7 @@ const Dashboard = () => {
                 <th className="dashboard-th cursor-pointer">Actual</th>
           </tr>
         </thead>
-        <tbody classname="dashboard-tbody">
+        <tbody className="dashboard-tbody">
           {leaveCredit.length > 0 ? (
             leaveCredit.map((leave, index) => (
               <tr key={index} className="dashboard-tbody dashboard-tr">
@@ -451,9 +462,9 @@ const Dashboard = () => {
   {/* Calendar Legend */}
   <div className="flex justify-between text-sm sm:text-sm md:text-sm lg:text-base mt-8">
     {/* <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-red-400 inline-block mr-1"></span> Holiday</div> */}
-    <div className="flex items-center text-red-500 font-bold">Holiday</div>
-    <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-blue-300 inline-block mr-1"></span> Approved Leave</div>
-    <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-yellow-200 inline-block mr-1"></span> Pending Leave</div>
+    <div className="flex items-center text-red-500 font-bold"><span className="w-4 h-4 rounded-lg bg-red-500 inline-block mr-1"></span>Holiday</div>
+    <div className="flex items-center text-blue-300 font-bold"><span className="w-4 h-4 rounded-lg bg-blue-300 inline-block mr-1"></span> Approved Leave</div>
+    <div className="flex items-center text-yellow-200 font-bold"><span className="w-4 h-4 rounded-lg bg-yellow-200 inline-block mr-1"></span> Pending Leave</div>
   </div>
 </div>
 </div>
@@ -473,14 +484,14 @@ const Dashboard = () => {
 {/* Responsive Table */}
 <div className="mt-2 overflow-x-auto flex-grow">
   <table className="dashboard-table">
-      <thead classname ="dashboard-thead">
+      <thead className ="dashboard-thead">
         <tr className="dashboard-thead">
           <th className="dashboard-th text-left">Date</th>
           <th className="dashboard-th text-center">Time In</th>
           <th className="dashboard-th text-center">Time Out</th>
         </tr>
       </thead>     
-      <tbody classname="dashboard-tbody">
+      <tbody className="dashboard-tbody">
         {dailyTimeRecord.length > 0 ? (
           dailyTimeRecord.map((record, index) => (
             <tr key={index} className="dashboard-tbody dashboard-tr">
@@ -530,7 +541,7 @@ const Dashboard = () => {
 {/* Responsive Table */}
 <div className="mt-2 overflow-x-auto flex-grow">
   <table className="dashboard-table">
-      <thead classname ="dashboard-thead">
+      <thead className ="dashboard-thead">
         <tr className="dashboard-thead">
           <th className="dashboard-th text-left">Loan Type</th>
           <th className="dashboard-th text-right">Loan Amount</th>
@@ -538,7 +549,7 @@ const Dashboard = () => {
           <th className="dashboard-th text-right">Total Paid</th>
         </tr>
       </thead>
-      <tbody classname="dashboard-tbody">
+      <tbody className="dashboard-tbody">
         {loanBalance.length > 0 ? (
           loanBalance.slice(0, 5).map((loan, index) => (
             <tr key={index} className="dashboard-tbody dashboard-tr">
@@ -790,7 +801,7 @@ const Dashboard = () => {
               <th className="dashboard-th text-center">Status</th>
             </tr>
           </thead>
-          <tbody classname="dashboard-tbody">
+          <tbody className="dashboard-tbody">
             {otApproval.length > 0 ? (
               otApproval.slice(0, 5).map((ot, index) => (
                 <tr key={index} className="dashboard-tbody dashboard-tr">
@@ -852,34 +863,32 @@ const Dashboard = () => {
               <th className="dashboard-th text-center text-nowrap">Status</th>
             </tr>
           </thead>
-          <tbody classname="dashboard-tbody">
-            {leaveApproval.length > 0 ? (
-              leaveApproval.slice(0, 5).map((leave, index) => (
-                <tr key={index} className="dashboard-tbody dashboard-tr">
-                  <td className="dashboard-td">{leave.dateapplied}</td>
-                  <td className="dashboard-td">{leave.leavetype}</td>
-                  <td className="dashboard-td">{leave.duration}</td>
-                  <td className="dashboard-td">{leave.empname}</td>
-                  <td className="dashboard-td text-center">
-                  <span className={`inline-block w-[90px] px-2 py-1 rounded-full 
-                    ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                      leave.leavestatus === "Approved" ? "bg-blue-100 text-blue-600" : 
-                      "bg-red-100 text-red-600"}`}>
-                    {leave.leavestatus}
-                  </span>
-                </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan="6">
-                  <div className="dashboard-div-norecords">
-                    No leave approvals found.
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
+          <tbody className="dashboard-tbody">
+  {leaveApproval.length > 0 ? (
+    leaveApproval.map((leave, index) => (
+      <tr key={index} className="dashboard-tbody dashboard-tr">
+        <td className="dashboard-td">{leave.dateapplied}</td>
+        <td className="dashboard-td">{leave.leavetype}</td>
+        <td className="dashboard-td">{leave.duration}</td>
+        <td className="dashboard-td">{leave.empname}</td>
+        <td className="dashboard-td text-center">
+          <span className={`inline-block w-[90px] px-2 py-1 rounded-full 
+            ${leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
+              leave.leavestatus === "Approved" ? "bg-blue-100 text-blue-600" : 
+              "bg-red-100 text-red-600"}`}>
+            {leave.leavestatus}
+          </span>
+        </td>
+      </tr>
+    ))
+  ) : (
+    <tr>
+      <td colSpan="5" className="p-4 text-center text-gray-600 text-sm">
+        No leave approvals found.
+      </td>
+    </tr>
+  )}
+</tbody>
         </table>
       </div>
 
@@ -915,7 +924,7 @@ const Dashboard = () => {
               <th className="dashboard-th text-center">Status</th>
             </tr>
           </thead>        
-          <tbody classname="dashboard-tbody">
+          <tbody className="dashboard-tbody">
             {obApproval.length > 0 ? (
               obApproval.slice(0, 5).map((ob, index) => (              
                 <tr key={index} className="dashboard-tbody dashboard-tr">
@@ -951,7 +960,7 @@ const Dashboard = () => {
    {obApproval.length > 0 && (
       <div className="relative flex justify-end">
       <button 
-        onClick={() => navigate("/OffcialBUsinessApproval")} 
+        onClick={() => navigate("/OfficialBusinessApproval")} 
         className="dashboard-button-viewall"
     >
         View All <span className="ml-1">→</span>

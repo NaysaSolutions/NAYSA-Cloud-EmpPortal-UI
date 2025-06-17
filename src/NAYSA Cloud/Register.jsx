@@ -101,7 +101,6 @@
 // }
 
 // export default Register;
-
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
@@ -111,9 +110,9 @@ import API_ENDPOINTS from "@/apiConfig.jsx";
 function Register() {
     const navigate = useNavigate();
     const [formData, setFormData] = useState({
-        empNo: "",
-        email: "",
-        password: ""
+        empno: "",
+        password: "",
+        confirm_password: ""
     });
 
     const handleChange = (e) => {
@@ -124,75 +123,88 @@ function Register() {
     };
 
     const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-        const response = await axios.post(API_ENDPOINTS.regEmp, formData); // send flat data
+        e.preventDefault();
 
-        if (response.data.success) {
-            Swal.fire("Success", "Account created successfully!", "success");
-            navigate("/");
-        } else {
-            Swal.fire("Error", response.data.message || "Registration failed.", "error");
+        if (formData.password !== formData.confirm_password) {
+            Swal.fire("Error", "Passwords do not match.", "error");
+            return;
         }
-    } catch (error) {
-        Swal.fire("Error", error.response?.data?.message || "Something went wrong.", "error");
-    }
-};
 
+        try {
+            const payload = {
+                empno: formData.empno,
+                password: formData.password,
+                confirm_password: formData.confirm_password
+            };
 
+            const response = await axios.post(API_ENDPOINTS.regEmp, payload);
+
+            if (response.data.status === "Updated") {
+                Swal.fire("Success", "Password registered successfully!", "success");
+                navigate("/");
+            } else {
+                Swal.fire("Error", "Registration failed.", "error");
+            }
+        } catch (error) {
+            Swal.fire(
+                "Error",
+                error.response?.data?.message || "Something went wrong.",
+                "error"
+            );
+        }
+    };
 
     return (
         <div className="bg-[linear-gradient(to_bottom,#7392b7,#d8e1e9)] flex items-center justify-center min-h-screen px-4">
-            <div className="relative px-20 py-10 rounded-3xl shadow-md" style={{ width: '530px', height: '700px' }}>
+            <div className="relative px-20 py-10 rounded-3xl shadow-md" style={{ width: '530px', height: '630px' }}>
                 <div className="absolute inset-0 rounded-3xl" style={{ backgroundColor: '#5882C1', opacity: 0.5, zIndex: 0 }}></div>
 
                 <div className="relative z-10">
                     <img src="/naysa_logo.png" alt="Logo" className="w-200 h-20 mb-3" />
-                    <h2 className="text-white m-1" style={{ fontFamily: 'SF Pro Rounded, sans-serif' }}>
-                        NAYSA Employee Portal
-                    </h2>
-                    <h2 className="text-4xl font-bold mb-5 text-white" style={{ fontFamily: 'SF Pro Rounded, sans-serif' }}>
-                        Create Your Account
-                    </h2>
+                    <h2 className="text-white m-1">NAYSA Employee Portal</h2>
+                    <h2 className="text-4xl font-bold mb-5 text-white">Create Your Account</h2>
 
                     <form onSubmit={handleSubmit}>
                         <div className="mb-3">
-                            <label htmlFor="empNo" className="block text-base font-normal text-gray-700">User ID</label>
+                            <label htmlFor="empno" className="block text-base text-gray-700">Employee Number</label>
                             <input
                                 type="text"
-                                name="empNo"
-                                value={formData.empNo}
+                                name="empno"
+                                value={formData.empno}
                                 onChange={handleChange}
                                 required
-                                placeholder="Enter your User ID"
-                                className="mt-1 p-2 w-[380px] h-[45px] border-[1px] rounded-[12px]"
+                                placeholder="Enter your Employee Number"
+                                className="mt-1 p-2 w-[380px] h-[45px] border rounded-[12px]"
                             />
                         </div>
+
                         <div className="mb-3">
-                            <label htmlFor="email" className="block text-base font-normal text-gray-700">Email</label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                required
-                                placeholder="email@gmail.com"
-                                className="mt-1 p-2 w-[380px] h-[45px] border-[1px] rounded-[12px]"
-                            />
-                        </div>
-                        <div className="mb-5">
-                            <label htmlFor="password" className="block text-base font-normal text-gray-700">Password</label>
+                            <label htmlFor="password" className="block text-base text-gray-700">Password</label>
                             <input
                                 type="password"
                                 name="password"
                                 value={formData.password}
                                 onChange={handleChange}
                                 required
-                                placeholder="At least 8 characters"
-                                className="mt-1 p-2 w-[380px] h-[45px] border-[1px] rounded-[12px]"
+                                placeholder="At least 6 characters"
+                                className="mt-1 p-2 w-[380px] h-[45px] border rounded-[12px]"
                             />
                         </div>
-                        <button type="submit" className="w-full bg-[#162e3a] text-base text-white p-3 rounded-lg">
+
+                        <div className="mb-5">
+                            <label htmlFor="confirm_password" className="block text-base text-gray-700">Confirm Password</label>
+                            <input
+                                type="password"
+                                name="confirm_password"
+                                value={formData.confirm_password}
+                                onChange={handleChange}
+                                required
+                                placeholder="Re-enter password"
+                                className="mt-1 p-2 w-[380px] h-[45px] border rounded-[12px]"
+                            />
+                        </div>
+
+                        <button type="submit" className="w-full bg-[#162e3a] text-white p-3 rounded-lg">
                             Register
                         </button>
 
@@ -201,7 +213,7 @@ function Register() {
                             <Link to="/" className="text-sm text-white hover:underline">Sign In</Link>
                         </div>
 
-                        <span className="text-white text-xs flex items-center justify-center mt-2 mb-2">
+                        <span className="text-white text-xs flex justify-center mt-2 mb-2">
                             © 2025 ALL RIGHTS RESERVED
                         </span>
                     </form>
@@ -212,3 +224,4 @@ function Register() {
 }
 
 export default Register;
+
