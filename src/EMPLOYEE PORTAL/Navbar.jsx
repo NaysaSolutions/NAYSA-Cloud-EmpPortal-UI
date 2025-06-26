@@ -57,7 +57,7 @@ const Navbar = () => {
           label: "Official Business",
           children: [
             { path: "/official-business", label: "Official Business Application" },
-            { path: "/official-business", label: "Official Business for Approval" }
+            { path: "/OfficialBusinessApproval", label: "Official Business for Approval" }
           ]
         }]
     ),

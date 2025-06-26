@@ -6,7 +6,7 @@ import { forwardRef } from "react";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext";
-import API_ENDPOINTS from "@/apiConfig.jsx";
+import API_ENDPOINTS from "@/apiConfig.jsx";  
 
 const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
   <div className="relative">
@@ -31,13 +31,14 @@ const officialBusiness = () => {
     const [error, setError] = useState(null);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
     const [applicationDate, setApplicationDate] = useState("");
+    // const [loadingHolidays, setLoadingHolidays] = useState(false);
 
     // const [selectedStartDate, setSelectedStartDate] = useState("");
     // const [selectedEndDate, setSelectedEndDate] = useState("");
       const [selectedStartDate, setSelectedStartDate] = useState(null);
       const [selectedEndDate, setSelectedEndDate] = useState(null);
       // Add this near the top of your component, with other state declarations
-const [holidays, setHolidays] = useState([]);
+// const [holidays, setHolidays] = useState([]);
 
     const [obHrs, setOBHrs] = useState("0");
     const [remarks, setRemarks] = useState("");
@@ -116,55 +117,62 @@ const [holidays, setHolidays] = useState([]);
   
 // }, [user]);
 
-const fetchHolidays = async () => {
-  try {
-    const response = await fetch(API_ENDPOINTS.fetchHolidays, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
+// const fetchHolidays = async () => {
+//   setLoadingHolidays(true);
+//   try {
+//     const response = await fetch(API_ENDPOINTS.fetchHolidays, {
+//       method: "POST", // Try GET if POST isn't working
+//       headers: { "Content-Type": "application/json" },
+//       // Add body if your endpoint requires it
+//       body: JSON.stringify({ 
+//         YEAR: new Date().getFullYear() 
+//       }),
+//     });
 
-    // First check if the response is OK
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+//     // First check if response is OK
+//     if (!response.ok) {
+//       const errorText = await response.text();
+//       console.error("API Error Response:", errorText);
+//       throw new Error(`HTTP error! status: ${response.status}`);
+//     }
 
-    // Check if response has content
-    const contentLength = response.headers.get('content-length');
-    if (contentLength && Number(contentLength) === 0) {
-      throw new Error('Empty response received');
-    }
+//     // Check content type to ensure it's JSON
+//     const contentType = response.headers.get('content-type');
+//     if (!contentType || !contentType.includes('application/json')) {
+//       const text = await response.text();
+//       console.error("Non-JSON Response:", text);
+//       throw new Error("API did not return JSON");
+//     }
 
-    const result = await response.json();
+//     const result = await response.json();
     
-    if (result.success && result.data) {
-      setHolidays(result.data);
-    } else {
-      console.warn("No holidays data received, using fallback");
-      // Use a fallback set of holidays if API fails
-      setHolidays(getFallbackHolidays());
-    }
-  } catch (err) {
-    console.error("Error fetching holidays:", err);
-    // Use fallback holidays in case of error
-    setHolidays(getFallbackHolidays());
-  }
-};
+//     if (result.success && result.data) {
+//       setHolidays(result.data);
+//     } else {
+//       console.warn("No holidays data received, using fallback");
+//       setHolidays(getFallbackHolidays());
+//     }
+//   } catch (err) {
+//     console.error("Error fetching holidays:", err);
+//     setHolidays(getFallbackHolidays());
+//   }
+//   setLoadingHolidays(true);
+// };
 
-// Fallback holidays data
-const getFallbackHolidays = () => {
-  return [
-    "2023-01-01", "2023-01-22", "2023-02-25", "2023-04-06", 
-    "2023-04-07", "2023-04-08", "2023-04-09", "2023-05-01",
-    "2023-06-28", "2023-08-28", "2023-11-27", "2023-12-25",
-    "2024-01-01", "2024-02-10", "2024-03-29", "2024-03-31",
-    "2024-04-09", "2024-04-10", "2024-05-01", "2024-06-12",
-    "2024-08-26", "2024-11-30", "2024-12-25", "2024-12-30"
-  ];
-};
-
+// // Fallback holidays data
+// const getFallbackHolidays = () => {
+//   return [
+//     "2023-01-01", "2023-01-22", "2023-02-25", "2023-04-06", 
+//     "2023-04-07", "2023-04-08", "2023-04-09", "2023-05-01",
+//     "2023-06-28", "2023-08-28", "2023-11-27", "2023-12-25",
+//     "2024-01-01", "2024-02-10", "2024-03-29", "2024-03-31",
+//     "2024-04-09", "2024-04-10", "2024-05-01", "2024-06-12",
+//     "2024-08-26", "2024-11-30", "2024-12-25", "2024-12-30"
+//   ];
+// };
 
 const fetchOBApplications = async () => {
-  if (!user || !user.empNo) return;
+  if (!user?.empNo) return;
 
   try {
     const today = dayjs().format("YYYY-MM-DD");
@@ -183,11 +191,18 @@ const fetchOBApplications = async () => {
     const result = await response.json();
     console.log("Official Business Applications API Response:", result);
 
-    if (result.success && result.data.length > 0) {
+    if (
+      result?.success &&
+      Array.isArray(result.data) &&
+      result.data.length > 0 &&
+      result.data[0]?.result
+    ) {
       const parsedData = JSON.parse(result.data[0].result);
-      setOBApplications(parsedData || []);
-      setFilteredApplications(parsedData || []);
+      setOBApplications(parsedData ?? []);
+      setFilteredApplications(parsedData ?? []);
     } else {
+      setOBApplications([]);
+      setFilteredApplications([]);
       setError("No Official Business applications found.");
     }
   } catch (err) {
@@ -195,18 +210,15 @@ const fetchOBApplications = async () => {
     setError("An error occurred while fetching Official Business applications.");
   }
 };
-  
-
 
 useEffect(() => {
-  if (!user || !user.empNo) return;
-  
+  if (!user?.empNo) return;
+
   fetchOBApplications();
-  fetchHolidays(); // Fetch holidays when component mounts
 
   const interval = setInterval(() => {
     fetchOBApplications();
-  }, 10000);
+  }, 10000); // Poll every 10 seconds
 
   return () => clearInterval(interval);
 }, [user]);
@@ -351,7 +363,7 @@ useEffect(() => {
 };
   
      // Function to calculate leave days excluding weekends & holidays
-     const calculateObHrs = (startDate, endDate) => {
+  const calculateObHrs = (startDate, endDate) => {
   if (!startDate || !endDate) return 0;
 
   const start = new Date(startDate);
@@ -366,22 +378,18 @@ useEffect(() => {
   // Convert milliseconds to hours
   const totalHours = totalMs / (1000 * 60 * 60);
 
-  // Check if it's a weekend or holiday
+  // Check if it's a weekend
   const startDay = start.getDay();
   const endDay = end.getDay();
-  const startDateStr = start.toISOString().split('T')[0];
-  const endDateStr = end.toISOString().split('T')[0];
 
-  // If it's a weekend or holiday, return 0
-  if (startDay === 0 || startDay === 6 || holidays.includes(startDateStr) || 
-      endDay === 0 || endDay === 6 || holidays.includes(endDateStr)) {
+  // If it's a weekend, return 0
+  if (startDay === 0 || startDay === 6 || endDay === 0 || endDay === 6) {
     return 0;
   }
 
   // Return the total hours, rounded to 2 decimal places
   return parseFloat(totalHours.toFixed(2));
 };
-    
     
 
    const handleDateChange = (field, value) => {
@@ -418,25 +426,25 @@ useEffect(() => {
 
 
     // Add this useEffect to fetch holidays (similar to your other data fetches)
-useEffect(() => {
-  const fetchHolidays = async () => {
-    try {
-      const response = await fetch(API_ENDPOINTS.fetchHolidays, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ YEAR: new Date().getFullYear() }),
-      });
-      const result = await response.json();
-      if (result.success) {
-        setHolidays(result.data.map(h => h.holidate));
-      }
-    } catch (err) {
-      console.error("Error fetching holidays:", err);
-    }
-  };
+// useEffect(() => {
+//   const fetchHolidays = async () => {
+//     try {
+//       const response = await fetch(API_ENDPOINTS.fetchHolidays, {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         body: JSON.stringify({ YEAR: new Date().getFullYear() }),
+//       });
+//       const result = await response.json();
+//       if (result.success) {
+//         // setHolidays(result.data.map(h => h.holidate));
+//       }
+//     } catch (err) {
+//       console.error("Error fetching holidays:", err);
+//     }
+//   };
   
-  fetchHolidays();
-}, []);
+//   fetchHolidays();
+// }, []);
     
     
     return (
@@ -588,9 +596,9 @@ useEffect(() => {
                 {currentRecords.length > 0 ? (
                   currentRecords.map((officialbusiness, index) => {
                     const textColor =
-                    officialbusiness.obstatus === "Pending"
+                    officialbusiness.obStatus === "Pending"
                         ? "global-td-status-pending"
-                        : officialbusiness.obstatus === "Approved"
+                        : officialbusiness.obStatus === "Approved"
                         ? "global-td-status-approved"
                         : "global-td-status-disapproved";
 
@@ -600,12 +608,12 @@ useEffect(() => {
                         className={`global-tr ${textColor}`}
                       >
                         <td className="global-td">{dayjs(officialbusiness.obdate).format("MM/DD/YYYY")}</td>
-<td className="global-td">{dayjs(officialbusiness.obstart).format("MM/DD/YYYY hh:mm a")}</td>
-<td className="global-td">{dayjs(officialbusiness.obend).format("MM/DD/YYYY hh:mm a")}</td>
-<td className="global-td">{officialbusiness.obhrs} Hours</td>
-<td className="global-td">{officialbusiness.obremarks || "N/A"}</td>
-<td className="global-td">{officialbusiness.App_Remarks || "N/A"}</td>
-<td className="global-td-status">{officialbusiness.obstatus || "N/A"}</td>
+<td className="global-td">{dayjs(officialbusiness.obStart).format("MM/DD/YYYY hh:mm a")}</td>
+<td className="global-td">{dayjs(officialbusiness.obEnd).format("MM/DD/YYYY hh:mm a")}</td>
+<td className="global-td">{officialbusiness.obHrs} Hours</td>
+<td className="global-td">{officialbusiness.obRemarks || "N/A"}</td>
+<td className="global-td">{officialbusiness.appRemarks || "N/A"}</td>
+<td className="global-td-status">{officialbusiness.obStatus || "N/A"}</td>
 
                         {/* <td className="global-td text-center">
                           <span

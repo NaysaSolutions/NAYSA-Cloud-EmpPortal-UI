@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { AiOutlineClose } from "react-icons/ai"; // ✅ Import X (close) icon from React Icons
 import { useAuth } from "./AuthContext"; // Import AuthContext to get logged-in user data
-// import API_ENDPOINTS from "C:/Users/mendo/OneDrive/Desktop/NAYSA-Cloud-EmpPortal-UI/src/apiConfig.jsx";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 
 import Swal from 'sweetalert2';
@@ -30,8 +29,6 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
     otHrs: overtimeData.otHrs || "",
     otType: overtimeData.otType || "",
     otRemarks: overtimeData.otRemarks || "",
-    // approverRemarks: overtimeData.approverRemarks || "",
-    // approvedHrs: overtimeData.approvedHrs || "",
     otStamp: overtimeData.otStamp || "", // ✅ Include lvStamp
    });
   
@@ -92,15 +89,6 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
                 },
               });
         
-              // setPendingOt((prevOt) =>
-              //   prevOt.filter((overtime) => overtime.otStamp !== overtimeData.otStamp)
-              // );
-        
-              // setHistory((prevHistory) => [
-              //   ...prevHistory,
-              //   { ...overtimeData, otStatus: "Approved" },
-              // ]);
-              
             } else {
               await Swal.fire({
                 title: "Error",
@@ -174,15 +162,6 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
                   popup: 'z-[10050]',
                 },
               });
-        
-              // setPendingLeaves((prevLeaves) =>
-              //   prevLeaves.filter((leave) => leave.LV_STAMP !== leaveData.LV_STAMP)
-              // );
-        
-              // setHistory((prevHistory) => [
-              //   ...prevHistory,
-              //   { ...leaveData, leaveStatus: "Disapproved" },
-              // ]);
       
             } else {
               await Swal.fire({
@@ -241,15 +220,6 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
 
         {/* ✅ Approver Remarks (Editable) */}
         <div className="mt-4">
-          {/* <label className="block text-gray-700">Approved Hours</label>
-          <input
-              type="number"
-              name="approvedHrs"
-              value={formData.approvedHrs}
-              onChange={handleChange}
-              className="w-full border rounded p-2"
-            /> */}
-          {/* <input className="border p-2 w-full" value={overtimeData.otHrs || ""}  /> */}
           <label className="block text-gray-700">Approver's Remarks</label>
           <textarea
             name="approverRemarks"
@@ -258,12 +228,7 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
             className="w-full border rounded p-2"
           />
         </div>
-
-        {/* <div className="flex justify-end space-x-4 mt-6">
-          <button className="bg-blue-500 text-white px-4 py-2 rounded">Approve</button>
-          <button className="bg-red-500 text-white px-4 py-2 rounded">Disapprove</button>
-        </div> */}
-
+        
 {/* Buttons */}
 <div className="flex flex-col sm:flex-row justify-end mt-4 gap-2 sm:gap-2">
 
