@@ -31,6 +31,7 @@ const Navbar = () => {
   const navItems = user ? [
     { path: "/dashboard", label: "Inquiry" },
     { path: "/timekeeping", label: "Timekeeping" },
+    { path: "/payslipviewer", label: "Payslip" }, // ← Insert here
     ...(user.approver !== "1"
       ? [{ path: "/overtime", label: "Overtime" }]
       : [{

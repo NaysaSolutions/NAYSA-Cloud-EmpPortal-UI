@@ -129,6 +129,7 @@ import Navbar from "./EMPLOYEE PORTAL/Navbar";
 import Dashboard from "./EMPLOYEE PORTAL/Dashboard";
 import LoginPortal from "./EMPLOYEE PORTAL/LoginPortal";
 import Timekeeping from "./EMPLOYEE PORTAL/Timekeeping";
+import PayslipViewer from "./EMPLOYEE PORTAL/PayslipViewer";
 import Leave from "./EMPLOYEE PORTAL/Leave";
 import Overtime from "./EMPLOYEE PORTAL/Overtime";
 import LeaveApproval from "./EMPLOYEE PORTAL/LeaveApproval";
@@ -149,7 +150,8 @@ const App = () => {
           <Route path="/register" element={<Register />} />
           {/* <Route path="/register" element={<ProtectedRoute><Layout><Register /></Layout></ProtectedRoute>} /> */}
           <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-          <Route path="/timekeeping" element={<ProtectedRoute><Layout><Timekeeping /></Layout></ProtectedRoute>} />
+          <Route path="/timekeeping" element={<ProtectedRoute><Layout><Timekeeping /></Layout></ProtectedRoute>} />    
+          <Route path="/payslipviewer" element={<ProtectedRoute><Layout><PayslipViewer /></Layout></ProtectedRoute>} />
           <Route path="/leave" element={<ProtectedRoute><Layout><Leave /></Layout></ProtectedRoute>} />
           <Route path="/overtime" element={<ProtectedRoute><Layout><Overtime /></Layout></ProtectedRoute>} />
           <Route path="/overtimeApproval" element={<ProtectedRoute><Layout><OvertimeApproval /></Layout></ProtectedRoute>} />
