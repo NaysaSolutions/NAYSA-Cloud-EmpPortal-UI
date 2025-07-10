@@ -22,11 +22,15 @@ const Timekeeping = () => {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [fetchRecords, setFetchRecords] = useState([]); // Store fetched data
   const [jsonData, setJsonData] = useState(null);
+  const [timeInLocation, setTimeInLocation] = useState(null);
+  const [timeOutLocation, setTimeOutLocation] = useState(null);
   const videoRef = useRef(null);
   const videoRefOut = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
 
+
+  const API_KEY = "pk.65e557ad74cdce625f80adf6d5534600";
   // Update current time every second
   useEffect(() => {
     const interval = setInterval(() => {
@@ -63,7 +67,119 @@ const Timekeeping = () => {
           })
         : "N/A";
     };
+
+
+    const getCurrentLocation = async () => {
+  return new Promise(async (resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation is not supported by this browser."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude, accuracy } = position.coords;
+          console.log("Accuracy in meters:", accuracy);
+
+          const address = await reverseGeocode(latitude, longitude);
+          
+          resolve({
+            coordinates: {
+              latitude,
+              longitude,
+              accuracy
+            },
+            address,
+            timestamp: new Date().toLocaleString()
+          });
+        } catch (error) {
+          reject(error);
+        }
+      },
+      (error) => {
+        reject(error);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  });
+};
+
+const COMPANY_LOCATION = {
+  address: "120 Amorsolo Street, Legazpi Village, Makati, 1229 Kalakhang Maynila",
+  coordinates: {
+    latitude: 14.5565,    // REPLACE THESE WITH YOUR EXACT COORDINATES
+    longitude: 121.0194   // REPLACE THESE WITH YOUR EXACT COORDINATES
+  },
+  allowedRadius: 500 // meters
+};
     
+
+// Helper function to calculate distance between two coordinates (in meters)
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // Earth radius in meters
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lon2-lon1) * Math.PI/180;
+
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+  return R * c;
+};
+
+// Use Google Maps Geocoding API (more precise but requires API key)
+const reverseGeocode = async (lat, lng) => {
+  try {
+    const response = await fetch(
+      `https://us1.locationiq.com/v1/reverse.php?key=${API_KEY}&lat=${lat}&lon=${lng}&format=json`
+    );
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data || !data.display_name) {
+      throw new Error("No address found");
+    }
+
+    return {
+      fullAddress: data.display_name,
+      exactAddress: data.address?.road || '',
+      streetNumber: data.address?.house_number || '',
+      street: data.address?.road || '',
+      building: data.address?.building || '',
+      neighborhood: data.address?.neighbourhood || '',
+      city: data.address?.city || data.address?.town || data.address?.village || '',
+      state: data.address?.state || '',
+      country: data.address?.country || '',
+      postalCode: data.address?.postcode || '',
+      isExact: !!data.address?.road,
+      mapUrl: `https://www.google.com/maps?q=${lat},${lng}`
+    };
+
+  } catch (error) {
+    console.error("Geocoding error:", error);
+    return await fallbackGeocode(lat, lng); // Optional fallback
+  }
+};
+
+// Fallback to Nominatim
+const fallbackGeocode = async (lat, lng) => {
+  const response = await fetch(
+    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+  );
+  const data = await response.json();
+  return {
+    fullAddress: data.display_name,
+    precise: false 
+  };
+};
   
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -151,24 +267,88 @@ const Timekeeping = () => {
     }, 1000);
   };
 
-  const handleTimeEvent = (type) => {
-    const currentTime = dayjs().format("hh:mm:ss A");
-  
+  const handleTimeEvent = async (type) => {
+  const currentTime = dayjs().format("hh:mm:ss A");
+
+  try {
+    const location = await getCurrentLocation();
+    
+    // Debugging logs (temporary - remove in production)
+    console.log('User location:', location);
+    console.log('Company location:', COMPANY_LOCATION.coordinates);
+    
+    const distance = calculateDistance(
+      location.coordinates.latitude,
+      location.coordinates.longitude,
+      COMPANY_LOCATION.coordinates.latitude,
+      COMPANY_LOCATION.coordinates.longitude
+    );
+
+    // Account for GPS accuracy margin
+    const effectiveDistance = Math.max(0, distance - location.coordinates.accuracy);
+    
+    console.log(`Calculated distance: ${distance}m (Accuracy: ±${location.coordinates.accuracy}m)`);
+    
+    if (effectiveDistance > COMPANY_LOCATION.allowedRadius) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Location Restricted',
+        html: `You must be within ${COMPANY_LOCATION.allowedRadius}m of:<br>
+              <strong>${COMPANY_LOCATION.address}</strong><br><br>
+              Your current distance: <strong>${Math.round(distance)}m</strong><br>
+              GPS accuracy: ±${Math.round(location.coordinates.accuracy)}m`,
+        footer: '<button id="debug-btn" class="text-blue-500">Show Debug Info</button>'
+      });
+      
+      // Add debug info on button click
+      document.getElementById('debug-btn')?.addEventListener('click', () => {
+        Swal.fire({
+          title: 'Debug Information',
+          html: `<pre>${JSON.stringify({
+            userLocation: location.coordinates,
+            companyLocation: COMPANY_LOCATION.coordinates,
+            calculatedDistance: distance,
+            gpsAccuracy: location.coordinates.accuracy,
+            effectiveDistance: effectiveDistance
+          }, null, 2)}</pre>`,
+          confirmButtonText: 'Close'
+        });
+      });
+      return;
+    }
+
+    // Proceed with time recording if within allowed radius
     if (type === "TIME IN" && !timeIn) {
       setTimeIn(currentTime);
-      captureImage(type); // Only capture for TIME IN
+      setTimeInLocation(location);
+      captureImage(type);
     }
     if (type === "TIME OUT" && !timeOut) {
       setTimeOut(currentTime);
-      captureImage(type); // Only capture for TIME OUT
+      setTimeOutLocation(location);
+      captureImage(type);
     }
     if (type === "BREAK IN" && !breakIn) {
-      setBreakIn(currentTime); // Just record time, no image capture
+      setBreakIn(currentTime);
     }
     if (type === "BREAK OUT" && !breakOut) {
-      setBreakOut(currentTime); // Just record time, no image capture
+      setBreakOut(currentTime);
     }
-  };
+  } catch (error) {
+    console.error("Location error:", error);
+    let errorMessage = "Location services error";
+    
+    if (error.code === error.PERMISSION_DENIED) {
+      errorMessage = "Location access was denied. Please enable permissions.";
+    } else if (error.code === error.TIMEOUT) {
+      errorMessage = "Location request timed out. Please try again.";
+    } else if (error.message.includes('No address found')) {
+      errorMessage = "Could not verify your location. Please try again outdoors.";
+    }
+    
+    Swal.fire('Error', errorMessage, 'error');
+  }
+};
   
   const startCameraForTimeOut = async () => {
     try {
@@ -317,6 +497,15 @@ const Timekeeping = () => {
             className="border p-2 rounded shadow-md text-center"
             value={timeIn} readOnly
           />
+          {timeInLocation && (
+    <div className="mt-2 text-sm bg-gray-100 p-2 rounded w-full max-w-md">
+      <p className="font-semibold">Time In Location:</p>
+      <p>{timeInLocation.address.fullAddress}</p>
+      <p className="text-xs text-gray-500 mt-1">
+        (Captured at: {timeInLocation.timestamp})
+      </p>
+    </div>
+  )}
           <h2 className="text-lg font-semibold mb-4 mt-4"></h2>
           {timeInImage ? (
             <img
@@ -367,6 +556,13 @@ const Timekeeping = () => {
             className="border p-2 rounded shadow-md text-center"
             value={timeOut} readOnly
           />
+          {timeOutLocation && (
+    <div className="mt-2 text-sm">
+      <p>Location: {timeOutLocation.latitude.toFixed(6)}, {timeOutLocation.longitude.toFixed(6)}</p>
+      <p>Accuracy: ±{Math.round(timeOutLocation.accuracy)} meters</p>
+      <p>Time: {timeOutLocation.timestamp}</p>
+    </div>
+  )}
           <h2 className="text-lg font-semibold mb-4 mt-4"></h2>
   {timeOutImage ? (
     <img
