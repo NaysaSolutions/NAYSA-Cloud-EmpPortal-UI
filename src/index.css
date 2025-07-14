@@ -102,7 +102,15 @@ body {
 
     
 
-    
+    /* global.css or inside your Tailwind config's content CSS */
+.pdf-export-mode {
+  font-size: 0.70rem; /* Reduce base font size */
+}
+
+.pdf-export-mode * {
+  font-size: 0.70rem !important; /* Apply to all children */
+}
+
     
     
   }
