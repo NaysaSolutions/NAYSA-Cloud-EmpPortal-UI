@@ -10,6 +10,7 @@ import { faArrowUp } from '@fortawesome/free-solid-svg-icons';
 import LeaveCreditModal from "./LeaveCreditModal";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import '@/index.css';
+import Timekeeping from './Timekeeping'; // Adjust the path as needed
 
 dayjs.extend(advancedFormat);
 
@@ -66,6 +67,12 @@ const Dashboard = () => {
   }, [user?.empNo]); // Run effect when empNo changes
 
 
+  const startBreakCountdown = () => {
+  setBreakTime(3600); // reset to 1 hour or your desired countdown
+  setIsCounting(true); // start the countdown
+};
+
+<Timekeeping onBreakStart={startBreakCountdown} />
 
   useEffect(() => {
     const updateTime = () => {
@@ -164,22 +171,20 @@ useEffect(() => {
     return () => clearInterval(timer);
   }, []);
 
-  // Break Time Countdown
   useEffect(() => {
-    let countdown;
-    if (isCounting && breakTime > 0) {
-      countdown = setInterval(() => {
-        setBreakTime((prev) => prev - 1);
-      }, 1000);
-    }
-    if (breakTime <= 0) {
-      clearInterval(countdown);
-      setIsCounting(false);
-      Swal.fire("Time's Up!", "Your break is over.", "warning");
-    }
-    return () => clearInterval(countdown);
-  }, [isCounting, breakTime]);
-
+  let countdown;
+  if (isCounting && breakTime > 0) {
+    countdown = setInterval(() => {
+      setBreakTime(prev => prev - 1);
+    }, 1000);
+  }
+  if (breakTime <= 0) {
+    clearInterval(countdown);
+    setIsCounting(false);
+    Swal.fire("Time's Up!", "Your break is over.", "warning");
+  }
+  return () => clearInterval(countdown);
+}, [isCounting, breakTime]);
 
   // Convert seconds to HH:MM:SS
   const formatTime = (seconds) => {
