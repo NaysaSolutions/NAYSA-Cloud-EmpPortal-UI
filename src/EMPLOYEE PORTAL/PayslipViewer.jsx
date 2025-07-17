@@ -668,7 +668,7 @@ const handleExportPDF = () => {
     <div key={index} ref={index === 0 ? payslipRef : null} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-6">
       {/* 👇 Insert your full payslip HTML layout here */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-2 text-center">
-        <h1 className="text-2xl font-bold mb-1">NAYSA-Solutions Inc.</h1>
+        <h1 className="text-2xl font-bold mb-1">{employee.COMP_NAME}</h1>
         <p className="text-blue-100 text-lg">Payroll Period: {cutoffName}</p>
       </div>
 
