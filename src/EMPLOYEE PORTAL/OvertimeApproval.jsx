@@ -144,7 +144,7 @@ const OvertimeApproval = () => {
                 {/* <th className="global-th text-left">Department</th> */}
                 <th className="global-th text-left whitespace-nowrap">OT Date</th>
                 {/* <th className="global-th text-left">DURATION (Days)</th> */}
-                <th className="global-th text-right whitespace-nowrap">No. of Hours</th>
+                <th className="global-th text-right whitespace-nowrap">Approved Hours</th>
                 <th className="global-th text-left whitespace-nowrap">OT Type</th>
                 <th className="global-th text-left whitespace-nowrap">Remarks</th>
                 <th className="global-th text-left whitespace-nowrap">Approver's Remarks</th>
@@ -159,7 +159,7 @@ const OvertimeApproval = () => {
                     {/* <td className="global-td-approval text-left whitespace-nowrap">{record.department || "N/A"}</td> */}
                     <td className="global-td-approval text-left whitespace-nowrap">{dayjs(record.otDate).format("MM/DD/YYYY")}</td>
                     {/* <td className="global-td-approval text-left whitespace-nowrap">{record.otDay}</td> */}
-                    <td className="global-td-approval text-right whitespace-nowrap">{record.otHrs} hr(s)</td>
+                    <td className="global-td-approval text-right whitespace-nowrap">{record.appHrs} hr(s)</td>
                     <td className="global-td-approval text-left whitespace-nowrap">{record.otDesc}</td>
                     <td className="global-td-approval text-left">{record.otRemarks || "N/A"}</td>
                     <td className="global-td-approval text-left">{record.appRemarks || "N/A"}</td>

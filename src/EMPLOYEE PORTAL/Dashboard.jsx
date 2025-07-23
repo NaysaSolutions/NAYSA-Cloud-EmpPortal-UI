@@ -618,7 +618,7 @@ useEffect(() => {
         </thead>
         <tbody className="dashboard-tbody">
           {otApplication.length > 0 ? (
-            otApplication.slice(0, 5).map((ot, index) => (
+  otApplication.slice(0, 5).map((ot, index) => (
               <tr key={index} className="dashboard-tbody dashboard-tr">
                 <td className="dashboard-td">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
                 <td className="dashboard-td">{ot.ottype}</td>
@@ -676,7 +676,7 @@ useEffect(() => {
       </thead>
       <tbody className="dashboard-tbody">
         {leaveApplication.length > 0 ? (
-          leaveApplication.slice(0, 5).map((leave, index) => (
+  leaveApplication.slice(0, 5).map((leave, index) => (
             <tr key={index} className="dashboard-tbody dashboard-tr">
               <td className="dashboard-td">{leave.dateapplied}</td>
               <td className="dashboard-td">{leave.leavetype}</td>

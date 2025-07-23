@@ -37,10 +37,10 @@ const Timekeeping = ({ onBreakStart }) => {
   const API_KEY = "pk.65e557ad74cdce625f80adf6d5534600";
   
   const COMPANY_LOCATION = {
-    address: "120 Amorsolo Street, Legazpi Village, Makati, 1229 Kalakhang Maynila",
+    address: "1st floor, Rufino Building, Pres. L. Katigbak Street, C.M. Recto Ave, Brgy. 9, Lipa City, Batangas",
     coordinates: {
-      latitude: 14.5565,
-      longitude: 121.0194
+      latitude: 13.9411,
+      longitude: 121.1622
     },
     allowedRadius: 500 // meters
   };
@@ -214,8 +214,8 @@ const Timekeeping = ({ onBreakStart }) => {
   setCapturing(prev => ({ ...prev, [cameraType]: true }));
   setCountdown(prev => ({ ...prev, [cameraType]: 3 }));
 
-  const interval = setInterval(async () => {
-    setCountdown(async prev => {
+  const interval = setInterval(() => {
+    setCountdown(prev => {
       const newCount = prev[cameraType] - 1;
 
       if (newCount === 0) {
@@ -231,34 +231,24 @@ const Timekeeping = ({ onBreakStart }) => {
           context.restore();
 
           const capturedImage = canvas.toDataURL("image/jpeg", 0.92);
-          
-          try {
-            // Get a new unique ID for the image
-            const imageId = await getNewImageId();
-            
-            // Save the image to the server
-            const saveResponse = await saveImageToServer(imageId, capturedImage);
-            
-            if (saveResponse.success) {
-              if (type === "TIME IN") {
-                setTimeInImage({ id: imageId, url: capturedImage });
-              } else {
-                setTimeOutImage({ id: imageId, url: capturedImage });
-              }
-            } else {
-              throw new Error('Failed to save image');
-            }
-          } catch (error) {
-            console.error('Error saving image:', error);
-            Swal.fire('Error', 'Failed to save image', 'error');
+
+          if (type === "TIME IN") {
+            setTimeInImage({ url: capturedImage });
+          } else {
+            setTimeOutImage({ url: capturedImage });
           }
+
+          // Optionally register time here (e.g., update your backend or state)
         }
+
         setCapturing(prev => ({ ...prev, [cameraType]: false }));
       }
+
       return { ...prev, [cameraType]: newCount };
     });
   }, 1000);
 };
+
 
 const saveImageToServer = async (imageId, imageData) => {
   try {
@@ -365,9 +355,22 @@ const saveImageToServer = async (imageId, imageData) => {
 
 
   const fullDateTime = (date, time) => {
-  if (!time) return null;
-  const dt = new Date(`${date} ${time}`);
-  return dt.toISOString(); // or toLocaleString if you want readable format
+  if (!date || !time) return null;
+  
+  // Parse the date (YYYY-MM-DD format)
+  const datePart = dayjs(date, 'YYYY-MM-DD');
+  if (!datePart.isValid()) return null;
+
+  // Parse the time (hh:mm:ss A format)
+  const timePart = dayjs(time, 'hh:mm:ss A');
+  if (!timePart.isValid()) return null;
+
+  // Combine them
+  return datePart
+    .hour(timePart.hour())
+    .minute(timePart.minute())
+    .second(timePart.second())
+    .format('YYYY-MM-DD HH:mm:ss');
 };
 
   
@@ -390,11 +393,11 @@ const saveImageToServer = async (imageId, imageData) => {
       empNo: user.empNo,
       empName: user.empName || "Admin",
       date: currentDate,
-      timeIn: type === "TIME IN" ? fullDateTime(currentDate, currentTime) : null,
+      timeIn: type === "TIME IN" ? currentTime : null,
       timeInImageId: type === "TIME IN" ? timeInImage?.id : null,
-      BreakIn: type === "BREAK IN" ? fullDateTime(currentDate, currentTime) : null,
-      BreakOut: type === "BREAK OUT" ? fullDateTime(currentDate, currentTime) : null,
-      timeOut: type === "TIME OUT" ? fullDateTime(currentDate, currentTime) : null,
+      BreakIn: type === "BREAK IN" ? currentTime : null,
+      BreakOut: type === "BREAK OUT" ? currentTime : null,
+      timeOut: type === "TIME OUT" ? currentTime : null,
       timeOutImageId: type === "TIME OUT" ? timeOutImage?.id : null
     }
   };
@@ -508,17 +511,24 @@ const getNewImageId = async () => {
 
   // Format date/time for display
   const formatDateTime = (dateTime) => {
-    return dateTime
-      ? new Date(dateTime).toLocaleString("en-US", {
-          month: "2-digit",
-          day: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: true,
-        })
-      : "N/A";
-  };
+  if (!dateTime) return "N/A";
+  
+  try {
+    // Convert to Philippine time (UTC+8)
+    const phTime = new Date(dateTime).toLocaleString("en-US", {
+      timeZone: 'Asia/Manila',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true
+    });
+    
+    return phTime;
+  } catch (error) {
+    console.error("Error formatting time:", error);
+    return "N/A";
+  }
+};
 
   return (
     <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen">
@@ -593,9 +603,9 @@ const getNewImageId = async () => {
             />
             
             <h2 className="text-lg font-semibold mb-4 mt-4"></h2>
-            {timeInImage ? (
+            {timeInImage?.url ? (
               <img
-                src={timeInImage}
+                src={timeInImage?.url}
                 alt="Time In Capture"
                 className="w-full max-w-[500px] h-[400px] rounded shadow-lg object-cover"
               />
@@ -663,9 +673,9 @@ const getNewImageId = async () => {
             />
             
             <h2 className="text-lg font-semibold mb-4 mt-4"></h2>
-            {timeOutImage ? (
+            {timeOutImage?.url ? (
               <img
-                src={timeOutImage}
+                src={timeOutImage?.url}
                 alt="Time Out Capture"
                 className="w-full max-w-[500px] h-[400px] rounded shadow-lg object-cover"
               />
@@ -740,35 +750,35 @@ const getNewImageId = async () => {
           
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm text-center border">
-              <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-300 to-purple-300 text-black">
-                <tr>
-                  <th className="px-4 py-2">Date</th>
-                  <th className="px-4 py-2">Time In</th>
-                  <th className="px-4 py-2">Time Out</th>
-                  <th className="px-4 py-2">Break In</th>
-                  <th className="px-4 py-2">Break Out</th>
-                </tr>
-              </thead>
-              <tbody className="global-tbody">
-                {fetchRecords.length > 0 ? (
-                  fetchRecords.map((record, index) => (
-                    <tr key={index} className="global-tr">
-                      <td className="px-4 py-2 border">{dayjs(record.trandate).format("MM/DD/YYYY")}</td>
-                      <td className="px-4 py-2 border">{formatDateTime(record.time_in)}</td>
-                      <td className="px-4 py-2 border">{formatDateTime(record.time_out)}</td>
-                      <td className="px-4 py-2 border">{formatDateTime(record.break_in)}</td>
-                      <td className="px-4 py-2 border">{formatDateTime(record.break_out)}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan="5" className="px-4 py-6 text-center text-gray-500">
-                      No Daily Time Record found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+  <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-300 to-purple-300 text-black">
+    <tr>
+      <th className="px-4 py-2">Date</th>
+      <th className="px-4 py-2">Time In</th>
+      <th className="px-4 py-2">Time Out</th>
+      <th className="px-4 py-2">Break In</th>
+      <th className="px-4 py-2">Break Out</th>
+    </tr>
+  </thead>
+  <tbody className="global-tbody">
+    {fetchRecords.length > 0 ? (
+      fetchRecords.map((record, index) => (
+        <tr key={index} className="global-tr">
+          <td className="px-4 py-2 border">{dayjs(record.trandate).format("MM/DD/YYYY")}</td>
+          <td className="px-4 py-2 border">{formatDateTime(record.time_in)}</td>
+          <td className="px-4 py-2 border">{formatDateTime(record.time_out)}</td>
+          <td className="px-4 py-2 border">{formatDateTime(record.break_in)}</td>
+          <td className="px-4 py-2 border">{formatDateTime(record.break_out)}</td>
+        </tr>
+      ))
+    ) : (
+      <tr>
+        <td colSpan="5" className="px-4 py-6 text-center text-gray-500">
+          No Daily Time Record found.
+        </td>
+      </tr>
+    )}
+  </tbody>
+</table>
           </div>
         </div>
       </div>
