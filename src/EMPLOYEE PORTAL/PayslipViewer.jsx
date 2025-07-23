@@ -449,6 +449,7 @@ const PayslipViewer = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const payslipRef = useRef();
+
 useEffect(() => {
   if (!user?.empNo || !cutoffFrom || !cutoffTo) return;
 
@@ -493,16 +494,23 @@ useEffect(() => {
   useEffect(() => {
   if (!user?.empNo) return;
 
-  axios.get('/api/reports/payslipCutoff', {
-    params: { empno: user.empNo },
-  })
-  .then(res => {
-    setCutoffOptions(res.data?.employeecutoff || []);
-  })
-  .catch(() => {
-    setError('Failed to load cutoff options.');
-  });
+  console.log("Sending empNo to /api/reports/payslipCutoff:", user.empNo);
+
+  const fetchCutoffs = async () => {
+    try {
+      const res = await axios.get('/api/reports/payslipCutoff', {
+        params: { empno: user.empNo },
+      });
+      setCutoffOptions(res.data?.employeecutoff || []);
+    } catch (err) {
+      console.error("Error fetching cutoff options:", err);
+      setError('Failed to load cutoff options.');
+    }
+  };
+
+  fetchCutoffs();
 }, [user]);
+
 
   const {
     employee,
@@ -529,60 +537,43 @@ useEffect(() => {
 };
 
 const handleExportPDF = () => {
-  const element = payslipRef.current;
-  if (!element) return;
+  const element = document.createElement('div');
+  element.style.padding = '20px';
+  
+  // Clone all payslip elements
+  payslipList.forEach((_, index) => {
+    const slip = document.getElementById(`payslip-${index}`)?.cloneNode(true);
+    if (slip) {
+      element.appendChild(slip);
+      element.appendChild(document.createElement('hr')); // Add separator
+    }
+  });
 
   const opt = {
-    margin:       3, // Set to 0 to maximize space
-    filename:     `NAYSA-Payslip_${user.empNo}_Cutoff-${cutoff}.pdf`,
-    image:        { type: 'jpeg', quality: 1 },
-    html2canvas:  {
-      scale: 2,          // Use 1 for exact fit (lower if needed)
-      useCORS: true
-    },
-    jsPDF:        {
-      unit: 'pt',
-      format: 'a4',      // A4 is taller than 'letter' (useful if content is long)
-      orientation: 'portrait'
-    },
-    pagebreak: {
-      mode: ['avoid-all', 'css', 'legacy']
-    }
+    margin: 3,
+    filename: `NAYSA-Payslip_${user.empNo}_Range-${cutoffFrom}-${cutoffTo}.pdf`,
+    image: { type: 'jpeg', quality: 1 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
   };
-
-  // Optionally shrink font
-  element.classList.add('pdf-export-mode');
 
   html2pdf()
     .set(opt)
     .from(element)
-    .toPdf()
-    .get('pdf')
-    .then((pdf) => {
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const contentHeight = element.offsetHeight * 0.75; // Adjust for scaling
-      
-      if (contentHeight > pageHeight) {
-        console.warn('Content may overflow the page. Consider using smaller font or multiple pages.');
-      }
-    })
-    .save()
-    .finally(() => {
-      element.classList.remove('pdf-export-mode');
-    });
+    .save();
 };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-      <div className="max-w-6xl mx-auto p-2 pt-32">
+      <div className="max-w-4xl mx-auto p-2 pt-32">
         {/* Header Section */}
-        <div className="mb-2">
+        <div className="mb-5">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="bg-blue-600 p-3 rounded-xl">
                 <FileText className="w-8 h-8 text-white" />
               </div>
-              <div>
+              <div className="mt-5">
                 <h1 className="text-3xl font-bold text-gray-800">Payslip Generator</h1>
                 <p className="text-gray-600">Generate and download your payslip</p>
               </div>

@@ -21,21 +21,24 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
   
   
    const [formData, setFormData] = useState({
-    empNo: overtimeData.empNo || "",
-    empName: overtimeData.empName || "",
-    department: overtimeData.department || "N/A",
-    otDate: formatDate(overtimeData.otDate), // ✅ Convert date format
-    otDays: overtimeData.otDays || "",
-    otHrs: overtimeData.otHrs || "",
-    otType: overtimeData.otType || "",
-    otRemarks: overtimeData.otRemarks || "",
-    otStamp: overtimeData.otStamp || "", // ✅ Include lvStamp
-   });
+  empNo: overtimeData.empNo || "",
+  empName: overtimeData.empName || "",
+  department: overtimeData.department || "N/A",
+  otDate: formatDate(overtimeData.otDate),
+  otDays: overtimeData.otDays || "",
+  otHrs: overtimeData.otHrs || "",     // original requested hours
+  approvedHrs: overtimeData.otHrs || "", // editable approved hours
+  otType: overtimeData.otType || "",
+  otRemarks: overtimeData.otRemarks || "",
+  otStamp: overtimeData.otStamp || "",
+});
+
   
   // Handle input change
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  setFormData({ ...formData, [e.target.name]: e.target.value });
+};
+
 
   const handleApprove = async () => {
     try {
@@ -58,7 +61,7 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
           json_data: {
             empNo: formData.empNo,
             appRemarks: formData.approverRemarks,
-            appHrs: parseFloat(formData.otHrs) || 0,
+            appHrs: parseFloat(formData.approvedHrs) || 0,
             otStamp: formData.otStamp,
             appStat: 1, // Approved
             appUser: user.empNo,
@@ -216,6 +219,19 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
             <input className="border p-2 w-full" value={formData.otHrs || ""} readOnly />
             
           </div>
+
+          <div>
+  <label className="block text-gray-700">Approved Hours</label>
+  <input
+    type="number"
+    step="0.01"
+    name="approvedHrs"
+    className="border p-2 w-full"
+    value={formData.approvedHrs}
+    onChange={handleChange}
+  />
+</div>
+
         </div>
 
         {/* ✅ Approver Remarks (Editable) */}

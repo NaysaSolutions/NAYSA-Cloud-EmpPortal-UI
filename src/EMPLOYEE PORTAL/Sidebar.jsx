@@ -12,33 +12,37 @@ const Sidebar = () => {
     console.log("Auth user object:", user);
   if (user?.empNo) {
     const fetchEmployeeInfo = async () => {
-      try {
-        console.log("Sending request with:", { EMP_NO: user.empNo });
+  try {
+    console.log("Sending request with:", { EMP_NO: user.empNo });
 
-        const response = await fetch("http://127.0.0.1:8000/api/dashBoard", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({ EMP_NO: user.empNo }),
-        });
+    const response = await fetch("https://api.nemarph.com:81/api/dashBoard", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ EMP_NO: user.empNo }),
+    });
 
-        const result = await response.json();
-        console.log("Raw response from API:", result);
+    const result = await response.json();
+console.log("Raw response from API:", result);
 
-        if (result.success && result.data) {
-  console.log("Employee info from API:", result.data);
-  setEmployeeInfo(result.data[0]); // Access the first object from the array
+// Parse nested JSON string from result
+if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+  setEmployeeInfo(result.data[0]);
+  console.log("Employee info set:", result.data[0]);
 } else {
-  throw new Error(result.message || "Failed to retrieve employee info.");
+  throw new Error("Employee info not found.");
 }
 
-      } catch (err) {
-        console.error("Error fetching employee info:", err);
-        setError(err.message);
-      }
-    };
+
+
+  } catch (err) {
+    console.error("Error fetching employee info:", err);
+    setError(err.message);
+  }
+};
+
 
     fetchEmployeeInfo();
   }

@@ -315,7 +315,7 @@ useEffect(() => {
   console.log("Sending OB Data:", JSON.stringify(obData, null, 2));
 
   try {
-    const response = await fetch("http://127.0.0.1:8000/api/upsertOB", {
+    const response = await fetch("https://api.nemarph.com:81/api/upsertOB", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(obData),
