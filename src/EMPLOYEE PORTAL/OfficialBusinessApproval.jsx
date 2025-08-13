@@ -33,48 +33,41 @@ const OfficialBusinessApproval = () => {
     });
 
     const data = await response.json();
-    if (data.success && data.data.length > 0) {
-      const parsed = JSON.parse(data.data[0].result) || [];
+        if (data.success && data.data.length > 0) {
+            const parsed = JSON.parse(data.data[0].result) || [];
 
-      // Filter Pending and History
-      const pending = parsed.filter((record) => record.obstatus === "Pending");
-      const historyRecords = parsed.filter((record) => record.obstatus !== "Pending");
+            // Use a single, robust function to get unique records from the raw data
+            const getUniqueRecords = (array) => {
+                const seen = new Set();
+                return array.filter((item) => {
+                    // Use a unique key. 'obStamp' is a good candidate.
+                    const key = item.obStamp; 
+                    if (seen.has(key)) return false;
+                    seen.add(key);
+                    return true;
+                });
+            };
 
-      // Remove duplicates
-      const getUniqueRecords = (array, keyFn) => {
-        const seen = new Set();
-        return array.filter((item) => {
-          const key = keyFn(item);
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-      };
+            const uniqueRecords = getUniqueRecords(parsed);
 
-      const uniquePending = getUniqueRecords(
-        pending,
-        (item) => `${item.empname}-${item.obstart}-${item.obend}`
-      );
-      const uniqueHistory = getUniqueRecords(
-        historyRecords,
-        (item) => `${item.empname}-${item.obstart}-${item.obend}`
-      );
+            // Filter the single unique list into pending and history
+            const pending = uniqueRecords.filter((record) => record.obstatus === "Pending");
+            const historyRecords = uniqueRecords.filter((record) => record.obstatus !== "Pending");
 
-      setPendingOBs(uniquePending);
-      setHistory(uniqueHistory);
+            setPendingOBs(pending);
+            setHistory(historyRecords);
+        }
+    } catch (err) {
+        console.error("Error fetching OB approvals:", err);
+        setError("An error occurred while fetching OB approvals.");
     }
-  } catch (err) {
-    console.error("Error fetching OB approvals:", err);
-    setError("An error occurred while fetching OB approvals.");
-  }
 };
 
-  // Add this useEffect to refresh data when modal closes
+// Instead, ensure fetchOBApprovals is called once on component mount
 useEffect(() => {
-  if (!showModal && user?.empNo) {
     fetchOBApprovals();
-  }
-}, [showModal, user]);
+}, [user]); 
+
 
   const handleReviewClick = (ob) => {
     setSelectedOB(ob);
@@ -82,10 +75,10 @@ useEffect(() => {
   };
 
   return (
-    <div className="ml-0 lg:ml-[260px] mt-[110px] p-4 bg-gray-100 min-h-screen">
+    <div className="ml-0 lg:ml-[200px] mt-[80px] p-4 bg-gray-100 min-h-screen">
       <div className="mx-auto">
-        <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-6 rounded-lg text-white shadow-lg">
-          <h1 className="text-3xl font-semibold">Official Business Approval</h1>
+        <div className="global-div-header-ui">
+          <h1 className="global-div-headertext-ui">Official Business Approval</h1>
         </div>
 
         {/* PENDING OBs */}

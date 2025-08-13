@@ -67,20 +67,21 @@ const Navbar = () => {
   return (
     <>
       {/* Top Blue Bar */}
-      <div className="flex justify-center items-center bg-blue-900 text-white p-3 fixed top-0 left-0 w-full h-[30px] z-30">
-        <span className="font-bold text-lg">NEW NEMAR DEVELOPMENT CORPORATION</span>
+      <div className="flex justify-center items-center bg-blue-900 text-white p-3 fixed top-0 left-0 w-full h-[30px] z-30 cursor-pointer select-none">
+        {/* <span className="font-bold text-lg">NEW NEMAR DEVELOPMENT CORPORATION</span> */}
+        <span className="font-bold text-lg">NAYSA-SOLUTIONS INC.</span>
       </div>
 
       {/* Main Navbar */}
-      <div className="flex justify-between items-center bg-white shadow-md p-3 fixed top-[15px] mt-3 left-0 w-full z-20">
+      <div className="flex justify-between items-center bg-white shadow-md p-1 fixed top-[15px] mt-3 left-0 w-full z-20 cursor-pointer select-none">
         {/* Logo + Title */}
         <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
-          <img src="/naysa_logo.png" className="w-[100px] h-[60px]" alt="Naysa Logo" />
-          <span className="text-blue-800 font-bold mt-1 text-base sm:text-base md:text-lg lg:text-xl">Employee Portal</span>
+          <img src="/naysa_logo.png" className="w-[75px] h-[45px]" alt="Naysa Logo" />
+          <span className="text-blue-800 font-bold mt-1 text-base sm:text-base md:text-base">Employee Portal</span>
         </div>
 
         {/* Desktop Nav Links */}
-        <div className="hidden sm:hidden md:hidden lg:flex space-x-12 text-sm sm:text-sm md:text-base lg:text-xl">
+        <div className="hidden sm:hidden md:hidden lg:flex space-x-10 text-sm sm:text-sm md:text-base lg:text-lg">
           {navItems.map((item, index) => (
             <div key={index} className="relative group">
               {item.children ? (
@@ -116,8 +117,8 @@ const Navbar = () => {
 
         {/* Right Side Controls */}
         <div className="flex items-center space-x-4 relative" ref={dropdownRef}>
-          <h2 className="text-blue-800 mt-1 font-bold text-base sm:text-base md:text-lg lg:text-xl hidden sm:block">
-            {user?.empName || "Employee"}
+          <h2 className="text-blue-800 mt-1 font-bold text-base sm:text-base md:text-base hidden sm:block">
+            {/* {user?.empName || "Employee"} */}
           </h2>
 
           {/* Profile Picture */}
@@ -157,8 +158,8 @@ const Navbar = () => {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed top-[100px] left-0 w-full bg-white shadow-md z-10 py-4 px-6">
-          <div className="flex flex-col space-y-4">
+        <div className="lg:hidden fixed top-[80px] left-0 w-full bg-white shadow-md z-10 py-2 px-4">
+          <div className="flex flex-col space-y-3">
             {navItems.map((item, index) => (
               <div key={index}>
                 {item.children ? (

@@ -406,7 +406,7 @@ const Leave = () => {
 
   return (
       
-    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen overflow-x-hidden">
+    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[200px] mt-[80px] p-4 sm:p-6 bg-gray-100 min-h-screen overflow-x-hidden">
       <div className="mx-auto">
         
         {/* Header Section */}
@@ -555,7 +555,7 @@ const Leave = () => {
 
         {/* Leave History Table */}
         <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-          <h2 className="text-lg font-semibold mb-4">Leave Application History</h2>
+          <h2 className="text-base font-semibold mb-4">Leave Application History</h2>
 
           {error && <p className="text-red-500 text-center">{error}</p>}
 
@@ -564,7 +564,7 @@ const Leave = () => {
             {/* <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">   */}
           <table className="w-full text-sm text-center rounded-lg border">
   
-          <thead className="sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-sm ms:text-sm lg:text-base">
+          <thead className="sticky top-[0px] z-[1] bg-blue-300 text-black text-xs sm:text-sm ms:text-sm lg:text-sm">
           <tr>
                   {[
                     { key: "leaveStart", label: "Start Date" },

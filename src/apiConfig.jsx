@@ -1,6 +1,11 @@
 // src/apiConfig.js
-const API_BASE_URL = "https://api.nemarph.com:81/api"; // Base URL for the API
-// const API_BASE_URL = "http://127.0.0.1:8000"; // Base URL for the API
+
+// const API_BASE_URL = "https://api.nemarph.com:81/api"; // Base URL for the API
+// const IMAGE_BASE_URL  = "https://api.nemarph.com:81/storage/timekeeping_images";
+
+const API_BASE_URL = "http://127.0.0.1:8000/api";
+const IMAGE_BASE_URL  = "http://127.0.0.1:8000/storage/timekeeping_images";
+
 // This URL should be updated based on the environment (development, production, etc.)   
 
 const API_ENDPOINTS = {
@@ -25,13 +30,25 @@ const API_ENDPOINTS = {
      leaveApproval: `${API_BASE_URL}/approvalLV`,
 
      //Official Business
+     fetchOfficialBusinessApplicationsHistory: `${API_BASE_URL}/getOBAppHistory`,
      fetchOfficialBusinessApplications: `${API_BASE_URL}/getOBAppInq`,
      saveOfficialBusinessApplication: `${API_BASE_URL}/upsertOB`,
      OfficialBusinessHistoryApplication: `${API_BASE_URL}/getOBApprInq`,
      approvedOfficialBusinessHistory: `${API_BASE_URL}/getOBApprHistory`,
      officialBusinessApproval: `${API_BASE_URL}/approvalOB`,
-    
+
+     
+     //DTR
+    //  saveDTR: `${API_BASE_URL}/upsertTimeIn`,
+    //  saveDTRImage: `${API_BASE_URL}/saveImage`,
+    //  fetchDTRImageID: `${API_BASE_URL}/getNewImageId`,
+
+    upsertTimeIn: `${API_BASE_URL}/upsertTimeIn`,
+    saveImage: `${API_BASE_URL}/saveImage`,
+    getNewImageId: `${API_BASE_URL}/getNewImageId`,
+    getDTRRecords: `${API_BASE_URL}/dtrRecords`,
 
 };
 
+export { IMAGE_BASE_URL };
 export default API_ENDPOINTS;

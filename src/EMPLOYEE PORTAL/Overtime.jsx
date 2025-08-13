@@ -289,7 +289,7 @@ useEffect(() => {
 }, [otDate]); // Runs whenever otDate changes
 
   return (
-    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen">
+    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[200px] mt-[80px] p-4 sm:p-6 bg-gray-100 min-h-screen">
       <div className="mx-auto">
         {/* Header Section */}
         <div className="global-div-header-ui">
@@ -315,7 +315,7 @@ useEffect(() => {
     value={otDate} 
     onChange={(e) => setOTDate(e.target.value)}
     type="date" 
-    min={applicationDate} // Prevent selecting a date before the application date
+    // min={applicationDate} // Prevent selecting a date before the application date
     className="w-full p-2 border rounded"
   />
 </div>
@@ -384,14 +384,14 @@ useEffect(() => {
 
         {/* Overtime History Table */}
         <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-  <h2 className="text-lg font-semibold mb-4">Overtime Application History</h2>
+  <h2 className="text-base font-semibold mb-4">Overtime Application History</h2>
 
   {error && <p className="text-red-500 text-center">{error}</p>}
 
   {/* Scrollable Table Container */}
   <div className="w-full overflow-x-auto">
     <table className="min-w-[800px] w-full text-sm text-center border">
-      <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-sm lg:text-base">
+      <thead className="sticky top-0 z-10 bg-blue-300 text-black text-xs sm:text-sm lg:text-sm">
         <tr>
           {[
             { key: "date", label: "OT Date" },

@@ -170,8 +170,13 @@ const handleDisapprove = async () => {
       });
 
       // Update both pending and history states
-      setPendingOBs((prev) => prev.filter((ob) => ob.obStamp !== formData.obStamp));
-      setHistory((prev) => [...prev, updatedRecord]);
+      // setPendingOBs((prev) => prev.filter((ob) => ob.obStamp !== formData.obStamp));
+      // setHistory((prev) => [...prev, updatedRecord]);
+
+      // Use a single state update to avoid race conditions.
+      setPendingOBs(prevPending => prevPending.filter(ob => ob.obStamp !== updatedRecord.obStamp));
+      setHistory(prevHistory => [...prevHistory, updatedRecord]);
+
     } else {
       throw new Error(result.message || "Something went wrong.");
     }
@@ -255,7 +260,7 @@ const handleDisapprove = async () => {
 
         {/* Action Buttons */}
         <div className="flex justify-end space-x-3 mt-6">
-          <button
+          {/* <button
             onClick={() => handleApproval(0)}
             className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
@@ -266,7 +271,9 @@ const handleDisapprove = async () => {
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
           >
             Approve
-          </button>
+          </button> */}
+          <button onClick={handleDisapprove} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Disapprove</button>
+          <button onClick={handleApproval} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Approve</button>
         </div>
       </div>
     </div>

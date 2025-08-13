@@ -16,19 +16,19 @@ body {
 
   @layer components {
     .dashboard-text-header {
-      @apply font-semibold mb-2 text-blue-800 text-[14px] sm:text-[14px] md:text-base lg:text-lg;
+      @apply font-semibold mb-1 text-blue-800 text-[14px] sm:text-[14px] md:text-base lg:text-base;
     }
     .dashboard-text-span {
-      @apply font-normal text-gray-500 text-[12px] sm:text-[12px] md:text-base lg:text-base ;
+      @apply font-normal text-gray-500 text-[12px] sm:text-[12px] md:text-sm lg:text-sm ;
     }
 
     .dashboard-thead {
-      @apply bg-gradient-to-r from-blue-300 to-purple-200 text-black text-[9px] sm:text-xs md:text-xs lg:text-base text-nowrap;
-      /* @apply bg-blue-300 text-black text-[9px] sm:text-xs md:text-xs lg:text-base text-nowrap; */
+      /* @apply bg-gradient-to-r from-blue-300 to-purple-200 text-black text-[9px] sm:text-xs md:text-xs lg:text-base text-nowrap; */
+      @apply bg-blue-300 text-black text-[8px] sm:text-xs md:text-xs lg:text-sm text-nowrap;
     
     }
     .dashboard-div-norecords {
-      @apply h-[300px] flex justify-center items-center text-gray-600 text-[11px] sm:text-xs md:text-xs lg:text-base;
+      @apply h-[300px] flex justify-center items-center text-gray-600 text-[11px] sm:text-xs md:text-xs lg:text-sm;
     }
     .dashboard-th {
       @apply py-2 px-2;
@@ -40,7 +40,7 @@ body {
       @apply hover:bg-blue-200 odd:bg-white even:bg-blue-50;
     }
     .dashboard-tbody {
-      @apply text-gray-800 text-[9px] sm:text-[9px] md:text-[12px] lg:text-[14px] h-full;
+      @apply text-gray-800 text-[9px] sm:text-[9px] md:text-[12px] lg:text-[13px] h-full;
     }
     .dashboard-table {
       @apply min-w-full border border-gray-200 rounded-lg;
@@ -53,19 +53,20 @@ body {
 
 
     .global-div-header-ui {
-      @apply bg-gradient-to-r from-blue-400 to-purple-500 p-6 rounded-lg text-white shadow-lg;
+      /* @apply bg-gradient-to-r from-blue-400 to-purple-500 p-6 rounded-lg text-white shadow-lg; */
+      @apply bg-blue-800 p-4 rounded-lg text-white shadow-lg;
     }
 
     .global-div-headertext-ui {
-      @apply text-lg sm:text-2xl font-semibold;
+      @apply text-lg sm:text-xl font-semibold;
     }
 
     .global-thead-approval {
-      @apply sticky top-[0px] z-[1] bg-gradient-to-r from-blue-300 to-purple-300 text-black text-[12px] sm:text-xs md:text-xs lg:text-base text-nowrap;
+      @apply sticky top-[0px] z-[1] bg-blue-300 text-black text-[12px] sm:text-xs md:text-xs lg:text-base text-nowrap;
     }
 
     .global-tbody {
-      @apply text-gray-800 text-[0.85rem] sm:text-[0.75rem] md:text-[0.85rem] lg:text-[16px] h-full;
+      @apply text-gray-800 text-[0.85rem] sm:text-[0.75rem] md:text-[0.85rem] lg:text-[13px] h-full;
     }
 
     .global-tr {
@@ -77,7 +78,7 @@ body {
     }
 
     .global-td {
-      @apply px-[0.30rem] py-[0.20rem] sm:py-[0.10rem] md:py-[0.20rem] lg:px-[0.50rem] lg:py-[0.40rem];
+      @apply px-[0.30rem] py-[0.20rem] sm:py-[0.10rem] md:py-[0.20rem] lg:px-[0.30rem] lg:py-[0.30rem];
     }
    
     .global-td-approval {

@@ -178,7 +178,7 @@ const fetchOBApplications = async () => {
     const today = dayjs().format("YYYY-MM-DD");
     const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
 
-    const response = await fetch(API_ENDPOINTS.fetchOfficialBusinessApplications, {
+    const response = await fetch(API_ENDPOINTS.fetchOfficialBusinessApplicationsHistory, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -203,7 +203,7 @@ const fetchOBApplications = async () => {
     } else {
       setOBApplications([]);
       setFilteredApplications([]);
-      setError("No Official Business applications found.");
+      // setError("No Official Business applications found.");
     }
   } catch (err) {
     console.error("Error fetching Official Business applications:", err);
@@ -299,6 +299,12 @@ useEffect(() => {
   const formattedStart = dayjs(selectedStartDate).format('YYYY-MM-DDTHH:mm:ss');
   const formattedEnd = dayjs(selectedEndDate).format('YYYY-MM-DDTHH:mm:ss');
 
+//  const response = await fetch(API_ENDPOINTS.saveOfficialBusinessApplication, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body,
+//     });
+
   const obData = {
     json_data: {
       empNo: user.empNo,
@@ -314,8 +320,11 @@ useEffect(() => {
 
   console.log("Sending OB Data:", JSON.stringify(obData, null, 2));
 
+
+
   try {
-    const response = await fetch("https://api.nemarph.com:81/api/upsertOB", {
+    // const response = await fetch("http://127.0.0.1:8000/api/upsertOB", {
+    const response = await fetch(API_ENDPOINTS.saveOfficialBusinessApplication, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(obData),
@@ -448,7 +457,7 @@ useEffect(() => {
     
     
     return (
-      <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[260px] mt-[110px] p-4 sm:p-6 bg-gray-100 min-h-screen">
+      <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[200px] mt-[80px] p-4 sm:p-6 bg-gray-100 min-h-screen">
       <div className="mx-auto">
         {/* Header Section */}
         <div className="global-div-header-ui">
@@ -488,7 +497,10 @@ useEffect(() => {
   dateFormat="MM/dd/yyyy hh:mm aa"
   placeholderText="Select Start Datetime"
   className="w-full p-2 pl-10 border rounded h-[42px]"
+  popperPlacement="bottom-start" // ensures it opens aligned
+  portalId="root-portal" // optional: renders in a fixed place
 />
+
         <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
       </div>
     </div>
@@ -507,6 +519,8 @@ useEffect(() => {
   placeholderText="Select End Datetime"
   className="w-full p-2 pl-10 border rounded h-[42px]"
   minDate={selectedStartDate || new Date()}
+  popperPlacement="bottom-start" // ensures it opens aligned
+  portalId="root-portal" // optional: renders in a fixed place
 />
         <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
       </div>
@@ -551,14 +565,14 @@ useEffect(() => {
 
           {/* Official Business History Table */}
           <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-          <h2 className="text-lg font-semibold mb-4">Official Business Application History</h2>
+          <h2 className="text-base font-semibold mb-4">Official Business Application History</h2>
 
           {error && <p className="text-red-500 text-center">{error}</p>}
 
   {/* Scrollable Table Container */}
   <div className="w-full overflow-x-auto">
   <table className="min-w-[800px] w-full text-sm text-center border">
-      <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-sm lg:text-base">
+      <thead className="sticky top-0 z-10 bg-blue-300 text-black text-xs sm:text-sm lg:text-sm">
         <tr>
                     {[
                       { key: "obDate", label: "OB Date" },
@@ -634,7 +648,7 @@ useEffect(() => {
 })
 ) : (
 <tr>
-                      <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan="7" className="px-4 py-6 text-center text-gray-500">
                         No Official Business applications found.
                       </td>
                     </tr>

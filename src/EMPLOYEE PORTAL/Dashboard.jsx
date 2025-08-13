@@ -45,9 +45,9 @@ const Dashboard = () => {
     { description: "Sick Leave", balance: 0 },
     // { description: "Personal Leave", balance: 0 },
     // { description: "Emergency Leave", balance: 0 },
-    { description: "Maternity Leave", balance: 0 },
-    { description: "Paternity Leave", balance: 0 },
-    { description: "Bereavement Leave", balance: 0 },
+    // { description: "Maternity Leave", balance: 0 },
+    // { description: "Paternity Leave", balance: 0 },
+    // { description: "Bereavement Leave", balance: 0 },
     { description: "Birthday Leave", balance: 0 }
   ];
 
@@ -291,36 +291,42 @@ useEffect(() => {
     return days;
   };
 
+  // Calculate totals for stat cards
+  const pendingLeaveCount = leaveApplication.filter(leave => leave.leavestatus === "Pending").length;
+  const pendingOtCount = otApplication.filter(ot => ot.otstatus === "Pending").length;
+  const pendingObCount = obApplication.filter(ob => ob.obstatus === "Pending").length;
+  const pendingLeaveApproval = leaveApproval.filter(leave => leave.leavestatus === "Pending").length;
+  const pendingOtApproval = otApproval.filter(ot => ot.otstatus === "Pending").length;
+  const pendingObApproval = obApproval.filter(ob => ob.obstatus === "Pending").length;
+
+
   return (
-    // <div className="ml-[260px] mt-[110px] p-4 bg-gray-100 min-h-screen">
-      <div className="mt-[110px] p-4 bg-gray-100 min-h-screen ml-0 lg:ml-[260px]">
+      <div className="mt-[80px] p-4 bg-gray-100 min-h-screen ml-0 lg:ml-[200px]">
 
 
       {/* Header */}
-      <div className="flex justify-center sm:justify-between items-start w-full max-w-[2000px] mx-auto px-2">
-  {/* <div className="bg-gradient-to-r from-blue-400 to-purple-400 p-4 rounded-lg text-white flex flex-wrap justify-between items-center mb-4 w-full shadow-lg"> */}
-  {/* <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-4 rounded-lg text-white flex flex-col sm:flex-row sm:flex-wrap justify-center sm:justify-between items-center gap-4 mb-4 w-full shadow-lg"> */}
-  <div className="bg-gradient-to-r from-blue-400 to-purple-500 p-4 rounded-lg text-white flex flex-col sm:flex-row sm:flex-wrap justify-center sm:justify-between items-center gap-4 mb-4 w-full shadow-lg">
+      <div className="flex justify-center sm:justify-between items-start w-full">
+      <div className="bg-blue-800 p-3 rounded-lg text-white flex flex-col md:flex-row md:justify-between md:items-center gap-2 mb-4 w-full shadow-lg">
 
   {/* Date Section */}
   <div className="text-center sm:text-left">
-      <p className="text-sm sm:text-lg font-light text-white">
+      <p className="text-sm sm:text-lg font-bold text-white">
         <span className="kanit-text">Today</span>
       </p>
-      <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold text-white">
+      <h1 className="text-base sm:text-lg md:text-2xl font-extrabold text-white">
         {currentDate.format("MMMM DD, YYYY")}
       </h1>
     </div>
 
 {/* Entry Time and Break Time Count */}
-<div className="flex flex-col sm:flex-row gap-4 sm:gap-10 items-center sm:items-start text-center sm:text-left">
+<div className="flex flex-col sm:flex-row gap-2 sm:gap-10 items-center sm:items-start text-center sm:text-left">
   <div>
-    <p className="text-sm font-extrabold text-white mb-2">Philippine Standard Time:</p>
-    <p className="text-xl sm:text-4xl font-bold">{time || "00:00 PM"}</p>
+    <p className="text-sm font-extrabold text-white mb-2">Philippine Standard Time</p>
+    <p className="text-xl sm:text-2xl font-bold">{time || "00:00 PM"}</p>
   </div>
   <div>
-    <p className="text-sm font-extrabold  text-right mb-2">Break Time Count:</p>
-    <p className="text-xl sm:text-4xl font-bold">
+    <p className="text-sm font-extrabold  text-right mb-2">Break Time Count</p>
+    <p className="text-xl sm:text-2xl font-bold">
       {formatTime(breakTime)}
     </p>
   </div>
@@ -328,13 +334,49 @@ useEffect(() => {
   </div>
 </div>
 
+
+{/* Stats Cards */}
+      <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+        <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+          <h3 className="font-bold text-sm md:text-base">Pending LV Applications</h3>
+          <p className="text-xl md:text-2xl">{pendingLeaveCount}</p>
+        </div>
+        <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+          <h3 className="font-bold text-sm md:text-base">Pending OT Applications</h3>
+          <p className="text-xl md:text-2xl">{pendingOtCount}</p>
+        </div>
+        <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+          <h3 className="font-bold text-sm md:text-base">Pending OB Applications</h3>
+          <p className="text-xl md:text-2xl">{pendingObCount}</p>
+        </div>
+      </div>
+
+{user.approver === "1" && (
+  <>
+      <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+        <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+          <h3 className="font-bold text-sm md:text-base">Pending LV for my Approval</h3>
+          <p className="text-xl md:text-2xl">{pendingLeaveApproval}</p>
+        </div>
+        <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+          <h3 className="font-bold text-sm md:text-base">Pending OT for my Approval</h3>
+          <p className="text-xl md:text-2xl">{pendingOtApproval}</p>
+        </div>
+        <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+          <h3 className="font-bold text-sm md:text-base">Pending OB for my Approval</h3>
+          <p className="text-xl md:text-2xl">{pendingObApproval}</p>
+        </div>
+      </div>
+      
+  </>
+)}
       {/* Main Content */}
 {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 p-2"> */}
 
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-2">
 
   {/* Leave Credit Section */}
-  <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg w-full">
+  <div className="bg-white p-6 sm:p-4 rounded-lg shadow-lg w-full">
     <h2 className="dashboard-text-header">Leave Credit</h2>
     {/* <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span> */}
   
@@ -344,11 +386,6 @@ useEffect(() => {
     <table className="dashboard-table">
       <thead className ="dashboard-thead">
           <tr className="dashboard-thead ">
-            
-            {/* <th className="p-2 text-left">Leave Type</th>
-            <th className="p-2 text-center">Credit</th>
-            <th className="p-2 text-center">Used</th>
-            <th className="p-2 text-center">Actual Balance</th> */}
             <th className="dashboard-th cursor-pointer text-left">Leave Type</th>
                 <th className="dashboard-th cursor-pointer">Credit</th>
                 <th className="dashboard-th cursor-pointer">Applied</th>
@@ -361,10 +398,6 @@ useEffect(() => {
           {leaveCredit.length > 0 ? (
             leaveCredit.map((leave, index) => (
               <tr key={index} className="dashboard-tbody dashboard-tr">
-                {/* <td className="p-2 text-left text-sm">{leave.description}</td>
-                <td className="p-2 text-center text-sm">{leave.credit}</td>
-                <td className="p-2 text-center text-sm">{leave.availed}</td>
-                <td className="p-2 text-center text-sm">{leave.balance}</td> */}
                 <td className="dashboard-td whitespace-nowrap">{leave.description}</td>
                     <td className="dashboard-td text-center">{leave.credit}</td>
                     <td className="dashboard-td text-center">{leave.applied}</td>
@@ -396,13 +429,13 @@ useEffect(() => {
   </div>
 
   {/* Personal Calendar */}
-<div className="bg-white p-3 sm:p-6 rounded-lg shadow-lg w-full">
-  <h2 className="text-md sm:text-lg font-semibold mb-4 text-blue-800 text-center">Personal Calendar</h2>
+<div className="bg-white p-3 sm:p-4 rounded-lg shadow-lg w-full">
+  <h2 className="text-base sm:text-base font-semibold mb-2 text-blue-800 text-center">Personal Calendar</h2>
   
   {/* Navigation */}
   <div className="flex justify-between items-center mb-4">
     <button onClick={handlePrevMonth} className="text-gray-400">◀</button>
-    <h3 className="text-sm sm:text-lg font-semibold">{currentMonth.format("MMMM YYYY")}</h3>
+    <h3 className="text-sm sm:text-base font-semibold">{currentMonth.format("MMMM YYYY")}</h3>
     <button onClick={handleNextMonth} className="text-gray-600">▶</button>
   </div>  
 
@@ -415,9 +448,9 @@ useEffect(() => {
 </div>
 
 {/* Calendar Days */}
-<div className="grid grid-cols-7 gap-1 text-center mt-2 ml-6 mx-auto text-[0.70rem] sm:text-[0.70rem] md:text-[0.80rem] lg:text-[16px]">
+<div className="grid grid-cols-7 gap-1 text-center mt-2 ml-6 mx-auto text-[0.70rem] sm:text-[0.70rem] md:text-[0.80rem] lg:text-[14px]">
   {generateCalendar().map((day, index) => {
-    let baseClasses = "w-7 h-7 sm:w-8 md:w-9 lg:w-9 sm:h-8 md:h-9 lg:h-9 flex items-center justify-center font-semibold";
+    let baseClasses = "w-6 h-7 sm:w-7 md:w-8 lg:w-8 sm:h-8 md:h-7 lg:h-7 flex items-center justify-center font-semibold";
     let style = "";
     let tooltipText = "";
 
@@ -465,11 +498,11 @@ useEffect(() => {
 
 
   {/* Calendar Legend */}
-  <div className="flex justify-between text-sm sm:text-sm md:text-sm lg:text-base mt-8">
+  <div className="flex justify-between text-sm sm:text-sm md:text-sm lg:text-sm mt-8">
     {/* <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-red-400 inline-block mr-1"></span> Holiday</div> */}
     <div className="flex items-center text-red-500 font-bold"><span className="w-4 h-4 rounded-lg bg-red-500 inline-block mr-1"></span>Holiday</div>
     <div className="flex items-center text-blue-300 font-bold"><span className="w-4 h-4 rounded-lg bg-blue-300 inline-block mr-1"></span> Approved Leave</div>
-    <div className="flex items-center text-yellow-200 font-bold"><span className="w-4 h-4 rounded-lg bg-yellow-200 inline-block mr-1"></span> Pending Leave</div>
+    <div className="flex items-center text-yellow-300 font-bold"><span className="w-4 h-4 rounded-lg bg-yellow-300 inline-block mr-1"></span> Pending Leave</div>
   </div>
 </div>
 </div>
@@ -762,7 +795,7 @@ useEffect(() => {
           ))
         ) : (
           <tr>
-            <td colSpan="4">
+            <td colSpan="5">
               <div className="dashboard-div-norecords">
                 No official business applications found.
               </div>
@@ -828,7 +861,7 @@ useEffect(() => {
               <tr>
                 <td colSpan="6">
                   <div className="dashboard-div-norecords">
-                    No overtime approvals found.
+                    No overtime records for approval found.
                   </div>
                 </td>
               </tr>
@@ -887,11 +920,13 @@ useEffect(() => {
       </tr>
     ))
   ) : (
-    <tr>
-      <td colSpan="5" className="p-4 text-center text-gray-600 text-sm">
-        No leave approvals found.
-      </td>
-    </tr>
+              <tr>
+                <td colSpan="6">
+                  <div className="dashboard-div-norecords">
+                    No leave records for approval found.
+                  </div>
+                </td>
+              </tr>
   )}
 </tbody>
         </table>
@@ -952,7 +987,7 @@ useEffect(() => {
               <tr>
                 <td colSpan="6">
                   <div className="dashboard-div-norecords">
-                    No official business approvals found.
+                    No official business records for approval found.
                   </div>
                 </td>
               </tr>

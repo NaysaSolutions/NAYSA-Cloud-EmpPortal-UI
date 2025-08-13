@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 import { Menu, X } from "lucide-react";
+import API_ENDPOINTS from "@/apiConfig.jsx";
 
 const Sidebar = () => {
   const { user } = useAuth();
@@ -15,14 +16,14 @@ const Sidebar = () => {
   try {
     console.log("Sending request with:", { EMP_NO: user.empNo });
 
-    const response = await fetch("https://api.nemarph.com:81/api/dashBoard", {
-      method: "POST",
-      headers: {
+    const response = await fetch(API_ENDPOINTS.dashBoard, {
+    method: "POST",
+    headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-      },
-      body: JSON.stringify({ EMP_NO: user.empNo }),
-    });
+    },
+    body: JSON.stringify({ EMP_NO: user.empNo }),
+    }); 
 
     const result = await response.json();
 console.log("Raw response from API:", result);
@@ -53,7 +54,7 @@ if (result.success && Array.isArray(result.data) && result.data.length > 0) {
 
   if (error) {
     return (
-      <div className="fixed top-[90px] left-0 w-full bg-white p-4 shadow-md z-50">
+      <div className="fixed top-[50px] left-0 w-full bg-white p-4 shadow-md z-50">
         Error: {error}
       </div>
     );
@@ -72,9 +73,9 @@ if (result.success && Array.isArray(result.data) && result.data.length > 0) {
       {/* Sidebar */}
       <div
         className={`
-          fixed top-[90px] left-0 h-screen w-[260px] bg-white shadow-md p-5 z-40 transition-transform duration-300
+          fixed top-[60px] left-0 h-screen w-[200px] bg-white shadow-md p-5 z-40 transition-transform duration-300
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 lg:block mt-7
+          lg:translate-x-0 lg:block mt-4 cursor-pointer select-none
         `}
       >
         {/* Profile Section */}
@@ -85,26 +86,26 @@ if (result.success && Array.isArray(result.data) && result.data.length > 0) {
               e.currentTarget.onerror = null;
               e.currentTarget.src = "/public/Default.jpg";
             }}
-            className="w-[130px] h-[130px] rounded-full object-cover mb-4"
+            className="w-[100px] h-[100px] rounded-full object-cover mb-4"
             alt="Profile"
           />
 
-          <h2 className="text-lg font-semibold text-[#1c394e] break-words">
+          <h2 className="text-[14px] font-semibold text-[#1c394e] break-words">
             Welcome Back,<br /> {employeeInfo?.empName || "Employee"}!
           </h2>
         </div>
 
-        <hr className="my-4" />
+        <hr className="my-2" />
 
         {/* Employee Details Section */}
-        <div className="text-md text-gray-700 space-y-2">
+        <div className="text-[13px] text-gray-700 space-y-2">
           <DetailItem label="Employee No." value={employeeInfo?.empNo} />
-<DetailItem label="Branch" value={employeeInfo?.branchName} />
-<DetailItem label="Payroll Group" value={employeeInfo?.payrollGroup} />
-<DetailItem label="Department" value={employeeInfo?.department} />
-<DetailItem label="Position" value={employeeInfo?.position} />
-<DetailItem label="Employee Status" value={employeeInfo?.employeeStatus} />
-<DetailItem label="Shift Schedule" value={employeeInfo?.shiftSchedule} />
+          <DetailItem label="Branch" value={employeeInfo?.branchName} />
+          <DetailItem label="Payroll Group" value={employeeInfo?.payrollGroup} />
+          <DetailItem label="Department" value={employeeInfo?.department} />
+          <DetailItem label="Position" value={employeeInfo?.position} />
+          <DetailItem label="Employee Status" value={employeeInfo?.employeeStatus} />
+          <DetailItem label="Shift Schedule" value={employeeInfo?.shiftSchedule} />
         </div>
       </div>
     </>
