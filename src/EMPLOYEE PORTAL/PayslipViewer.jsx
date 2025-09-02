@@ -4,15 +4,13 @@ import axios from 'axios';
 import html2pdf from 'html2pdf.js';
 import { useAuth } from './AuthContext';
 import { FileText, Download, Printer, Calendar, User, Building, MapPin, Clock, AlertCircle } from 'lucide-react';
-import '../index.css'; // or './globals.css'
+import '@/index.css';
+import API_ENDPOINTS from "@/apiConfig.jsx";
 
 const PayslipViewer = () => {
   const { user } = useAuth();
   const [cutoff, setCutoff] = useState('');
   const [payslip, setPayslip] = useState(null);
-  const [paysliplv, setPaysliplv] = useState(null);
-  const [payslipln, setPayslipln] = useState(null);
-  const [payslipytd, setPayslipytd] = useState(null);
 
   const [cutoffOptions, setCutoffOptions] = useState([]);
   const [cutoffFrom, setCutoffFrom] = useState('');
@@ -32,33 +30,34 @@ useEffect(() => {
 
   const range = getCutoffRange();
 
-  const fetchAllPayslipsInRange = async () => {
+  
+const fetchAllPayslipsInRange = async () => {
     try {
-      const results = await Promise.all(range.map(async (cut) => {
-        const [main, lv, ln, ytd] = await Promise.all([
-          axios.get('/api/reports/payslip', { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
-          axios.get('/api/reports/payslipLV', { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
-          axios.get('/api/reports/payslipLN', { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
-          axios.get('/api/reports/payslipYTD', { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
-        ]);
+        const results = await Promise.all(range.map(async (cut) => {
+            const [main, lv, ln, ytd] = await Promise.all([
+                axios.get(API_ENDPOINTS.payslipMain, { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
+                axios.get(API_ENDPOINTS.payslipLV, { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
+                axios.get(API_ENDPOINTS.payslipLN, { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
+                axios.get(API_ENDPOINTS.payslipYTD, { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
+            ]);
 
-        return {
-          cutoffName: cut.CUTOFFNAME,
-          cutoffCode: cut.CUT_OFF,
-          main: main.data,
-          lv: lv.data,
-          ln: ln.data,
-          ytd: ytd.data
-        };
-      }));
+            return {
+                cutoffName: cut.CUTOFFNAME,
+                cutoffCode: cut.CUT_OFF,
+                main: main.data,
+                lv: lv.data,
+                ln: ln.data,
+                ytd: ytd.data
+            };
+        }));
 
-      setPayslipList(results);
+        setPayslipList(results);
     } catch (err) {
-      setError('Failed to fetch payslip data for the range.');
+        setError('Failed to fetch payslip data for the range.');
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   fetchAllPayslipsInRange();
 }, [user, cutoffFrom, cutoffTo]);
@@ -86,19 +85,6 @@ useEffect(() => {
 }, [user]);
 
 
-  const {
-    employee,
-    earnings = [],
-    deductions = [],
-    total_earnings = 0,
-    total_deductions = 0,
-    net_pay = 0,
-  } = payslip?.success ? payslip : {};
-
-  const employeelv = paysliplv?.success ? paysliplv.employeelv : [];
-  const employeeln = payslipln?.success ? payslipln.employeeln : [];
-  const employeeytd = payslipytd?.success ? payslipytd.employeeytd : [];
-
   const getCutoffRange = () => {
   if (!cutoffFrom || !cutoffTo) return [];
 
@@ -111,30 +97,33 @@ useEffect(() => {
 };
 
 const handleExportPDF = () => {
-  const element = document.createElement('div');
-  element.style.padding = '20px';
-  
-  // Clone all payslip elements
-  payslipList.forEach((_, index) => {
-    const slip = document.getElementById(`payslip-${index}`)?.cloneNode(true);
-    if (slip) {
-      element.appendChild(slip);
-      element.appendChild(document.createElement('hr')); // Add separator
+    const element = document.getElementById('payslip-container'); // A new ID for the parent div
+    if (!element) {
+        console.error("Payslip container element not found!");
+        return;
     }
-  });
 
-  const opt = {
+    const opt = {
     margin: 3,
     filename: `NAYSA-Payslip_${user.empNo}_Range-${cutoffFrom}-${cutoffTo}.pdf`,
     image: { type: 'jpeg', quality: 1 },
-    html2canvas: { scale: 2, useCORS: true },
-    jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
-  };
+    html2canvas: {
+        scale: 4, // Increased scale for better resolution
+        useCORS: true,
+    },
+    jsPDF: {
+        unit: 'pt',
+        format: 'letter',
+        orientation: 'portrait'
+    },
+    // This will prevent page breaks inside elements like tables.
+    pagebreak: { mode: ['avoid-all'] }
+};
 
-  html2pdf()
-    .set(opt)
-    .from(element)
-    .save();
+    html2pdf()
+        .set(opt)
+        .from(element)
+        .save();
 };
 
   return (
@@ -215,6 +204,8 @@ const handleExportPDF = () => {
           </div>
         )}
 
+<div id="payslip-container" className="payslip-pdf-content">
+
 {payslipList.map((data, index) => {
   const { main, lv, ln, ytd, cutoffName, cutoffCode } = data;
   if (!main.success) return null;
@@ -230,11 +221,15 @@ const handleExportPDF = () => {
   const employeeytd = ytd?.employeeytd || [];
 
   return (
-    <div key={index} ref={index === 0 ? payslipRef : null} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-6">
+    // <div key={index} ref={index === 0 ? payslipRef : null} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-6">
+
+<div id={`payslip-${index}`} key={index} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-6 html2pdf__page-break">
       {/* 👇 Insert your full payslip HTML layout here */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-1 text-center">
-        <h1 className="text-xl font-bold mb-0">{employee.COMP_NAME}</h1>
-        {/* <p className="text-blue-100 text-base">Payroll Period: {cutoffName}</p> */}
+      {/* <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-1 text-center"> */}
+      <div className="text-blue-900 p-4 text-center">
+        <h1 className="text-2xl font-extrabold">{employee.COMP_NAME}</h1>
+        <p className="text-blue-800 text-base  font-extrabold p-1">Branch: {employee.BRANCHNAME}</p>
+        <p className="text-blue-800 text-sm font-extrabold">Payroll Period: {cutoffName}</p>
       </div>
 
       <div className="p-4">
@@ -257,13 +252,13 @@ const handleExportPDF = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-3">
+                  {/* <div className="flex items-center space-x-3">
                     <Building className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="text-xs text-gray-500">Branch</p>
                       <p className="text-sm font-semibold text-gray-800">{employee.BRANCHNAME}</p>
                     </div>
-                  </div>
+                  </div> */}
                   
                 </div>
                 <div className="space-y-2">
@@ -281,13 +276,13 @@ const handleExportPDF = () => {
                       <p className="text-sm font-semibold text-gray-800">{employee.POSITION}</p>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
+                  {/* <div className="flex items-center space-x-3">
                     <Calendar className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="text-xs text-gray-500">Payroll Period</p>
                       <p className="text-sm font-semibold text-gray-800">({employee.FREQUENCY}) {employee.CUTOFFNAME} </p>
                     </div>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 
@@ -300,7 +295,7 @@ const handleExportPDF = () => {
                   </h3>
                   <div className="space-y-0 text-xs">
                     {earnings.map((item) => (
-                      <div className="grid grid-cols-3 gap-2 py-1 border-b border-blue-100 last:border-b-0">
+                      <div className="grid grid-cols-3 gap-2 py-1 last:border-b-0">
                       <span className="text-gray-700">{item.DESCRIP}</span>
                       <span className="font-mono font-semibold text-blue-700 text-right">
                         {Number(item.HOURS || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -320,7 +315,7 @@ const handleExportPDF = () => {
                   </h3>
                   <div className="space-y-0 text-xs">
                     {deductions.map((item) => (
-                      <div key={item.TRANS_CODE} className="flex justify-between items-center py-1 border-b border-red-100 last:border-b-0">
+                      <div key={item.TRANS_CODE} className="flex justify-between items-center py-1 last:border-b-0">
                         <span className="text-gray-700">{item.DESCRIP}</span>
                         <span className="font-mono font-semibold text-red-700">
                           {Number(item.AMOUNT).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -346,7 +341,8 @@ const handleExportPDF = () => {
                       ₱ {total_deductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="text-center border-2 border-gray-400 rounded-lg">
+                  {/* <div className="text-center border-2 border-gray-400 rounded-lg"> */}
+                  <div className="text-center rounded-lg">
                     <p className="text-sm text-gray-500 mb-1">Net Pay</p>
                     <p className="text-lg font-bold text-gray-600">
                       ₱ {net_pay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -413,13 +409,13 @@ const handleExportPDF = () => {
                         <table className="w-full">
                           <thead className="bg-gray-50">
                             <tr>
-                              <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Loan Type</th>
+                              <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 tracking-wider">Loan Type</th>
                               {/* <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Loan Amount</th> */}
-                              <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Balance</th>
-                              <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Total Paid</th>
+                              <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 tracking-wider">Balance</th>
+                              <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 tracking-wider">Total Paid</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="bg-white">
                             {employeeln.map((item, index) => (
                               <tr key={index} className="hover:bg-gray-50">
                                 <td className="px-4 py-1 whitespace-nowrap text-xs font-medium text-gray-900">{item.LOAN_DESC}</td>
@@ -450,20 +446,28 @@ const handleExportPDF = () => {
                         <table className="w-full">
                           <thead className="bg-gray-50">
                             <tr>
-                              <th className="px-4 py-2 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Leave Type</th>
-                              <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Used</th>
-                              <th className="px-4 py-2 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Balance</th>
+                              <th className="px-2 py-2 text-left text-xs font-bold text-gray-500 tracking-wider">Leave Type</th>
+                              <th className="px-1 py-2 text-right text-xs font-bold text-gray-500 tracking-wider">Used (hrs)</th>
+                              <th className="px-1 py-2 text-right text-xs font-bold text-gray-500 tracking-wider">Used (days)</th>
+                              <th className="px-1 py-2 text-right text-xs font-bold text-gray-500 tracking-wider">Balance (hrs)</th>
+                              <th className="px-1 py-2 text-right text-xs font-bold text-gray-500 tracking-wider">Balance (days)</th>
                             </tr>
                           </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
+                          <tbody className="bg-white">
                             {employeelv.map((item, index) => (
                               <tr key={index} className="hover:bg-gray-50">
-                                <td className="px-4 py-1 whitespace-nowrap text-xs font-medium text-gray-900">{item.LV_TYPE}</td>
-                                <td className="px-4 py-1 whitespace-nowrap text-xs text-gray-500 text-right">
+                                <td className="px-2 py-1 whitespace-nowrap text-xs font-medium text-gray-900">{item.LV_TYPE}</td>
+                                <td className="px-1 py-1 whitespace-nowrap text-xs text-gray-500 text-right">
                                   {Number(item.AVAILED_HRS).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} hrs
                                 </td>
-                                <td className="px-4 py-1 whitespace-nowrap text-xs text-gray-500 text-right">
+                                <td className="px-1 py-1 whitespace-nowrap text-xs text-gray-500 text-right">
+                                  {Number(item.AVAILED).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} days
+                                </td>
+                                <td className="px-1 py-1 whitespace-nowrap text-xs text-gray-500 text-right">
                                   {Number(item.ENDBAL_HRS).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} hrs
+                                </td>
+                                <td className="px-1 py-1 whitespace-nowrap text-xs text-gray-500 text-right">
+                                  {Number(item.ENDBAL).toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })} days
                                 </td>
                               </tr>
                             ))}
@@ -477,22 +481,9 @@ const handleExportPDF = () => {
             </div>
     </div>
   );
+
 })}
-
-
-        {/* Payslip Content */}
-        {payslip?.success && (
-          <div ref={payslipRef} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-            {/* Company Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-2 text-center">
-              <h1 className="text-2xl font-bold mb-2">NAYSA-Solutions Inc.</h1>
-              {/* <h1 className="text-2xl font-bold mb-2">{employee.COMP_NAME}</h1> */}
-              {/* <p className="text-blue-100 text-lg">Employee Payslip</p> */}
-            </div>
-
-            
-          </div>
-        )}
+</div>
 
         {/* No Data State */}
         {!loading && !error && payslip && !payslip.success && cutoff && (

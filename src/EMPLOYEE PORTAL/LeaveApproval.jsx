@@ -18,67 +18,68 @@ const LeaveApproval = () => {
   useEffect(() => {
     if (!user || !user.empNo) return;
 
-    const fetchLeaveApprovals = async () => {
-      try {
+   const fetchLeaveApprovals = async () => {
+    try {
         const today = dayjs().format("YYYY-MM-DD");
         const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
 
         // Fetch All Leave Applications, then filter pending
         const pendingResponse = await fetch(API_ENDPOINTS.approvedLeaveHistory, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            EMP_NO: user.empNo,
-            START_DATE: startDate,
-            END_DATE: "2030-01-01"
-          }),
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                EMP_NO: user.empNo,
+                START_DATE: startDate,
+                END_DATE: "2030-01-01"
+            }),
         });
-        
+
         if (!pendingResponse.ok) {
-          throw new Error("Failed to fetch leave approvals: " + pendingResponse.statusText);
-        }
-        
-
-        const pendingText = await pendingResponse.text();
-        let pendingResult;
-
-        try {
-          pendingResult = JSON.parse(pendingText);
-        } catch (err) {
-          throw new Error("Invalid JSON in leave response: " + pendingText);
+            throw new Error("Failed to fetch leave approvals: " + pendingResponse.statusText);
         }
 
-        console.log("Fetched Leave Applications:", pendingResult);
+        const pendingResult = await pendingResponse.json();
 
-        if (pendingResult.success && pendingResult.data.length > 0) {
-          const allLeaves = JSON.parse(pendingResult.data[0].result) || [];
-const pendingOnly = allLeaves.filter((record) => {
-  console.log(record.leaveStatus); // Check if leaveStatus is exactly "Pending"
-  return record.leaveStatus === "Pending";
-});
-setPendingLeaves(pendingOnly);
-
+        if (pendingResult.success && pendingResult.data && pendingResult.data.length > 0) {
+            const allLeaves = JSON.parse(pendingResult.data[0].result) || [];
+            const pendingOnly = allLeaves.filter((record) => record.leaveStatus === "Pending");
+            setPendingLeaves(pendingOnly);
+        } else {
+            setPendingLeaves([]);
         }
 
         // Fetch Leave Approval History
-        const historyResponse = await fetch(API_ENDPOINTS.approvedLeaveHistory, { 
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: startDate, END_DATE: today }),
+        const historyResponse = await fetch(API_ENDPOINTS.approvedLeaveHistory, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: startDate, END_DATE: today }),
         });
+
+        if (!historyResponse.ok) {
+            throw new Error("Failed to fetch leave history: " + historyResponse.statusText);
+        }
 
         const historyResult = await historyResponse.json();
         console.log("Fetched Leave Approval History:", historyResult);
 
-        if (historyResult.success && historyResult.data.length > 0) {
-          const parsedHistoryData = JSON.parse(historyResult.data[0].result);
-          setHistory(parsedHistoryData.filter((record) => record.leaveStatus !== "Pending") || []);
+        // Add null and empty array checks here
+        if (historyResult.success && historyResult.data && historyResult.data.length > 0) {
+            const parsedHistoryData = JSON.parse(historyResult.data[0].result);
+            if (parsedHistoryData) {
+                setHistory(parsedHistoryData.filter((record) => record.leaveStatus !== "Pending"));
+            } else {
+                setHistory([]);
+            }
+        } else {
+            setHistory([]);
         }
-      } catch (err) {
+
+    } catch (err) {
         console.error("Error fetching leave approvals:", err);
         setError("An error occurred while fetching leave approvals.");
-      }
-    };
+    }
+};
+
 
     fetchLeaveApprovals();
   }, [user]);

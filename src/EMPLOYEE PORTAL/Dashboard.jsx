@@ -40,16 +40,16 @@ const Dashboard = () => {
   
 
 
-  const defaultLeaveTypes = [
-    { description: "Vacation Leave", balance: 0 },
-    { description: "Sick Leave", balance: 0 },
-    // { description: "Personal Leave", balance: 0 },
-    // { description: "Emergency Leave", balance: 0 },
-    // { description: "Maternity Leave", balance: 0 },
-    // { description: "Paternity Leave", balance: 0 },
-    // { description: "Bereavement Leave", balance: 0 },
-    { description: "Birthday Leave", balance: 0 }
-  ];
+  // const defaultLeaveTypes = [
+  //   { description: "Vacation Leave", balance: 0 },
+  //   { description: "Sick Leave", balance: 0 },
+  //   { description: "Personal Leave", balance: 0 },
+  //   { description: "Emergency Leave", balance: 0 },
+  //   { description: "Maternity Leave", balance: 0 },
+  //   { description: "Paternity Leave", balance: 0 },
+  //   { description: "Bereavement Leave", balance: 0 },
+  //   { description: "Birthday Leave", balance: 0 }
+  // ];
 
   useEffect(() => {
     const handleScroll = () => {
@@ -97,59 +97,48 @@ const Dashboard = () => {
     return <div className="p-6">Loading...</div>;
   }
 
-   const fetchDashboardData = async () => {
-  if (!user || !user.empNo) return;
+  const fetchDashboardData = async () => {
+    if (!user || !user.empNo) return;
 
-  try {
-    const response = await fetch(API_ENDPOINTS.dashBoard, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify({ EMP_NO: user.empNo }),
-    });
+    try {
+        // Fetch the main dashboard data, which now includes a complete list of leave types
+        const dashboardResponse = await fetch(API_ENDPOINTS.dashBoard, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            body: JSON.stringify({ EMP_NO: user.empNo }),
+        });
 
-    const result = await response.json();
-    console.log("Raw API Response:", result);
+        const dashboardResult = await dashboardResponse.json();
 
-    if (result.success && Array.isArray(result.data) && result.data.length > 0) {
-      // Find the employee that matches the logged-in user
-      const employee = result.data.find(emp => emp.empNo === user.empNo) || result.data[0];
+        if (dashboardResult.success && Array.isArray(dashboardResult.data) && dashboardResult.data.length > 0) {
+            const employee = dashboardResult.data.find(emp => emp.empNo === user.empNo) || dashboardResult.data[0];
 
-      // Update user state to include approver
-  setUser(prev => ({
-    ...prev,
-    approver: employee.approver // make sure this is a string "1" or "0"
-  }));
+            setUser(prev => ({
+                ...prev,
+                approver: employee.approver
+            }));
 
-      // Merge API leave credits with default leave types
-      const apiLeaveCredits = employee.leaveCredit || [];
-      const mergedLeaveCredits = defaultLeaveTypes.map((defaultLeave) => {
-        const match = apiLeaveCredits.find(
-          (apiLeave) => apiLeave.description === defaultLeave.description
-        );
-        return match ? match : defaultLeave;
-      });
-
-      // Set all state values
-      setLeaveCredit(mergedLeaveCredits);
-      setDailyTimeRecord(employee.dailyTimeRecord || []);
-      setLoanBalance(employee.loanBalance || []);
-      setOtApproval(employee.otApproval || []);
-      setLeaveApproval(employee.leaveApproval || []);
-      setOfficialBusinessApproval(employee.obApproval || []);
-      setHolidays(employee.holidays || []);
-      setLeaveApplication(employee.leaveApplication || []);
-      setOtApplication(employee.otApplication || []);
-      setOfficialBusinessApplication(employee.obApplication || []);
-    } else {
-      setError("API response format is incorrect or no data found.");
+            // Directly use the leaveCredit array from the API response
+            setLeaveCredit(employee.leaveCredit || []);
+            setDailyTimeRecord(employee.dailyTimeRecord || []);
+            setLoanBalance(employee.loanBalance || []);
+            setOtApproval(employee.otApproval || []);
+            setLeaveApproval(employee.leaveApproval || []);
+            setOfficialBusinessApproval(employee.obApproval || []);
+            setHolidays(employee.holidays || []);
+            setLeaveApplication(employee.leaveApplication || []);
+            setOtApplication(employee.otApplication || []);
+            setOfficialBusinessApplication(employee.obApplication || []);
+        } else {
+            setError("API response format is incorrect or no data found.");
+        }
+    } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("An error occurred while fetching the records.");
     }
-  } catch (err) {
-    console.error("Error fetching dashboard data:", err);
-    setError("An error occurred while fetching the records.");
-  }
 };
 
 useEffect(() => {
@@ -433,7 +422,7 @@ useEffect(() => {
   <h2 className="text-base sm:text-base font-semibold mb-2 text-blue-800 text-center">Personal Calendar</h2>
   
   {/* Navigation */}
-  <div className="flex justify-between items-center mb-4">
+  <div className="flex justify-between items-center mb-2">
     <button onClick={handlePrevMonth} className="text-gray-400">◀</button>
     <h3 className="text-sm sm:text-base font-semibold">{currentMonth.format("MMMM YYYY")}</h3>
     <button onClick={handleNextMonth} className="text-gray-600">▶</button>
@@ -441,16 +430,16 @@ useEffect(() => {
 
   {/* <div className="items-center justify-center"> */}
 {/* Weekday Names */}
-<div className="grid grid-cols-7 text-center font-semibold text-gray-600 mb-1 ml-6 mx-auto text-[0.80rem] sm:text-[0.80rem] md:text-[0.90rem] lg:text-[16px]">
+<div className="grid grid-cols-7 text-center font-semibold text-gray-600 mb-1 ml-6 mx-auto text-[0.80rem] sm:text-[0.80rem] md:text-[0.90rem] lg:text-[15px]">
   {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, idx) => (
-    <div key={idx} className="w-10 h-6 flex items-center justify-center ">{day}</div>
+    <div key={idx} className="w-8 h-5 flex items-center justify-center ">{day}</div>
   ))}
 </div>
 
 {/* Calendar Days */}
-<div className="grid grid-cols-7 gap-1 text-center mt-2 ml-6 mx-auto text-[0.70rem] sm:text-[0.70rem] md:text-[0.80rem] lg:text-[14px]">
+<div className="grid grid-cols-7 gap-1 text-center mt-2 ml-6 mx-auto text-[0.70rem] sm:text-[0.70rem] md:text-[0.80rem] lg:text-[13px]">
   {generateCalendar().map((day, index) => {
-    let baseClasses = "w-6 h-7 sm:w-7 md:w-8 lg:w-8 sm:h-8 md:h-7 lg:h-7 flex items-center justify-center font-semibold";
+    let baseClasses = "w-6 h-6 sm:w-7 <md:w-7></md:w-7> lg:w-7 sm:h-8 md:h-6 lg:h-7 flex items-center justify-center font-semibold";
     let style = "";
     let tooltipText = "";
 
@@ -498,7 +487,7 @@ useEffect(() => {
 
 
   {/* Calendar Legend */}
-  <div className="flex justify-between text-sm sm:text-sm md:text-sm lg:text-sm mt-8">
+  <div className="flex justify-between text-sm sm:text-sm md:text-sm lg:text-sm mt-4">
     {/* <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-red-400 inline-block mr-1"></span> Holiday</div> */}
     <div className="flex items-center text-red-500 font-bold"><span className="w-4 h-4 rounded-lg bg-red-500 inline-block mr-1"></span>Holiday</div>
     <div className="flex items-center text-blue-300 font-bold"><span className="w-4 h-4 rounded-lg bg-blue-300 inline-block mr-1"></span> Approved Leave</div>

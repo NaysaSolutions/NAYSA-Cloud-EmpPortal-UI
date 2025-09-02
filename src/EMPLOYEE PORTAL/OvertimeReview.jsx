@@ -219,6 +219,11 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
             <input className="border p-2 w-full" value={formData.otHrs || ""} readOnly />
             
           </div>
+          <div>
+            <label className="block text-gray-700">Remarks</label>
+            <input className="border p-2 w-full" value={formData.otRemarks || ""} readOnly />
+            
+          </div>
 
           <div>
   <label className="block text-gray-700">Approved Hours</label>

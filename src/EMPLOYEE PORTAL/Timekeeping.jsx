@@ -4,106 +4,14 @@ import dayjs from "dayjs";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext"; // Assuming AuthContext provides user data
 import * as faceapi from 'face-api.js';
-// import API_ENDPOINTS from "@/apiConfig.jsx";
-import API_ENDPOINTS, { IMAGE_BASE_URL } from "@/apiConfig.jsx";
+import API_ENDPOINTS, { IMAGE_BASE_URL ,  MODEL_BASE_URL } from "@/apiConfig.jsx";
 import fetchApi from '@/fetchApi.js'; // Assuming the utility is in the same directory
 
 export const upsertTimeIn = (data) => fetchApi(API_ENDPOINTS.upsertTimeIn, 'POST', data);
 export const saveImage = (data) => fetchApi(API_ENDPOINTS.saveImage, 'POST', data);
 export const getNewImageId = (data) => fetchApi(API_ENDPOINTS.getNewImageId, 'POST', data);
 export const getDTRRecords = (data) => fetchApi(API_ENDPOINTS.getDTRRecords, 'POST', data);
-
-// const upsertTimeIn = async (data) => {
-//     try {
-//         // Use the DTR-related endpoints from your apiConfig.js file
-//         const response = await fetch(API_ENDPOINTS.upsertTimeIn, {
-//             method: 'POST',
-//             headers: {
-//                 'Content-Type': 'application/json',
-//             },
-//             body: JSON.stringify(data),
-//         });
-
-//         if (!response.ok) {
-//             throw new Error('Network response was not ok');
-//         }
-
-//         const result = await response.json();
-//         return result;
-//     } catch (error) {
-//         console.error('There was a problem with the fetch operation:', error);
-//     }
-// };
-
-
-// const saveImage = async (data) => {
-//     try {
-//         // Use the DTR-related endpoints from your apiConfig.js file
-//         const response = await fetch(API_ENDPOINTS.saveImage, {
-//             method: 'POST',
-//             headers: {
-//                 'Content-Type': 'application/json',
-//             },
-//             body: JSON.stringify(data),
-//         });
-
-//         if (!response.ok) {
-//             throw new Error('Network response was not ok');
-//         }
-
-//         const result = await response.json();
-//         return result;
-//     } catch (error) {
-//         console.error('There was a problem with the fetch operation:', error);
-//     }
-// };
-
-
-// const getNewImageId = async (data) => {
-//     try {
-//         // Use the DTR-related endpoints from your apiConfig.js file
-//         const response = await fetch(API_ENDPOINTS.getNewImageId, {
-//             method: 'POST',
-//             headers: {
-//                 'Content-Type': 'application/json',
-//             },
-//             body: JSON.stringify(data),
-//         });
-
-//         if (!response.ok) {
-//             throw new Error('Network response was not ok');
-//         }
-
-//         const result = await response.json();
-//         return result;
-//     } catch (error) {
-//         console.error('There was a problem with the fetch operation:', error);
-//     }
-// };
-
-// const getDTRRecords = async (data) => {
-//     try {
-//         // Use the DTR-related endpoints from your apiConfig.js file
-//         const response = await fetch(API_ENDPOINTS.getDTRRecords, {
-//             method: 'POST',
-//             headers: {
-//                 'Content-Type': 'application/json',
-//             },
-//             body: JSON.stringify(data),
-//         });
-
-//         if (!response.ok) {
-//             throw new Error('Network response was not ok');
-//         }
-
-//         const result = await response.json();
-//         return result;
-//     } catch (error) {
-//         console.error('There was a problem with the fetch operation:', error);
-//     }
-// };
-
-
+// export const getEmpBranchLoc = (empNo) => fetchApi(`${API_ENDPOINTS.getEmpBranchLoc}/${empNo}`, 'GET');
 
 const Timekeeping = ({ onBreakStart }) => {
     const { user } = useAuth(); // Get user from AuthContext
@@ -120,6 +28,8 @@ const Timekeeping = ({ onBreakStart }) => {
     const [time, setTime] = useState("");
     const [timeIn, setTimeIn] = useState(""); // Display time in
     const [timeOut, setTimeOut] = useState(""); // Display time out
+    const [breaktimeIn, setBreakIn] = useState(""); // Display break time in
+    const [breaktimeOut, setBreakOut] = useState(""); // Display break time out
     const [records, setRecords] = useState([]); // DTR records for display
     const [capturing, setCapturing] = useState(false); // General capturing state
     const [countdown, setCountdown] = useState(0); // Countdown for image capture
@@ -130,7 +40,8 @@ const Timekeeping = ({ onBreakStart }) => {
     const [userLocation, setUserLocation] = useState(null);
     const geolocationOptions = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 };
     const [locationAddress, setLocationAddress] = useState("");
-    
+
+    // const [empBranchLoc, setEmpBranchLoc] = useState(null);
 
 const reverseGeocode = async (lat, lon) => {
     try {
@@ -176,7 +87,42 @@ const reverseGeocode = async (lat, lon) => {
   return R * c <= radiusMeters;
 };
 
+const getLocation = async () => {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error("Geolocation is not supported by your browser."));
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                resolve({ latitude, longitude });
+            },
+            (err) => reject(err),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    });
+};
 
+const captureFace = async () => {
+    return new Promise((resolve, reject) => {
+        if (!canvasRef.current || !videoRef.current || videoRef.current.readyState < 2) {
+            reject(new Error("Camera not ready. Please wait and try again."));
+            return;
+        }
+
+        const ctx = canvasRef.current.getContext("2d");
+        ctx.save();
+        ctx.scale(-1, 1); // mirror horizontally
+        ctx.drawImage(videoRef.current, -canvasRef.current.width, 0, canvasRef.current.width, canvasRef.current.height);
+        ctx.restore();
+
+        const imageDataUrl = canvasRef.current.toDataURL("image/jpeg", 0.92);
+        resolve(imageDataUrl); // Return the captured image data URL
+    });
+};
+
+    // NEMAR //
     // Company location details (for potential future geo-fencing)
     // const COMPANY_LOCATION = {
     //     address: "1st floor, Rufino Building, Pres. L. Katigbak Street, C.M. Recto Ave, Brgy. 9, Lipa City, Batangas",
@@ -184,25 +130,77 @@ const reverseGeocode = async (lat, lon) => {
     //     allowedRadius: 500 // meters
     // };
 
+
+    // NAYSA //
     // Company location details (for potential future geo-fencing)
         const COMPANY_LOCATION = {
-        address: "7th Floor Vernida 1 Building, 120 Amorsolo Street, Legazpi Village, Makati City, Metro Manila, Philippines",
+        address: "Vernida I Building, 120 Amorsolo Street, Legazpi Village, Makati City, Metro Manila, Philippines",
         coordinates: {
-            latitude: 14.5560416,
-            longitude: 121.0148294
+            latitude: 14.555879228816387,
+            longitude: 121.01474453024396
         },
-        allowedRadius: 500 // meters
-        };
+        allowedRadius: 50, // meters
+        // branchname: "Main Branch" // Add this line 💡
+        branchname: "Head Office" // Add this line 💡
+    };
+
+
+    // const [empBranchLoc, setEmpBranchLoc] = useState(null);
+
+    // // This is already well-structured
+    //     const fetchEmpBranchLoc = useCallback(async () => {
+    //         if (!user?.empNo) return;
+    //         try {
+    //             const response = await getEmpBranchLoc({ empNo: user.empNo });
+    //             if (response.data.success && response.data.records && response.data.records.length > 0) {
+    //                 const fetchedLocation = response.data.records[0];
+
+    //                 // Reformat the object to match the expected COMPANY_LOCATION structure
+    //                 const formattedLocation = {
+    //                     address: fetchedLocation.address,
+    //                     coordinates: {
+    //                         latitude: fetchedLocation.latitude,
+    //                         longitude: fetchedLocation.longitude
+    //                     },
+    //                     allowedRadius: fetchedLocation.allowedRadius,
+    //                     branchname: fetchedLocation.branchname
+    //                 };
+
+    //                 setEmpBranchLoc(formattedLocation);
+    //             } else {
+    //                 // Optional: Log a message if no records are found
+    //                 console.log("No branch location records found. Using default COMPANY_LOCATION.");
+    //                 setEmpBranchLoc(null); // Ensure state is reset if no data
+    //             }
+    //         } catch (error) {
+    //             console.error("Error fetching employee branch location:", error);
+    //         }
+    //     }, [user?.empNo]);
+
+    // useEffect(() => {
+    //     fetchEmpBranchLoc();
+    // }, [fetchEmpBranchLoc]);
+
+    // // Use the fetched data if available, otherwise fallback to the default
+    // const branchLocation = empBranchLoc || COMPANY_LOCATION;
+    // console.log('Current Branch Location:', branchLocation); 
+    // // const branchLocation = empBranchLoc;
 
 
     useEffect(() => {
         const loadModels = async () => {
             try {
+
                 await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),  // Using faster model
-                    faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-                    faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
+                    faceapi.nets.ssdMobilenetv1.loadFromUri('./models'),  // Using faster model
+                    faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
+                    faceapi.nets.faceRecognitionNet.loadFromUri('./models'),
                 ]);
+
+                console.log(faceapi.nets.ssdMobilenetv1);
+                console.log(faceapi.nets.faceLandmark68Net);
+                console.log(faceapi.nets.faceRecognitionNet);
+
 
                 const allLoaded = [
                     faceapi.nets.ssdMobilenetv1,
@@ -216,6 +214,7 @@ const reverseGeocode = async (lat, lon) => {
 
                 setFaceDetectionModelLoaded(true);
                 console.log("✅ Face-API.js models loaded successfully");
+                console.log('Loading models from:', '/models');
             } catch (error) {
                 console.error("❌ Model loading error:", error);
                 Swal.fire("Error", "Face detection models failed to load. Please refresh.", "error");
@@ -336,37 +335,46 @@ const reverseGeocode = async (lat, lon) => {
     }, []);
 
     // --- Verify Face ---
-    const verifyFace = useCallback(async (imageDataUrl) => {
-        if (!faceDetectionModelLoaded || !currentUserFaceDescriptor) {
-            Swal.fire("Error", "Face models or your reference data not loaded.", "error");
+    // --- Verify Face ---
+const verifyFace = useCallback(async (imageDataUrl) => {
+    if (!faceDetectionModelLoaded || !currentUserFaceDescriptor) {
+        Swal.fire("Error", "Face models or your reference data not loaded.", "error");
+        return false;
+    }
+
+    try {
+        const img = await faceapi.fetchImage(imageDataUrl);
+        const detection = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+
+        if (!detection) {
+            Swal.fire("Error", "No face detected in the captured image.", "error");
             return false;
         }
 
-        try {
-            const img = await faceapi.fetchImage(imageDataUrl);
-            const detection = await faceapi.detectSingleFace(img).withFaceLandmarks().withFaceDescriptor();
+        // Adjusted threshold to 0.6 for more reliable matching
+        const faceMatcher = new faceapi.FaceMatcher(currentUserFaceDescriptor, 0.6); // Threshold adjusted to 0.6
+        const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
 
-            if (!detection) {
-                Swal.fire("Error", "No face detected in the captured image.", "error");
-                return false;
-            }
+        // Logging the face descriptor and best match distance for debugging
+        console.log('Best Match Distance:', bestMatch.distance);
+        console.log('Detection Descriptor:', detection.descriptor);
+        console.log('Registered Face Descriptor:', currentUserFaceDescriptor);
 
-            const faceMatcher = new faceapi.FaceMatcher(currentUserFaceDescriptor, 0.4); // Adjusted threshold
-            const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
-
-            if (bestMatch.distance < 0.9) {
-                console.log(`Face matched with distance: ${bestMatch.distance}`);
-                return true;
-            } else {
-                Swal.fire("Access Denied", "Face does not match your registered profile.", "error");
-                return false;
-            }
-        } catch (err) {
-            console.error("Error during face verification:", err);
-            Swal.fire("Verification Error", err.message, "error");
+        if (bestMatch.distance < 0.6) {
+            console.log(`✅ Face matched with distance: ${bestMatch.distance}`);
+            return true;
+        } else {
+            Swal.fire("Access Denied", "Face does not match your registered profile.", "error");
             return false;
         }
-    }, [faceDetectionModelLoaded, currentUserFaceDescriptor]);
+        
+    } catch (err) {
+        console.error("Error during face verification:", err);
+        Swal.fire("Verification Error", err.message, "error");
+        return false;
+    }
+}, [faceDetectionModelLoaded, currentUserFaceDescriptor]);
+
 
     // --- Save Captured Face Image ---
 const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
@@ -481,6 +489,10 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
             });
 
         const userCoords = await getUserLocation();
+        console.log("User Coordinates:", userCoords);
+
+        const imageDataUrl = await captureFace();
+        console.log("Captured Image Data URL:", imageDataUrl);
 
         // 📍 Step 2: Reverse Geocode to get readable address
         const address = await reverseGeocode(userCoords.latitude, userCoords.longitude);
@@ -505,12 +517,54 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
             COMPANY_LOCATION.coordinates.latitude,
             COMPANY_LOCATION.coordinates.longitude,
             COMPANY_LOCATION.allowedRadius
+            // branchLocation.coordinates.latitude,
+            // branchLocation.coordinates.longitude,
+            // branchLocation.allowedRadius
         );
 
         if (!isAllowedLocation) {
             Swal.fire("Location Error", "You are not within the allowed location range.", "error");
             return;
         }
+
+        const getUserAddress = async (lat, lon) => {
+        try {
+            const response = await axios.get("https://nominatim.openstreetmap.org/reverse", {
+                params: {
+                    lat,
+                    lon,
+                    format: "json"
+                }
+            });
+            return response.data.display_name || "Unknown location";
+        } catch (error) {
+            console.error("Error getting user location address:", error);
+            return "Unknown location";
+        }
+    };
+
+        if (!isAllowedLocation) {
+            // Get the user address based on their coordinates
+            const userAddress = await getUserAddress(userCoords.latitude, userCoords.longitude);
+
+            // Use the predefined company address
+            const companyAddress = COMPANY_LOCATION.address;
+            // const companyAddress = branchLocation.address;
+
+            Swal.fire({
+                title: "Location Error",
+                html: `You are not within the allowed location range.<br><br><b>Your Location:</b> ${userAddress}<br><br><b>Company Location:</b> ${companyAddress}`, // Use html to support <b> tags
+                // html: `You are not within the allowed location range.<br><br><b>Your Location:</b> Purple Oven, Legazpi Street, Legazpi Village, San Lorenzo, District I, Makati, Southern Manila District, Metro Manila, 1229, Philippines <br><br><b>Company Location:</b> ${companyAddress}`, // Use html to support <b> tags
+                icon: "error",
+                customClass: {
+                    popup: 'swal-text' // Apply custom class to popup
+                }
+            });
+
+
+            return;
+        }
+
 
         // 📸 Step 4: Capture & Verify Face
         Swal.fire({
@@ -537,9 +591,15 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
 
         let timeInImageIdToSend = null;
         let timeOutImageIdToSend = null;
+        let breakInImageIdToSend = null;
+        let breakOutImageIdToSend = null;
+
         let timeInImagePath = null;
         let timeOutImagePath = null;
+        let breakInImagePath = null;
+        let breakOutImagePath = null;
 
+        // Set time in, break in, break out, time out based on the type
         if (type === "TIME IN") {
             setTimeIn(dayjs().format("hh:mm:ss A"));
             timeInImageIdToSend = capturedImageInfo.id;
@@ -548,6 +608,14 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
             setTimeOut(dayjs().format("hh:mm:ss A"));
             timeOutImageIdToSend = capturedImageInfo.id;
             timeOutImagePath = capturedImageInfo.path;
+        } else if (type === "BREAK IN") {
+            setBreakIn(dayjs().format("hh:mm:ss A"));  // You need to define `setBreakIn` in your state
+            breakInImageIdToSend = capturedImageInfo.id;
+            breakInImagePath = capturedImageInfo.path;
+        } else if (type === "BREAK OUT") {
+            setBreakOut(dayjs().format("hh:mm:ss A"));  // You need to define `setBreakOut` in your state
+            breakOutImageIdToSend = capturedImageInfo.id;
+            breakOutImagePath = capturedImageInfo.path;
         }
 
         // 📝 Step 6: Send data to backend (now including address)
@@ -559,17 +627,23 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
                     date: currentDateStr,
                     timeIn: type === "TIME IN" ? currentTime : null,
                     timeOut: type === "TIME OUT" ? currentTime : null,
+                    breakIn: type === "BREAK IN" ? currentTime : null,
+                    breakOut: type === "BREAK OUT" ? currentTime : null,
                     timeInImageId: timeInImageIdToSend,
                     timeOutImageId: timeOutImageIdToSend,
+                    breakInImageId: breakInImageIdToSend,
+                    breakOutImageId: breakOutImageIdToSend,
                     timeInImagePath,
                     timeOutImagePath,
+                    breakInImagePath,
+                    breakOutImagePath,
                     latitude: userCoords.latitude,
                     longitude: userCoords.longitude,
                     locationAddress: address // 👈 added field
                 },
             },
         ];
-
+        console.log("Upsert Payload:", eventData);
         const response = await axios.post(API_ENDPOINTS.upsertTimeIn, eventData);
 
         if (response.data.status === "success") {
@@ -584,27 +658,7 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
     }
 };
 
-
-
     // Fetch DTR records
-
-    // const fetchDTRRecords = useCallback(async () => {
-    //     if (!user?.empNo) return;
-    //     try {
-    //         const response = await axios.get(`${API_ENDPOINTS.getDTRRecords}/${user.empNo}/${dayjs().format("YYYY-MM-DD")}`);
-    //         if (response.data.success) {
-    //             setRecords(response.data.records);
-    //             const todayRecord = response.data.records.find(r => r.date === dayjs().format("YYYY-MM-DD"));
-    //             if (todayRecord) {
-    //                 setTimeIn(todayRecord.time_in ? dayjs(todayRecord.time_in).format("hh:mm:ss A") : "");
-    //                 setTimeOut(todayRecord.time_out ? dayjs(todayRecord.time_out).format("hh:mm:ss A") : "");
-    //             }
-    //         }
-    //     } catch (error) {
-    //         console.error("Error fetching DTR records:", error);
-    //     }
-    // }, [user?.empNo]);
-
 
     const fetchDTRRecords = useCallback(async () => {
         if (!user?.empNo) return;
@@ -620,9 +674,7 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
         }
     }, [user?.empNo]);
 
-
-
-    useEffect(() => {
+        useEffect(() => {
         fetchDTRRecords();
     }, [fetchDTRRecords]);
 
@@ -642,6 +694,7 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
       <div className="text-center sm:text-left">
         <p className="text-xs font-extrabold mb-2">Philippine Standard Time</p>
         <p className="text-lg sm:text-2xl font-bold">{time || "00:00 PM"}</p>
+        {/* <p className="text-lg sm:text-2xl font-bold">05:20:00 PM</p> */}
       </div>
     </div>
 
@@ -649,23 +702,23 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
 <div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-md flex-1">
   {/* Camera */}
   <div className="relative w-full max-w-[320px] mb-4">
-    <video
-      ref={videoRef}
-      width={320}
-      height={240}
-      autoPlay
-      playsInline
-      muted
-      className="bg-black rounded-lg shadow-md"
-    />
-    <canvas ref={canvasRef} width={320} height={240} className="hidden" />
+  <video
+    ref={videoRef}
+    width={320}
+    height={240}
+    autoPlay
+    playsInline
+    muted
+    className="bg-black rounded-lg shadow-md transform scale-x-[-1]"
+  />
+  <canvas ref={canvasRef} width={320} height={240} className="hidden" />
 
-    {capturing && (
-      <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center text-white text-9xl font-bold z-50">
-        {countdown > 0 ? countdown : "📸"}
-      </div>
-    )}
-  </div>
+  {capturing && (
+    <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center text-white text-9xl font-bold z-50">
+      {countdown > 0 ? countdown : "📸"}
+    </div>
+  )}
+</div>
 
     {/* <p className="text-center text-sm text-gray-500 mb-4">{livenessInstruction}</p> */}
   {/* Buttons */}
@@ -708,9 +761,19 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
       <span className="font-semibold">Date :</span>{" "}
       {currentDate.format("MMMM DD, YYYY")}
     </p>
+
+            
+    {/* <p className="text-gray-700 text-lg mb-2">
+      <span className="font-extrabold">Branch:</span> {branchLocation.branchname || "N/A"}
+   </p>
+    <p className="text-gray-700 text-sm mb-4">
+      <span className="font-bold">📍Location:</span> {branchLocation.address || "N/A"}
+    </p> */}
+
     <p className="text-gray-700 text-lg mb-2">
       <span className="font-extrabold">🕐 Time In:</span> {todayRecord?.time_in ? dayjs(todayRecord.time_in).format("hh:mm:ss A") : "Not Recorded"}
-    </p>
+       {/* <span className="font-extrabold">🕐 Time In:</span> 07:30:00 AM */}
+   </p>
     <p className="text-gray-700 text-sm mb-4">
       <span className="font-bold">📍Location:</span> {todayRecord?.time_in_address || "Not Recorded"}
     </p>
@@ -727,21 +790,17 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
     {/* Daily Time Record Table */}
     {records.length > 0 && (
       <div className="mt-4 p-4 bg-white rounded-lg shadow-md overflow-x-auto">
-        <h2 className="text-base font-bold mb-4">Daily Time Record</h2>
+        <h2 className="text-base font-bold mb-6">Daily Time Record</h2>
         <table className="min-w-full table-auto border-collapse">
           <thead>
             <tr className="border-b">
               <th className="px-2 py-2 text-left text-xs md:text-sm">Date</th>
               <th className="px-2 py-2 text-left text-xs md:text-sm">Time In</th>
-              {/* <th className="px-2 py-2 text-left text-xs md:text-sm">Time In Image</th>
-              <th className="px-2 py-2 text-left text-xs md:text-sm">Time In Location</th> */}
-              <th className="px-2 py-2 text-left text-xs md:text-sm"></th>
-              <th className="px-2 py-2 text-left text-xs md:text-sm"></th>
+              <th className="px-2 py-2 text-left text-xs md:text-sm">Time In Capture</th>
+              <th className="px-2 py-2 text-left text-xs md:text-sm">Time In Location</th>
               <th className="px-2 py-2 text-left text-xs md:text-sm">Time Out</th>
-              {/* <th className="px-2 py-2 text-left text-xs md:text-sm">Time Out Image</th>
-              <th className="px-2 py-2 text-left text-xs md:text-sm">Time Out Location</th> */}
-              <th className="px-2 py-2 text-left text-xs md:text-sm"></th>
-              <th className="px-2 py-2 text-left text-xs md:text-sm"></th>
+              <th className="px-2 py-2 text-left text-xs md:text-sm">Time Out Capture</th>
+              <th className="px-2 py-2 text-left text-xs md:text-sm">Time Out Location</th>
               <th className="px-2 py-2 text-right text-xs md:text-sm">Worked Hours</th>
             </tr>
           </thead>
@@ -759,7 +818,6 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
                 <td className="px-2 py-1 text-xs">
                   {record.time_in_image_id && (
                     <img
-                      // src={`http://localhost:8000/storage/timekeeping_images/${record.time_in_image_id}.jpeg`}
                       src={`${IMAGE_BASE_URL}/${record.time_in_image_id}.jpeg`}
                       alt="Time In"
                       className="rounded-full"
@@ -778,7 +836,6 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
                 <td className="px-2 py-1 text-xs">
                   {record.time_out_image_id && (
                     <img
-                      // src={`http://localhost:8000/storage/timekeeping_images/${record.time_out_image_id}.jpeg`}
                       src={`${IMAGE_BASE_URL}/${record.time_out_image_id}.jpeg`}
                       alt="Time Out"
                       className="rounded-full"

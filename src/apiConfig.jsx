@@ -1,10 +1,18 @@
 // src/apiConfig.js
 
-// const API_BASE_URL = "https://api.nemarph.com:81/api"; // Base URL for the API
+// const API_BASE_URL = "https://api.nemarph.com:81/api";
+// const MODEL_BASE_URL = "https://api.nemarph.com:81/models";
 // const IMAGE_BASE_URL  = "https://api.nemarph.com:81/storage/timekeeping_images";
 
-const API_BASE_URL = "http://127.0.0.1:8000/api";
-const IMAGE_BASE_URL  = "http://127.0.0.1:8000/storage/timekeeping_images";
+
+const API_BASE_URL = "http://server1:87/api";
+const MODEL_BASE_URL = "http://server1:87/models";
+const IMAGE_BASE_URL  = "http://server1:87/storage/timekeeping_images";
+
+
+// const API_BASE_URL = "http://127.0.0.1:8000/api";
+// const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
+// const IMAGE_BASE_URL  = "http://127.0.0.1:8000/storage/timekeeping_images";
 
 // This URL should be updated based on the environment (development, production, etc.)   
 
@@ -47,8 +55,17 @@ const API_ENDPOINTS = {
     saveImage: `${API_BASE_URL}/saveImage`,
     getNewImageId: `${API_BASE_URL}/getNewImageId`,
     getDTRRecords: `${API_BASE_URL}/dtrRecords`,
+    // getEmpBranchLoc: `${API_BASE_URL}/empBranchLocation`,
+
+
+    // Payslip
+    payslipMain: `${API_BASE_URL}/reports/payslip`,
+    payslipLV: `${API_BASE_URL}/reports/payslipLV`,
+    payslipLN: `${API_BASE_URL}/reports/payslipLN`,
+    payslipYTD: `${API_BASE_URL}/reports/payslipYTD`,
 
 };
 
 export { IMAGE_BASE_URL };
+export { MODEL_BASE_URL };
 export default API_ENDPOINTS;

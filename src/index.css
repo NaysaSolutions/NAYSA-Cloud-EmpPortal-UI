@@ -24,7 +24,7 @@ body {
 
     .dashboard-thead {
       /* @apply bg-gradient-to-r from-blue-300 to-purple-200 text-black text-[9px] sm:text-xs md:text-xs lg:text-base text-nowrap; */
-      @apply bg-blue-300 text-black text-[8px] sm:text-xs md:text-xs lg:text-sm text-nowrap;
+      @apply bg-blue-300 text-black text-[8px] sm:text-xs md:text-xs lg:text-xs text-nowrap;
     
     }
     .dashboard-div-norecords {
@@ -40,7 +40,7 @@ body {
       @apply hover:bg-blue-200 odd:bg-white even:bg-blue-50;
     }
     .dashboard-tbody {
-      @apply text-gray-800 text-[9px] sm:text-[9px] md:text-[12px] lg:text-[13px] h-full;
+      @apply text-gray-800 text-[9px] sm:text-[9px] md:text-[11px] lg:text-[11px] h-full;
     }
     .dashboard-table {
       @apply min-w-full border border-gray-200 rounded-lg;
@@ -103,16 +103,38 @@ body {
 
     
 
-    /* global.css or inside your Tailwind config's content CSS */
-.pdf-export-mode {
-  font-size: 0.70rem; /* Reduce base font size */
+/* .pdf-export-mode {
+  font-size: 0.60rem;
 }
 
 .pdf-export-mode * {
-  font-size: 0.70rem !important; /* Apply to all children */
+  font-size: 0.60rem !important;
+} */
+
+    /* In your CSS file (e.g., index.css or globals.css) */
+
+@media print {
+  /* This targets the main container for your PDF content */
+  .payslip-pdf-content {
+    font-size: 7pt; /* Adjust this value as needed. 8pt is a good starting point. */
+    line-height: 1.2;
+    /* You can also adjust specific elements if needed */
+    h1 {
+      font-size: 12pt;
+    }
+    table {
+      font-size: 6pt;
+    }
+  }
 }
 
-    
+
+
+/* index.css */
+.swal-text {
+    font-size: 12px; /* Adjust to the desired size */
+}
+
     
   }
   
