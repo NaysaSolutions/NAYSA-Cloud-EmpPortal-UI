@@ -81,7 +81,7 @@ if (result.success && Array.isArray(result.data) && result.data.length > 0) {
         {/* Profile Section */}
         <div className="flex flex-col items-center text-center">
           <img
-            src={`/public/${user?.empNo || "Default"}.jpg`}
+            src={user?.empNo ? `/${user.empNo}.jpg` : "/Default.jpg"}
             onError={(e) => {
               e.currentTarget.onerror = null;
               e.currentTarget.src = "/public/Default.jpg";

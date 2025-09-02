@@ -4,10 +4,9 @@
 // const MODEL_BASE_URL = "https://api.nemarph.com:81/models";
 // const IMAGE_BASE_URL  = "https://api.nemarph.com:81/storage/timekeeping_images";
 
-
-const API_BASE_URL = "http://server1:87/api";
-const MODEL_BASE_URL = "http://server1:87/models";
-const IMAGE_BASE_URL  = "http://server1:87/storage/timekeeping_images";
+const API_BASE_URL   = "/api";                // Laravel API endpoints
+const MODEL_BASE_URL = "/models";             // If you have a route/controller serving models
+const IMAGE_BASE_URL = "/storage/timekeeping_images"; // Laravel storage symlink
 
 
 // const API_BASE_URL = "http://127.0.0.1:8000/api";

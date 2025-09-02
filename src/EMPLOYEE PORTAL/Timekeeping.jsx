@@ -191,11 +191,13 @@ const captureFace = async () => {
         const loadModels = async () => {
             try {
 
-                await Promise.all([
-                    faceapi.nets.ssdMobilenetv1.loadFromUri('./models'),  // Using faster model
-                    faceapi.nets.faceLandmark68Net.loadFromUri('./models'),
-                    faceapi.nets.faceRecognitionNet.loadFromUri('./models'),
-                ]);
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+
+await Promise.all([
+  faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+  faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+  faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+]);
 
                 console.log(faceapi.nets.ssdMobilenetv1);
                 console.log(faceapi.nets.faceLandmark68Net);
@@ -818,7 +820,7 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
                 <td className="px-2 py-1 text-xs">
                   {record.time_in_image_id && (
                     <img
-                      src={`${IMAGE_BASE_URL}/${record.time_in_image_id}.jpeg`}
+                      src={`${IMAGE_BASE_URL}/timekeeping_images/${record.time_in_image_id}.jpeg`}
                       alt="Time In"
                       className="rounded-full"
                       style={{ width: "90px", height: "80px" }}
