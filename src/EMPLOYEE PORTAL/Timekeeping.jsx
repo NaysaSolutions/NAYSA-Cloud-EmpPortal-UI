@@ -16,6 +16,10 @@ export const getDTRRecords = (data) => fetchApi(API_ENDPOINTS.getDTRRecords, 'PO
 const Timekeeping = ({ onBreakStart }) => {
     const { user } = useAuth(); // Get user from AuthContext
 
+    // Add these at the top of your Timekeeping component
+    const [isLocationRequired, setIsLocationRequired] = useState(false); // <-- SWITCH 1
+    const [isImageCaptureRequired, setIsImageCaptureRequired] = useState(false); // <-- SWITCH 2
+
     // Refs for DOM elements
     const videoRef = useRef(null);
     const canvasRef = useRef(null);
@@ -193,11 +197,11 @@ const captureFace = async () => {
 
                 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
 
-await Promise.all([
-  faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-  faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-  faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-]);
+                await Promise.all([
+                faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+                faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+                faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+                ]);
 
                 console.log(faceapi.nets.ssdMobilenetv1);
                 console.log(faceapi.nets.faceLandmark68Net);
@@ -243,7 +247,9 @@ await Promise.all([
                 }
             } catch (err) {
                 console.error("Camera initialization error:", err);
-                Swal.fire("Camera Error", "Could not access webcam. Please ensure it's connected and permissions are granted.", "error");
+                if (isImageCaptureRequired) {
+                    Swal.fire("Camera Error", "Could not access webcam. Please ensure it's connected and permissions are granted.", "error");
+                }
             }
         };
 
@@ -262,6 +268,14 @@ await Promise.all([
 
     // --- Load Current User's Face Descriptor ---
     useEffect(() => {
+
+         // Only proceed if image capture is required
+        if (!isImageCaptureRequired) {
+            // Optionally, reset the descriptor if you want to clear it when not needed
+            setCurrentUserFaceDescriptor(null);
+            return;
+        }
+
         const loadCurrentUserDescriptor = async () => {
             if (!user?.empNo) {
                 console.warn("User or empNo not available to load face descriptor.");
@@ -473,119 +487,77 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
     }
 
     try {
-        // 🔍 Step 1: Get User Location
-        const getUserLocation = () =>
-            new Promise((resolve, reject) => {
-                if (!navigator.geolocation) {
-                    reject(new Error("Geolocation not supported by your browser."));
-                    return;
-                }
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const { latitude, longitude } = position.coords;
-                        resolve({ latitude, longitude });
-                    },
-                    (err) => reject(err),
-                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                );
-            });
+        // --- MODIFIED: Initialize variables to hold optional data ---
+        let userCoords = null;
+        let address = "N/A"; // Default value if location is not captured
+        let capturedImageInfo = null;
 
-        const userCoords = await getUserLocation();
-        console.log("User Coordinates:", userCoords);
-
-        const imageDataUrl = await captureFace();
-        console.log("Captured Image Data URL:", imageDataUrl);
-
-        // 📍 Step 2: Reverse Geocode to get readable address
-        const address = await reverseGeocode(userCoords.latitude, userCoords.longitude);
-        setLocationAddress(address);
-
-        // Step 3: Check if within allowed radius
-        const isWithinRadius = (lat1, lon1, lat2, lon2, radiusMeters) => {
-            const toRad = (deg) => (deg * Math.PI) / 180;
-            const R = 6371000; // meters
-            const dLat = toRad(lat2 - lat1);
-            const dLon = toRad(lon2 - lon1);
-            const a =
-                Math.sin(dLat / 2) ** 2 +
-                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c <= radiusMeters;
-        };
-
-        const isAllowedLocation = isWithinRadius(
-            userCoords.latitude,
-            userCoords.longitude,
-            COMPANY_LOCATION.coordinates.latitude,
-            COMPANY_LOCATION.coordinates.longitude,
-            COMPANY_LOCATION.allowedRadius
-            // branchLocation.coordinates.latitude,
-            // branchLocation.coordinates.longitude,
-            // branchLocation.allowedRadius
-        );
-
-        if (!isAllowedLocation) {
-            Swal.fire("Location Error", "You are not within the allowed location range.", "error");
-            return;
-        }
-
-        const getUserAddress = async (lat, lon) => {
-        try {
-            const response = await axios.get("https://nominatim.openstreetmap.org/reverse", {
-                params: {
-                    lat,
-                    lon,
-                    format: "json"
-                }
-            });
-            return response.data.display_name || "Unknown location";
-        } catch (error) {
-            console.error("Error getting user location address:", error);
-            return "Unknown location";
-        }
-    };
-
-        if (!isAllowedLocation) {
-            // Get the user address based on their coordinates
-            const userAddress = await getUserAddress(userCoords.latitude, userCoords.longitude);
-
-            // Use the predefined company address
-            const companyAddress = COMPANY_LOCATION.address;
-            // const companyAddress = branchLocation.address;
-
+        // --- MODIFIED: Conditionally check for location ---
+        if (isLocationRequired) {
             Swal.fire({
-                title: "Location Error",
-                html: `You are not within the allowed location range.<br><br><b>Your Location:</b> ${userAddress}<br><br><b>Company Location:</b> ${companyAddress}`, // Use html to support <b> tags
-                // html: `You are not within the allowed location range.<br><br><b>Your Location:</b> Purple Oven, Legazpi Street, Legazpi Village, San Lorenzo, District I, Makati, Southern Manila District, Metro Manila, 1229, Philippines <br><br><b>Company Location:</b> ${companyAddress}`, // Use html to support <b> tags
-                icon: "error",
-                customClass: {
-                    popup: 'swal-text' // Apply custom class to popup
-                }
+                title: "Getting your location...",
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading(),
             });
 
+            // 🔍 Step 1: Get User Location
+            const getUserLocation = () =>
+                new Promise((resolve, reject) => {
+                    if (!navigator.geolocation) {
+                        reject(new Error("Geolocation not supported by your browser."));
+                        return;
+                    }
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            const { latitude, longitude } = position.coords;
+                            resolve({ latitude, longitude });
+                        },
+                        (err) => reject(err),
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                    );
+                });
+            
+            userCoords = await getUserLocation();
 
-            return;
+            // 📍 Step 2: Reverse Geocode & Check Radius
+            address = await reverseGeocode(userCoords.latitude, userCoords.longitude);
+            setLocationAddress(address);
+
+            const isAllowedLocation = isWithinRadius(
+                userCoords.latitude,
+                userCoords.longitude,
+                COMPANY_LOCATION.coordinates.latitude,
+                COMPANY_LOCATION.coordinates.longitude,
+                COMPANY_LOCATION.allowedRadius
+            );
+
+            if (!isAllowedLocation) {
+                Swal.fire("Location Error", "You are not within the allowed location range.", "error");
+                return;
+            }
+             Swal.close(); // Close location loading indicator
         }
 
+        // --- MODIFIED: Conditionally capture and verify face ---
+        if (isImageCaptureRequired) {
+            // 📸 Step 4: Capture & Verify Face
+            Swal.fire({
+                title: `Please look at the camera for ${type}...`,
+                text: "Preparing for capture...",
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading(),
+            });
 
-        // 📸 Step 4: Capture & Verify Face
-        Swal.fire({
-            title: `Please look at the camera for ${type}...`,
-            text: "Preparing for capture...",
-            showConfirmButton: false,
-            allowOutsideClick: false,
-            didOpen: () => {
-                Swal.showLoading();
-            },
-        });
-
-        const capturedImageInfo = await captureImageProcess(type);
-        if (!capturedImageInfo || !capturedImageInfo.id) {
-            Swal.fire("Failed", "Image capture or face verification failed.", "error");
-            return;
+            capturedImageInfo = await captureImageProcess(type);
+            if (!capturedImageInfo || !capturedImageInfo.id) {
+                Swal.fire("Failed", "Image capture or face verification failed.", "error");
+                return;
+            }
         }
-
-        Swal.close();
+        
+        Swal.close(); // Close any open Swal dialog
 
         // 🕒 Step 5: Prepare time data
         const currentTime = dayjs().format("HH:mm:ss");
@@ -601,26 +573,35 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
         let breakInImagePath = null;
         let breakOutImagePath = null;
 
-        // Set time in, break in, break out, time out based on the type
-        if (type === "TIME IN") {
-            setTimeIn(dayjs().format("hh:mm:ss A"));
-            timeInImageIdToSend = capturedImageInfo.id;
-            timeInImagePath = capturedImageInfo.path;
-        } else if (type === "TIME OUT") {
-            setTimeOut(dayjs().format("hh:mm:ss A"));
-            timeOutImageIdToSend = capturedImageInfo.id;
-            timeOutImagePath = capturedImageInfo.path;
-        } else if (type === "BREAK IN") {
-            setBreakIn(dayjs().format("hh:mm:ss A"));  // You need to define `setBreakIn` in your state
-            breakInImageIdToSend = capturedImageInfo.id;
-            breakInImagePath = capturedImageInfo.path;
-        } else if (type === "BREAK OUT") {
-            setBreakOut(dayjs().format("hh:mm:ss A"));  // You need to define `setBreakOut` in your state
-            breakOutImageIdToSend = capturedImageInfo.id;
-            breakOutImagePath = capturedImageInfo.path;
+        // --- MODIFIED: Only assign image info if it was captured ---
+        if (isImageCaptureRequired && capturedImageInfo) {
+            if (type === "TIME IN") {
+                setTimeIn(dayjs().format("hh:mm:ss A"));
+                timeInImageIdToSend = capturedImageInfo.id;
+                timeInImagePath = capturedImageInfo.path;
+            } else if (type === "TIME OUT") {
+                setTimeOut(dayjs().format("hh:mm:ss A"));
+                timeOutImageIdToSend = capturedImageInfo.id;
+                timeOutImagePath = capturedImageInfo.path;
+            } else if (type === "BREAK IN") {
+                setBreakIn(dayjs().format("hh:mm:ss A"));
+                breakInImageIdToSend = capturedImageInfo.id;
+                breakInImagePath = capturedImageInfo.path;
+            } else if (type === "BREAK OUT") {
+                setBreakOut(dayjs().format("hh:mm:ss A"));
+                breakOutImageIdToSend = capturedImageInfo.id;
+                breakOutImagePath = capturedImageInfo.path;
+            }
+        } else {
+             // If image capture is not required, just set the time display
+            if (type === "TIME IN") setTimeIn(dayjs().format("hh:mm:ss A"));
+            if (type === "TIME OUT") setTimeOut(dayjs().format("hh:mm:ss A"));
+            if (type === "BREAK IN") setBreakIn(dayjs().format("hh:mm:ss A"));
+            if (type === "BREAK OUT") setBreakOut(dayjs().format("hh:mm:ss A"));
         }
 
-        // 📝 Step 6: Send data to backend (now including address)
+
+        // 📝 Step 6: Send data to backend
         const eventData = [
             {
                 empNo: user.empNo,
@@ -639,12 +620,14 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
                     timeOutImagePath,
                     breakInImagePath,
                     breakOutImagePath,
-                    latitude: userCoords.latitude,
-                    longitude: userCoords.longitude,
-                    locationAddress: address // 👈 added field
+                    // --- MODIFIED: Use optional chaining to safely access coordinates ---
+                    latitude: userCoords?.latitude ?? null,
+                    longitude: userCoords?.longitude ?? null,
+                    locationAddress: address
                 },
             },
         ];
+
         console.log("Upsert Payload:", eventData);
         const response = await axios.post(API_ENDPOINTS.upsertTimeIn, eventData);
 
@@ -701,65 +684,83 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
     </div>
 
 <div className="flex flex-col md:flex-row justify-center gap-6 w-full">
-<div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-md flex-1">
-  {/* Camera */}
-  <div className="relative w-full max-w-[320px] mb-4">
-  <video
-    ref={videoRef}
-    width={320}
-    height={240}
-    autoPlay
-    playsInline
-    muted
-    className="bg-black rounded-lg shadow-md transform scale-x-[-1]"
-  />
-  <canvas ref={canvasRef} width={320} height={240} className="hidden" />
+    <div className="flex flex-col items-center p-4 bg-white rounded-lg shadow-md flex-1">
+        {/* Camera */}
+        {isImageCaptureRequired && (
+            <div className="relative w-full max-w-[320px] mb-4">
+                <video
+                    ref={videoRef}
+                    width={320}
+                    height={240}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="bg-black rounded-lg shadow-md transform scale-x-[-1]"
+                />
+                <canvas ref={canvasRef} width={320} height={240} className="hidden" />
 
-  {capturing && (
-    <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center text-white text-9xl font-bold z-50">
-      {countdown > 0 ? countdown : "📸"}
+                {capturing && (
+                    <div className="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center text-white text-9xl font-bold z-50">
+                        {countdown > 0 ? countdown : "📸"}
+                    </div>
+                )}
+            </div>
+        )}
+
+        {/* <p className="text-center text-sm text-gray-500 mb-4">{livenessInstruction}</p> */}
+    {/* Buttons */}
+    <div className="w-full grid grid-cols-2 gap-4">
+        <button
+        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-4 rounded-lg shadow-md transition disabled:opacity-50"
+        onClick={() => handleTimeEvent("TIME IN")}
+        disabled={
+            isImageCaptureRequired
+            ? (capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor || !!todayRecord?.time_in)
+            : !!todayRecord?.time_in
+        }
+        >
+        Time In
+        </button>
+        <button
+        className="bg-red-600 hover:bg-red-700 text-white font-bold py-5 px-4 rounded-lg shadow-md transition disabled:opacity-50"
+        onClick={() => handleTimeEvent("BREAK IN")}
+        disabled={
+            isImageCaptureRequired
+            ? (capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor || !!todayRecord?.break_in)
+            : !!todayRecord?.break_in
+        }
+        >
+        Break In
+        </button>
+        <button
+        className="bg-red-600 hover:bg-red-700 text-white font-bold py-5 px-4 rounded-lg shadow-md transition disabled:opacity-50"
+        onClick={() => handleTimeEvent("BREAK OUT")}
+        disabled={
+            isImageCaptureRequired
+            ? (capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor || !!todayRecord?.break_out)
+            : !!todayRecord?.break_out
+        }
+        >
+        Break Out
+        </button>
+        <button
+        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-4 rounded-lg shadow-md transition disabled:opacity-50"
+        onClick={() => handleTimeEvent("TIME OUT")}
+        disabled={
+            isImageCaptureRequired
+            ? (capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor || !!todayRecord?.time_out)
+            : !!todayRecord?.time_out
+        }
+        >
+        Time Out
+        </button>
     </div>
-  )}
-</div>
-
-    {/* <p className="text-center text-sm text-gray-500 mb-4">{livenessInstruction}</p> */}
-  {/* Buttons */}
-  <div className="w-full grid grid-cols-2 gap-4">
-    <button
-      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition disabled:opacity-50"
-      onClick={() => handleTimeEvent("TIME IN")}
-      disabled={capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor}
-    >
-      Time In
-    </button>
-    <button
-      className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition disabled:opacity-50"
-      onClick={() => handleTimeEvent("BREAK IN")}
-      disabled={capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor}
-    >
-      Break In
-    </button>
-    <button
-      className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition disabled:opacity-50"
-      onClick={() => handleTimeEvent("BREAK OUT")}
-      disabled={capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor}
-    >
-      Break Out
-    </button>
-    <button
-      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition disabled:opacity-50"
-      onClick={() => handleTimeEvent("TIME OUT")}
-      disabled={capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor}
-    >
-      Time Out
-    </button>
-  </div>
-</div>
+    </div>
 
   {/* Time In/Out Record */}
   <div className="w-full md:w-1/3 p-4 bg-white rounded-lg shadow-md flex flex-col">
-    <h2 className="text-xl font-bold mb-4">Today's DTR</h2>
-    <p className="text-gray-700 text-lg mb-6">
+    <h2 className="text-[16px] md:text-xl font-bold mb-4">Today's DTR</h2>
+    <p className="text-gray-700 text-[14px] md:text-lg mb-4">
       <span className="font-semibold">Date :</span>{" "}
       {currentDate.format("MMMM DD, YYYY")}
     </p>
@@ -772,19 +773,35 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
       <span className="font-bold">📍Location:</span> {branchLocation.address || "N/A"}
     </p> */}
 
-    <p className="text-gray-700 text-lg mb-2">
+    <p className="text-blue-800 text-[14px] md:text-lg mb-2">
       <span className="font-extrabold">🕐 Time In:</span> {todayRecord?.time_in ? dayjs(todayRecord.time_in).format("hh:mm:ss A") : "Not Recorded"}
-       {/* <span className="font-extrabold">🕐 Time In:</span> 07:30:00 AM */}
    </p>
-    <p className="text-gray-700 text-sm mb-4">
-      <span className="font-bold">📍Location:</span> {todayRecord?.time_in_address || "Not Recorded"}
+
+    {isLocationRequired && (
+    <p className="text-gray-800 text-[14px] md:text-sm mb-4">
+        <span className="font-bold">📍Location:</span> {todayRecord?.time_in_address || "Not Recorded"}
     </p>
-    <p className="text-gray-700 text-lg mb-2">
+    )}
+
+    <p className="text-red-800 text-[14px] md:text-lg mb-2">
+      <span className="font-extrabold">🕐 Break In:</span> {todayRecord?.break_in ? dayjs(todayRecord.break_in).format("hh:mm:ss A") : "Not Recorded"}
+   </p>
+
+    <p className="text-red-800 text-[14px] md:text-lg mb-2">
+      <span className="font-extrabold">🕐 Break Out:</span> {todayRecord?.break_out ? dayjs(todayRecord.break_out).format("hh:mm:ss A") : "Not Recorded"}
+   </p>
+
+    <p className="text-blue-800 text-[14px] md:text-lg mb-2">
       <span className="font-bold">🕐 Time Out:</span> {todayRecord?.time_out ? dayjs(todayRecord.time_out).format("hh:mm:ss A") : "Not Recorded"}
     </p>
-      <p className="text-gray-700 text-sm mb-2">
-      <span className="font-bold">📍Location:</span> {todayRecord?.time_out_address || "Not Recorded"}
+
+    {isLocationRequired && (
+    <p className="text-gray-800 text-[14px] md:text-sm mb-4">
+        <span className="font-bold">📍Location:</span> {todayRecord?.time_out_address || "Not Recorded"}
     </p>
+    )}
+
+
   </div>
 </div>
 
@@ -792,67 +809,98 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
     {/* Daily Time Record Table */}
     {records.length > 0 && (
       <div className="mt-4 p-4 bg-white rounded-lg shadow-md overflow-x-auto">
-        <h2 className="text-base font-bold mb-6">Daily Time Record</h2>
+        <h2 className="text-base font-bold mb-2">Daily Time Record</h2>
         <table className="min-w-full table-auto border-collapse">
           <thead>
             <tr className="border-b">
-              <th className="px-2 py-2 text-left text-xs md:text-sm">Date</th>
-              <th className="px-2 py-2 text-left text-xs md:text-sm">Time In</th>
-              <th className="px-2 py-2 text-left text-xs md:text-sm">Time In Capture</th>
-              <th className="px-2 py-2 text-left text-xs md:text-sm">Time In Location</th>
-              <th className="px-2 py-2 text-left text-xs md:text-sm">Time Out</th>
-              <th className="px-2 py-2 text-left text-xs md:text-sm">Time Out Capture</th>
-              <th className="px-2 py-2 text-left text-xs md:text-sm">Time Out Location</th>
-              <th className="px-2 py-2 text-right text-xs md:text-sm">Worked Hours</th>
+              <th className="px-1 py-2 text-left text-[8px] md:text-sm">Date</th>
+              <th className="px-1 py-2 text-left text-[8px] md:text-sm">Time In</th>
+              {isImageCaptureRequired && (<th className="px-1 py-2 text-left text-[8px] md:text-sm">Time In Capture</th>)}
+              {isLocationRequired && (<th className="px-1 py-2 text-left text-[8px] md:text-sm">Time In Location</th>)}
+              <th className="px-1 py-2 text-left text-[8px] md:text-sm">Break In</th>
+              <th className="px-1 py-2 text-left text-[8px] md:text-sm">Break Out</th>
+              <th className="px-1 py-2 text-left text-[8px] md:text-sm">Time Out</th>
+              {isImageCaptureRequired && (<th className="px-1 py-2 text-left text-[8px] md:text-sm">Time Out Capture</th>)}
+              {isLocationRequired && (<th className="px-1 py-2 text-left text-[8px] md:text-sm">Time Out Location</th>)}
+              <th className="px-1 py-2 text-right text-[8px] md:text-sm">Worked (hrs)</th>
             </tr>
           </thead>
           <tbody>
-            {records.map((record, index) => (
+            {records.map((record, index) => (         
               <tr key={index} className="border-b">
-                <td className="px-2 py-1 text-xs">
+
+                <td className="px-1 py-1 text-[8px] md:text-xs">
                   {dayjs(record.date).format("MM/DD/YYYY")}
                 </td>
-                <td className="px-2 py-1 text-xs">
+
+                <td className="px-1 py-1 text-[8px] md:text-xs">
                   {record.time_in
                     ? dayjs(record.time_in).format("hh:mm:ss A")
                     : "N/A"}
                 </td>
-                <td className="px-2 py-1 text-xs">
-                  {record.time_in_image_id && (
-                    <img
-                      src={`${IMAGE_BASE_URL}/timekeeping_images/${record.time_in_image_id}.jpeg`}
-                      alt="Time In"
-                      className="rounded-full"
-                      style={{ width: "90px", height: "80px" }}
-                    />
-                  )}
+                
+                {isImageCaptureRequired && (
+                    <td className="px-1 py-1 text-[8px] md:text-xs">
+                        {record.time_in_image_id && (
+                            <img
+                                src={`${IMAGE_BASE_URL}/${record.time_in_image_id}.jpeg`}
+                                alt="Time In"
+                                className="rounded-full"
+                                style={{ width: "90px", height: "80px" }}
+                            />
+                        )}
+                    </td>
+                )}
+
+                {isLocationRequired && (
+                    <td className="px-1 py-1 text-[8px] md:text-xs max-w-[200px] break-words">
+                        {record.time_in_address}
+                    </td>
+                )}
+
+                <td className="px-1 py-1 text-[8px] md:text-xs">
+                  {record.break_in
+                    ? dayjs(record.break_in).format("hh:mm:ss A")
+                    : "N/A"}
                 </td>
-                <td className="px-2 py-1 text-[10px] max-w-[200px] break-words">
-                  {record.time_in_address}
+
+                <td className="px-1 py-1 text-[8px] md:text-xs">
+                  {record.break_out
+                    ? dayjs(record.break_out).format("hh:mm:ss A")
+                    : "N/A"}
                 </td>
-                <td className="px-2 py-1 text-xs">
+
+                <td className="px-1 py-1 text-[8px] md:text-xs">
                   {record.time_out
                     ? dayjs(record.time_out).format("hh:mm:ss A")
                     : "N/A"}
                 </td>
-                <td className="px-2 py-1 text-xs">
-                  {record.time_out_image_id && (
-                    <img
-                      src={`${IMAGE_BASE_URL}/${record.time_out_image_id}.jpeg`}
-                      alt="Time Out"
-                      className="rounded-full"
-                      style={{ width: "90px", height: "80px" }}
-                    />
-                  )}
-                </td>
-                <td className="px-2 py-1 text-[10px] max-w-[200px] break-words">
-                  {record.time_out_address}
-                </td>
-                <td className="px-2 py-1 text-xs text-right">
+                
+                {isImageCaptureRequired && (
+                    <td className="px-1 py-1 text-[8px] md:text-xs">
+                        {record.time_out_image_id && (
+                            <img
+                                src={`${IMAGE_BASE_URL}/${record.time_out_image_id}.jpeg`}
+                                alt="Time Out"
+                                className="rounded-full"
+                                style={{ width: "90px", height: "80px" }}
+                            />
+                        )}
+                    </td>
+                )}
+                
+                {isLocationRequired && (
+                    <td className="px-1 py-1 text-[8px] md:text-xs max-w-[200px] break-words">
+                        {record.time_out_address}
+                    </td>
+                )}
+
+                <td className="px-1 py-1 text-[8px] md:text-xs text-right">
                   {record.worked_hrs != null
                     ? `${Number(record.worked_hrs).toFixed(2)} hrs`
                     : "0"}
                 </td>
+
               </tr>
             ))}
           </tbody>

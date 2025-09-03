@@ -313,29 +313,34 @@ useEffect(() => {
     <p className="text-sm font-extrabold text-white mb-2">Philippine Standard Time</p>
     <p className="text-xl sm:text-2xl font-bold">{time || "00:00 PM"}</p>
   </div>
-  <div>
+  {/* <div>
     <p className="text-sm font-extrabold  text-right mb-2">Break Time Count</p>
     <p className="text-xl sm:text-2xl font-bold">
       {formatTime(breakTime)}
     </p>
+  </div> */}
+   <div className ="w-full md:w-auto">
+            <button className="bg-blue-300 text-blue-900 font-bold px-5 py-4 rounded-md text-md sm:text-lg hover:bg-blue-900 hover:text-white w-full sm:w-auto mx-auto"
+            onClick={() => navigate("/timekeeping")} >
+              Timekeeping
+            </button>
+          </div>
   </div>
-</div>
+    </div>
   </div>
-</div>
-
 
 {/* Stats Cards */}
       <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
-          <h3 className="font-bold text-sm md:text-base">Pending LV Applications</h3>
+          <h3 className="font-bold text-xs md:text-base">Pending LV Applications</h3>
           <p className="text-xl md:text-2xl">{pendingLeaveCount}</p>
         </div>
         <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
-          <h3 className="font-bold text-sm md:text-base">Pending OT Applications</h3>
+          <h3 className="font-bold text-xs md:text-base">Pending OT Applications</h3>
           <p className="text-xl md:text-2xl">{pendingOtCount}</p>
         </div>
         <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
-          <h3 className="font-bold text-sm md:text-base">Pending OB Applications</h3>
+          <h3 className="font-bold text-xs md:text-base">Pending OB Applications</h3>
           <p className="text-xl md:text-2xl">{pendingObCount}</p>
         </div>
       </div>
@@ -344,15 +349,15 @@ useEffect(() => {
   <>
       <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
         <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
-          <h3 className="font-bold text-sm md:text-base">Pending LV for my Approval</h3>
+          <h3 className="font-bold text-xs md:text-base">Pending LV for my Approval</h3>
           <p className="text-xl md:text-2xl">{pendingLeaveApproval}</p>
         </div>
         <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
-          <h3 className="font-bold text-sm md:text-base">Pending OT for my Approval</h3>
+          <h3 className="font-bold text-xs md:text-base">Pending OT for my Approval</h3>
           <p className="text-xl md:text-2xl">{pendingOtApproval}</p>
         </div>
         <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
-          <h3 className="font-bold text-sm md:text-base">Pending OB for my Approval</h3>
+          <h3 className="font-bold text-xs md:text-base">Pending OB for my Approval</h3>
           <p className="text-xl md:text-2xl">{pendingObApproval}</p>
         </div>
       </div>

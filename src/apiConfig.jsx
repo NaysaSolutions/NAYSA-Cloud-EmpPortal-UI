@@ -8,7 +8,6 @@ const API_BASE_URL   = "/api";                // Laravel API endpoints
 const MODEL_BASE_URL = "/models";             // If you have a route/controller serving models
 const IMAGE_BASE_URL = "/storage/timekeeping_images"; // Laravel storage symlink
 
-
 // const API_BASE_URL = "http://127.0.0.1:8000/api";
 // const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
 // const IMAGE_BASE_URL  = "http://127.0.0.1:8000/storage/timekeeping_images";
