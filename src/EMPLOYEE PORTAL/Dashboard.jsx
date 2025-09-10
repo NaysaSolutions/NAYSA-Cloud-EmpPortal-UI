@@ -331,15 +331,15 @@ useEffect(() => {
 
 {/* Stats Cards */}
       <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-        <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+        <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none" onClick={() => navigate("/leave")} >
           <h3 className="font-bold text-xs md:text-base">Pending LV Applications</h3>
           <p className="text-xl md:text-2xl">{pendingLeaveCount}</p>
         </div>
-        <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+        <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none" onClick={() => navigate("/overtime")}>
           <h3 className="font-bold text-xs md:text-base">Pending OT Applications</h3>
           <p className="text-xl md:text-2xl">{pendingOtCount}</p>
         </div>
-        <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+        <div className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none" onClick={() => navigate("/Official-Business")}>
           <h3 className="font-bold text-xs md:text-base">Pending OB Applications</h3>
           <p className="text-xl md:text-2xl">{pendingObCount}</p>
         </div>
@@ -348,15 +348,15 @@ useEffect(() => {
 {user.approver === "1" && (
   <>
       <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-        <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+        <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none" onClick={() => navigate("/leaveApproval")} >
           <h3 className="font-bold text-xs md:text-base">Pending LV for my Approval</h3>
           <p className="text-xl md:text-2xl">{pendingLeaveApproval}</p>
         </div>
-        <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+        <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none" onClick={() => navigate("/overtimeApproval")} >
           <h3 className="font-bold text-xs md:text-base">Pending OT for my Approval</h3>
           <p className="text-xl md:text-2xl">{pendingOtApproval}</p>
         </div>
-        <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none">
+        <div className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none" onClick={() => navigate("/OfficialBusinessApproval")} >
           <h3 className="font-bold text-xs md:text-base">Pending OB for my Approval</h3>
           <p className="text-xl md:text-2xl">{pendingObApproval}</p>
         </div>
@@ -492,11 +492,11 @@ useEffect(() => {
 
 
   {/* Calendar Legend */}
-  <div className="flex justify-between text-sm sm:text-sm md:text-sm lg:text-sm mt-4">
+  <div className="flex justify-between text-xs md:text-sm mt-4">
     {/* <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-red-400 inline-block mr-1"></span> Holiday</div> */}
     <div className="flex items-center text-red-500 font-bold"><span className="w-4 h-4 rounded-lg bg-red-500 inline-block mr-1"></span>Holiday</div>
-    <div className="flex items-center text-blue-300 font-bold"><span className="w-4 h-4 rounded-lg bg-blue-300 inline-block mr-1"></span> Approved Leave</div>
-    <div className="flex items-center text-yellow-300 font-bold"><span className="w-4 h-4 rounded-lg bg-yellow-300 inline-block mr-1"></span> Pending Leave</div>
+    <div className="flex items-center text-blue-400 font-bold"><span className="w-4 h-4 rounded-lg bg-blue-400 inline-block mr-1"></span> Approved Leave</div>
+    <div className="flex items-center text-yellow-400 font-bold"><span className="w-4 h-4 rounded-lg bg-yellow-400 inline-block mr-1"></span> Pending Leave</div>
   </div>
 </div>
 </div>

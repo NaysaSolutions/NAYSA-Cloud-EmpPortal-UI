@@ -290,7 +290,7 @@ const Leave = () => {
   
       if (selectedStartDate && value) {
         const days = calculateLeaveDays(selectedStartDate, value);
-        if (days === 0) {
+        if (days < 0) {
           Swal.fire({
             icon: "warning",
             title: "Invalid Leave Duration",
@@ -563,8 +563,8 @@ const Leave = () => {
           <div>
             {/* <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">   */}
           <table className="w-full text-sm text-center rounded-lg border">
-  
-          <thead className="sticky top-[0px] z-[1] bg-blue-300 text-black text-xs sm:text-sm ms:text-sm lg:text-sm">
+
+          <thead className="sticky top-[0px] z-[1] bg-blue-800 text-white text-xs sm:text-sm ms:text-sm lg:text-sm">
           <tr>
                   {[
                     { key: "leaveStart", label: "Start Date" },

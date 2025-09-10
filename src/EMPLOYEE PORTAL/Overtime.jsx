@@ -391,7 +391,7 @@ useEffect(() => {
   {/* Scrollable Table Container */}
   <div className="w-full overflow-x-auto">
     <table className="min-w-[800px] w-full text-sm text-center border">
-      <thead className="sticky top-0 z-10 bg-blue-300 text-black text-xs sm:text-sm lg:text-sm">
+      <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm lg:text-sm">
         <tr>
           {[
             { key: "date", label: "OT Date" },

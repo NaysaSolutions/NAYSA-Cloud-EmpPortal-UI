@@ -24,7 +24,7 @@ body {
 
     .dashboard-thead {
       /* @apply bg-gradient-to-r from-blue-300 to-purple-200 text-black text-[9px] sm:text-xs md:text-xs lg:text-base text-nowrap; */
-      @apply bg-blue-300 text-black text-[8px] sm:text-xs md:text-xs lg:text-xs text-nowrap;
+      @apply bg-blue-700 text-white text-[8px] sm:text-xs md:text-xs lg:text-xs text-nowrap;
     
     }
     .dashboard-div-norecords {
@@ -133,6 +133,11 @@ body {
 /* index.css */
 .swal-text {
     font-size: 12px; /* Adjust to the desired size */
+}
+
+/* In your CSS file (e.g., App.css or a specific stylesheet) */
+.swal2-icon.swal2-error-smaller {
+    font-size: 1em !important; /* Adjust the size as needed */
 }
 
     

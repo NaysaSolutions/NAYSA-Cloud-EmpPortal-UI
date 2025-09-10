@@ -3,14 +3,15 @@
 // const API_BASE_URL = "https://api.nemarph.com:81/api";
 // const MODEL_BASE_URL = "https://api.nemarph.com:81/models";
 // const IMAGE_BASE_URL  = "https://api.nemarph.com:81/storage/timekeeping_images";
+// const IMAGE_BASE_URL = "/images/timekeeping_images";
 
-const API_BASE_URL   = "/api";                // Laravel API endpoints
-const MODEL_BASE_URL = "/models";             // If you have a route/controller serving models
-const IMAGE_BASE_URL = "/storage/timekeeping_images"; // Laravel storage symlink
+// const API_BASE_URL   = "/api";                // Laravel API endpoints
+// const MODEL_BASE_URL = "/models";             // If you have a route/controller serving models
+// const IMAGE_BASE_URL = "/images/timekeeping_images";
 
-// const API_BASE_URL = "http://127.0.0.1:8000/api";
-// const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
-// const IMAGE_BASE_URL  = "http://127.0.0.1:8000/storage/timekeeping_images";
+const API_BASE_URL = "http://127.0.0.1:8000/api";
+const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
+const IMAGE_BASE_URL  = "http://127.0.0.1:8000/images/timekeeping_images";
 
 // This URL should be updated based on the environment (development, production, etc.)   
 
@@ -53,7 +54,7 @@ const API_ENDPOINTS = {
     saveImage: `${API_BASE_URL}/saveImage`,
     getNewImageId: `${API_BASE_URL}/getNewImageId`,
     getDTRRecords: `${API_BASE_URL}/dtrRecords`,
-    // getEmpBranchLoc: `${API_BASE_URL}/empBranchLocation`,
+    getEmpBranchLoc: `${API_BASE_URL}/empBranchLocation`,
 
 
     // Payslip
