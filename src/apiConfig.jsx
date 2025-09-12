@@ -45,23 +45,25 @@ const API_ENDPOINTS = {
      officialBusinessApproval: `${API_BASE_URL}/approvalOB`,
 
      
-     //DTR
-    //  saveDTR: `${API_BASE_URL}/upsertTimeIn`,
-    //  saveDTRImage: `${API_BASE_URL}/saveImage`,
-    //  fetchDTRImageID: `${API_BASE_URL}/getNewImageId`,
+    //DTR
+    upsertTimeIn:            `${API_BASE_URL}/upsertTimeIn`,
+    saveImage:               `${API_BASE_URL}/saveImage`,
+    getNewImageId:           `${API_BASE_URL}/getNewImageId`,
+    getDTRRecords:           `${API_BASE_URL}/dtrRecords`,
+    getEmpBranchLoc:         `${API_BASE_URL}/empBranchLocation`,
 
-    upsertTimeIn: `${API_BASE_URL}/upsertTimeIn`,
-    saveImage: `${API_BASE_URL}/saveImage`,
-    getNewImageId: `${API_BASE_URL}/getNewImageId`,
-    getDTRRecords: `${API_BASE_URL}/dtrRecords`,
-    getEmpBranchLoc: `${API_BASE_URL}/empBranchLocation`,
-
+    getDTRAppInq:            `${API_BASE_URL}/getDTRAppInq`,
+    getDTRAppHistory:        `${API_BASE_URL}/getDTRAppHistory`,
+    getDTRApprInq:           `${API_BASE_URL}/getDTRApprInq`,
+    getDTRApprHistory:       `${API_BASE_URL}/getDTRApprHistory`,
+    upsertDTR:               `${API_BASE_URL}/upsertDTR`,
+    approvalDTR:             `${API_BASE_URL}/approvalDTR`,
 
     // Payslip
-    payslipMain: `${API_BASE_URL}/reports/payslip`,
-    payslipLV: `${API_BASE_URL}/reports/payslipLV`,
-    payslipLN: `${API_BASE_URL}/reports/payslipLN`,
-    payslipYTD: `${API_BASE_URL}/reports/payslipYTD`,
+    payslipMain:             `${API_BASE_URL}/reports/payslip`,
+    payslipLV:               `${API_BASE_URL}/reports/payslipLV`,
+    payslipLN:               `${API_BASE_URL}/reports/payslipLN`,
+    payslipYTD:              `${API_BASE_URL}/reports/payslipYTD`,
 
 };
 

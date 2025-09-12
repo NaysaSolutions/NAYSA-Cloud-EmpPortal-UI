@@ -129,6 +129,9 @@ import Navbar from "./EMPLOYEE PORTAL/Navbar";
 import Dashboard from "./EMPLOYEE PORTAL/Dashboard";
 import LoginPortal from "./EMPLOYEE PORTAL/LoginPortal";
 import Timekeeping from "./EMPLOYEE PORTAL/Timekeeping";
+import TimekeepingAdjustment from "./EMPLOYEE PORTAL/TimekeepingAdjustment";
+import TimekeepingAdjustmentApproval from "./EMPLOYEE PORTAL/TimekeepingAdjustmentApproval";
+import TimekeepingAdjustmentReview from "./EMPLOYEE PORTAL/TimekeepingAdjustmentReview";
 import PayslipViewer from "./EMPLOYEE PORTAL/PayslipViewer";
 import Leave from "./EMPLOYEE PORTAL/Leave";
 import Overtime from "./EMPLOYEE PORTAL/Overtime";
@@ -148,9 +151,12 @@ const App = () => {
         <Routes>
           <Route path="/" element={<LoginPortal />} />
           <Route path="/register" element={<Register />} />
-          {/* <Route path="/register" element={<ProtectedRoute><Layout><Register /></Layout></ProtectedRoute>} /> */}
+          <Route path="/register" element={<ProtectedRoute><Layout><Register /></Layout></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-          <Route path="/timekeeping" element={<ProtectedRoute><Layout><Timekeeping /></Layout></ProtectedRoute>} />    
+          <Route path="/timekeeping" element={<ProtectedRoute><Layout><Timekeeping /></Layout></ProtectedRoute>} />  
+          <Route path="/timekeepingAdj" element={<ProtectedRoute><Layout><TimekeepingAdjustment /></Layout></ProtectedRoute>} />    
+          <Route path="/timekeepingAdjApproval" element={<ProtectedRoute><Layout><TimekeepingAdjustmentApproval /></Layout></ProtectedRoute>} />    
+          <Route path="/timekeepingAdjReview" element={<ProtectedRoute><Layout><TimekeepingAdjustmentReview /></Layout></ProtectedRoute>} />    
           <Route path="/payslipviewer" element={<ProtectedRoute><Layout><PayslipViewer /></Layout></ProtectedRoute>} />
           <Route path="/leave" element={<ProtectedRoute><Layout><Leave /></Layout></ProtectedRoute>} />
           <Route path="/overtime" element={<ProtectedRoute><Layout><Overtime /></Layout></ProtectedRoute>} />

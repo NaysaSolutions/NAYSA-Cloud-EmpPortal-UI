@@ -14,12 +14,12 @@ import API_ENDPOINTS, { IMAGE_BASE_URL ,  MODEL_BASE_URL } from "@/apiConfig.jsx
 import fetchApi from '@/fetchApi.js'; // Assuming the utility is in the same directory
 import { ChevronDown, ChevronUp, Calendar, Clock, MapPin, Camera, Download, Image as ImageIcon } from 'lucide-react';
 
+import { useNavigate } from "react-router-dom";
 
 export const upsertTimeIn = (data) => fetchApi(API_ENDPOINTS.upsertTimeIn, 'POST', data);
 export const saveImage = (data) => fetchApi(API_ENDPOINTS.saveImage, 'POST', data);
 export const getNewImageId = (data) => fetchApi(API_ENDPOINTS.getNewImageId, 'POST', data);
 export const getDTRRecords = (data) => fetchApi(API_ENDPOINTS.getDTRRecords, 'POST', data);
-// export const getEmpBranchLoc = (data) => fetchApi(API_ENDPOINTS.getEmpBranchLoc, 'POST', data);
 export const getEmpBranchLoc = (empNo) => fetchApi(`${API_ENDPOINTS.getEmpBranchLoc}/${empNo}`, 'GET');
 
 const Timekeeping = ({ onBreakStart }) => {
@@ -61,6 +61,7 @@ const Timekeeping = ({ onBreakStart }) => {
     const [viewMode, setViewMode] = useState('cards'); // 'cards', 'accordion', 'table'
     const [expandedRecord, setExpandedRecord] = useState(null);
 
+    const navigate = useNavigate();
 
 const reverseGeocode = async (lat, lon) => {
     try {
@@ -1153,18 +1154,11 @@ const FullTableView = ({ filteredRecords }) => {
           <tr className="border-b">
             <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Date</th>
             <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Time In</th>
-            {/* {isImageCaptureRequired && (
-              <th className="px-1 py-2 text-center text-[7px] md:text-sm font-medium">Capture</th>
-            )} */}
             {isLocationRequired && (
               <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Location</th>
             )}
             <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Break Time</th>
-            {/* <th className="px-1 py-2 text-left text-[7px] md:text-sm">Break Out</th> */}
             <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Time Out</th>
-            {/* {isImageCaptureRequired && (
-              <th className="px-1 py-2 text-center text-[7px] md:text-sm font-medium">Capture</th>
-            )} */}
             {isLocationRequired && (
               <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Location</th>
             )}
@@ -1179,19 +1173,6 @@ const FullTableView = ({ filteredRecords }) => {
                 <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
                   {record.time_in ? dayjs(record.time_in, "HH:mm").format("hh:mm A") : "N/A"}
                 </td>
-                {/* {isImageCaptureRequired && (
-                  <td className="px-1 py-1">
-                    <div className="flex justify-center">
-                      {record.time_in_image_id && (
-                        <img
-                          src={`${IMAGE_BASE_URL}/${record.time_in_image_id}.jpeg`}
-                          alt="Time In"
-                          className="rounded-lg w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] object-cover" 
-                        />
-                      )}
-                    </div>
-                  </td>
-                )} */}
                 {isLocationRequired && (
                   <td className="px-1 py-1 text-[6px] md:text-xs max-w-[200px] break-words">
                     {record.time_in_address || "N/A"}
@@ -1200,25 +1181,9 @@ const FullTableView = ({ filteredRecords }) => {
                 <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
                   {record.break_in ? dayjs(record.break_in, "HH:mm").format("hh:mm A") : "N/A"} - {record.break_out ? dayjs(record.break_out, "HH:mm").format("hh:mm A") : "N/A"}
                 </td>
-                {/* <td className="px-1 py-1 text-[6px] md:text-xs">
-                  {record.break_out ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}
-                </td> */}
                 <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
                   {record.time_out ? dayjs(record.time_out, "HH:mm").format("hh:mm A") : "N/A"}
                 </td>
-                {/* {isImageCaptureRequired && (
-                  <td className="px-1 py-1">
-                    <div className="flex justify-center">
-                      {record.time_out_image_id && (
-                        <img
-                          src={`${IMAGE_BASE_URL}/${record.time_out_image_id}.jpeg`}
-                          alt="Time Out"
-                          className="rounded-lg w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] object-cover"
-                        />
-                      )}
-                    </div>
-                  </td>
-                )} */}
                 {isLocationRequired && (
                   <td className="px-1 py-1 text-[6px] md:text-xs max-w-[200px] break-words">
                     {record.time_out_address || "N/A"}
@@ -1260,7 +1225,6 @@ return (
       <div className="text-center sm:text-left">
         <p className="text-xs font-extrabold mb-2">Philippine Standard Time</p>
         <p className="text-lg sm:text-2xl font-bold">{time || "00:00 PM"}</p>
-        {/* <p className="text-lg sm:text-2xl font-bold">05:20:00 PM</p> */}
       </div>
     </div>
 
@@ -1288,8 +1252,6 @@ return (
                 )}
             </div>
         )}
-
-        {/* <p className="text-center text-sm text-gray-500 mb-4">{livenessInstruction}</p> */}
 
         {/* Buttons */}
         <div className="w-full grid grid-cols-2 gap-4">
@@ -1343,12 +1305,6 @@ return (
 
   {/* Time In/Out Record */}
   <div className="w-full md:w-1/3 p-4 bg-white rounded-lg shadow-md flex flex-col">
-    {/* <h2 className="text-[16px] md:text-xl font-bold mb-4">Today's DTR</h2> */}
-    {/* <p className="text-gray-700 text-[14px] md:text-lg mb-4">
-      <span className="font-semibold">Date :</span>{" "}
-      {currentDate.format("MMMM DD, YYYY")}
-    </p> */}
-
 
  <p className="text-blue-800 text-[14px] md:text-lg mb-2">
       <span className="font-extrabold">{branchLocation.branchname}</span> 
@@ -1435,7 +1391,7 @@ return (
   </div>
 
   {/* Export Button */}
-  <div className="w-full sm:w-auto sm:flex sm:items-end sm:ml-4">
+  <div className="flex-2 sm:w-auto sm:flex sm:items-end sm:ml-4">
     <button
       onClick={handleExport}
       className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-2"
@@ -1444,12 +1400,28 @@ return (
       Export
     </button>
   </div>
+
+    {/* Filing Button */}
+  <div className="flex-2 sm:w-auto sm:flex sm:items-end sm:ml-4">
+    <button
+      onClick={() => navigate("/timekeepingAdj")}
+      className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-2"
+    >
+      DTR Adjustment
+    </button>
+  </div>
+
+      {/* Approval Button */}
+  <div className="flex-2 sm:w-auto sm:flex sm:items-end sm:ml-4">
+    <button
+      onClick={() => navigate("/timekeepingAdjApproval")}
+      className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-2"
+    >
+      DTR Approval
+    </button>
+  </div>
+
 </div>
-
-
-
-
-
 
           {/* View Mode Toggle */}
             <div className="flex gap-2 mb-4">
@@ -1520,97 +1492,6 @@ return (
 
     </div>
     
-    {/* Daily Time Record Table */}
-    {/* {records.length > 0 && (
-      <div className="mt-4 p-4 bg-white rounded-lg shadow-md overflow-x-auto">
-            <h2 className="text-base font-bold mb-4">Daily Time Record Summary</h2>
-            
-            <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-4">
-                <div className="flex flex-row gap-4 w-full md:w-auto">
-                    <div className="w-1/2">
-                        <label htmlFor="startDate" className="block text-xs md:text-sm font-bold text-gray-700">Start Date</label>
-                        <input
-                            type="date"
-                            id="startDate"
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="mt-1 block w-full px-2 py-1 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-[10px] md:text-sm"
-                        />
-                    </div>
-                    <div className="w-1/2">
-                        <label htmlFor="endDate" className="block text-xs md:text-sm font-bold text-gray-700">End Date</label>
-                        <input
-                            type="date"
-                            id="endDate"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="mt-1 block w-full px-2 py-1 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 text-[10px] md:text-sm"
-                        />
-                    </div>
-                </div>
-                <button
-                    onClick={handleExport}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-md shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 w-full md:w-auto text-[10px] md:text-sm"
-                >
-                    Export
-                </button>
-            </div>
-
-            <table className="min-w-full table-auto border-collapse">
-                <thead>
-                    <tr className="border-b">
-                        <th className="px-1 py-2 text-left text-[8px] md:text-sm">Date</th>
-                        <th className="px-1 py-2 text-left text-[8px] md:text-sm">Time In</th>
-                        {isImageCaptureRequired && (<th className="px-1 py-2 text-center text-[8px] md:text-sm">Capture</th>)}
-                        {isLocationRequired && (<th className="px-1 py-2 text-left text-[8px] md:text-sm">Location</th>)}
-                        <th className="px-1 py-2 text-left text-[8px] md:text-sm">Break In</th>
-                        <th className="px-1 py-2 text-left text-[8px] md:text-sm">Break Out</th>
-                        <th className="px-1 py-2 text-left text-[8px] md:text-sm">Time Out</th>
-                        {isImageCaptureRequired && (<th className="px-1 py-2 text-center text-[8px] md:text-sm">Capture</th>)}
-                        {isLocationRequired && (<th className="px-1 py-2 text-left text-[8px] md:text-sm">Location</th>)}
-                        <th className="px-1 py-2 text-right text-[8px] md:text-sm">Worked (hrs)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {filteredRecords.length > 0 ? (
-                        filteredRecords.map((record, index) => (
-                            <tr key={index} className="border-b hover:bg-gray-50">
-                                <td className="px-1 py-1 text-[8px] md:text-xs">{dayjs(record.date).format("MM/DD/YYYY")}</td>
-                                <td className="px-1 py-1 text-[8px] md:text-xs">{record.time_in ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}</td>
-                                {isImageCaptureRequired && (
-                                    <td className="px-1 py-1"><div className="flex justify-center">{record.time_in_image_id && <img src={`${IMAGE_BASE_URL}/${record.time_in_image_id}.jpeg`} alt="Time In" className="rounded-lg" style={{ width: "90px", height: "80px", objectFit: 'cover' }} />}</div></td>
-                                )}
-                                {isLocationRequired && <td className="px-1 py-1 text-[8px] md:text-xs max-w-[200px] break-words">{record.time_in_address || "N/A"}</td>}
-                                <td className="px-1 py-1 text-[8px] md:text-xs">{record.break_in ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}</td>
-                                <td className="px-1 py-1 text-[8px] md:text-xs">{record.break_out ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}</td>
-                                <td className="px-1 py-1 text-[8px] md:text-xs">{record.time_out ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}</td>
-                                {isImageCaptureRequired && (
-                                    <td className="px-1 py-1"><div className="flex justify-center">{record.time_out_image_id && <img src={`${IMAGE_BASE_URL}/${record.time_out_image_id}.jpeg`} alt="Time Out" className="rounded-lg" style={{ width: "90px", height: "80px", objectFit: 'cover' }} />}</div></td>
-                                )}
-                                {isLocationRequired && <td className="px-1 py-1 text-[8px] md:text-xs max-w-[200px] break-words">{record.time_out_address || "N/A"}</td>}
-                                <td className="px-1 py-1 text-[8px] md:text-xs text-right font-medium">{record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs"}</td>
-                            </tr>
-                        ))
-                    ) : (
-                        <tr>
-                            <td colSpan={calculateColSpan() + 1} className="text-center py-4 text-gray-500">No records found for the selected date range.</td>
-                        </tr>
-                    )}
-                </tbody>
-                
-                <tfoot>
-                    <tr className="border-t-2 border-gray-300 bg-blue-50">
-                        <td colSpan={calculateColSpan()} className="px-2 py-1 text-left text-[8px] md:text-sm font-bold text-gray-700">
-                            Total Hours:
-                        </td>
-                        <td className="px-2 py-1 text-right text-[8px] md:text-xs font-bold text-gray-900">
-                            {totalWorkedHours.toFixed(2)} hrs
-                        </td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    )} */}
   </div>
 );
 
