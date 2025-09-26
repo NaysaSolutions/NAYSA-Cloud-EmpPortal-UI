@@ -75,7 +75,7 @@ function LoginPortal() {
         <div className="bg-[linear-gradient(to_bottom,#7392b7,#d8e1e9)] flex items-center justify-center min-h-screen px-4">
             <div className="bg-[linear-gradient(to_bottom,#7392b7,#d8e1e9)] relative px-6 sm:px-10 py-10 rounded-3xl shadow-2xl w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-md xl:max-w-md">
                 <div className="flex flex-col items-center justify-center mb-6">
-                    <img src="/naysa_logo.png" alt="NAYSA Logo" className="w-24 h-auto mb-4" />
+                    <img src="/naysa_logo.png" alt="NAYSA Logo" className="w-[100px] h-[100px] mb-4" />
                     <h2 className="text-xl font-semibold text-blue-900 tracking-tight">NAYSA Employee Portal</h2>
                 </div>
 
@@ -104,8 +104,8 @@ function LoginPortal() {
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200"
                         />
                     </div>
-                    <div className="text-right mb-6">
-                        <Link to="/forgot-password" className="text-sm font-semibold text-blue-900 hover:text-blue-700 transition duration-200">
+                    <div className="text-right">
+                        <Link to="/forgot-password" className="text-sm font-semibold text-blue-700 hover:text-blue-700 transition duration-200">
                             Forgot Password?
                         </Link>
                     </div>
@@ -116,7 +116,7 @@ function LoginPortal() {
                     >
                         {loading ? "Signing in..." : "Sign In"}
                     </button>
-                    <div className="text-center mt-6">
+                    <div className="text-center ">
                         <span className="text-sm text-blue-900">Don't have an account?&nbsp;</span>
                         <Link to="/Register" className="text-sm font-semibold text-blue-700 hover:text-blue-800 hover:underline transition duration-200">
                             Sign up

@@ -48,6 +48,7 @@ const Timekeeping = ({ onBreakStart }) => {
     const [countdown, setCountdown] = useState(0); // Countdown for image capture
     const [fetchRecords, setFetchRecords] = useState([]);
     const [todayRecord, setTodayRecord] = useState(null);
+    const [loading, setLoading] = useState({ show: false, message: "" });
 
 
     const [userLocation, setUserLocation] = useState(null);
@@ -485,182 +486,235 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
         });
     }, [verifyFace, getNewImageId]);
 
+
+    const SpinnerOverlay = ({ show, message }) => {
+  if (!show) return null;
+  return (
+    <div className="fixed inset-0 z-[9999] bg-black/40 flex flex-col items-center justify-center">
+      <div className="h-12 w-12 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+      {message && (
+        <p className="mt-3 text-white text-sm font-medium text-center px-4">{message}</p>
+      )}
+    </div>
+  );
+};
+
   
     const handleTimeEvent = async (type) => {
-    if (!user?.empNo) {
-        Swal.fire("Error", "Employee number not available. Please log in.", "error");
-        return;
-    }
+  if (!user?.empNo) {
+    Swal.fire("Error", "Employee number not available. Please log in.", "error");
+    return;
+  }
 
-    try {
-        // --- MODIFIED: Initialize variables to hold optional data ---
-        let userCoords = null;
-        let address = "N/A"; // Default value if location is not captured
-        let capturedImageInfo = null;
+  try {
+    let userCoords = null;
+    let address = "N/A";
+    let capturedImageInfo = null;
 
-        // --- MODIFIED: Conditionally check for location ---
-        if (isLocationRequired) {
-            Swal.fire({
-                title: "Getting your location...",
-                showConfirmButton: false,
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading(),
-            });
+    // --- Location ---
+    if (isLocationRequired) {
+      setLoading({ show: true, message: "Getting your location..." });
 
-            // 🔍 Step 1: Get User Location
-            const getUserLocation = () =>
-                new Promise((resolve, reject) => {
-                    if (!navigator.geolocation) {
-                        reject(new Error("Geolocation not supported by your browser."));
-                        return;
-                    }
-                    navigator.geolocation.getCurrentPosition(
-                        (position) => {
-                            const { latitude, longitude } = position.coords;
-                            resolve({ latitude, longitude });
-                        },
-                        (err) => reject(err),
-                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-                    );
-                });
-            
-            userCoords = await getUserLocation();
-
-            // 📍 Step 2: Reverse Geocode & Check Radius
-            address = await reverseGeocode(userCoords.latitude, userCoords.longitude);
-            setLocationAddress(address);
-
-            // empBranchLoc.geofence
-            console.log('Branch Location for Geofencing:', branchLocation.geofence);
-            if (Number(branchLocation.geofence) === 1) { 
-            const isAllowedLocation = isWithinRadius(
-                userCoords.latitude,
-                userCoords.longitude,
-                branchLocation.coordinates.latitude,
-                branchLocation.coordinates.longitude,
-                branchLocation.allowedRadius
-            );
-
-            if (!isAllowedLocation) {
-                Swal.fire({
-                    title: "Location Error",
-                    html: `
-                        <p>You are not within the allowed location range.</p><br/>
-                        <p><strong>📍Current Location:</strong><br/> ${address}</p><br/>
-                        <p><strong>📍Assigned Location:</strong><br/> ${branchLocation.address}</p>
-                    `,
-                    icon: "error",
-                    confirmButtonText: "Okay",
-                });
-                return; // Stop execution if location is not allowed
-            }
-        }
-        Swal.close(); // Close location loading indicator
-    }
-
-        // --- MODIFIED: Conditionally capture and verify face ---
-        if (isImageCaptureRequired) {
-            // 📸 Step 4: Capture & Verify Face
-            Swal.fire({
-                title: `Please look at the camera for ${type}...`,
-                text: "Preparing for capture...",
-                showConfirmButton: false,
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading(),
-            });
-
-            capturedImageInfo = await captureImageProcess(type);
-            if (!capturedImageInfo || !capturedImageInfo.id) {
-                Swal.fire("Failed", "Image capture or face verification failed.", "error");
-                return;
-            }
-        }
-        
-        Swal.close(); // Close any open Swal dialog
-
-        // 🕒 Step 5: Prepare time data
-        const currentTime = dayjs().format("HH:mm:ss");
-        const currentDateStr = dayjs().format("YYYY-MM-DD");
-
-        let timeInImageIdToSend = null;
-        let timeOutImageIdToSend = null;
-        let breakInImageIdToSend = null;
-        let breakOutImageIdToSend = null;
-
-        let timeInImagePath = null;
-        let timeOutImagePath = null;
-        let breakInImagePath = null;
-        let breakOutImagePath = null;
-
-        // --- MODIFIED: Only assign image info if it was captured ---
-        if (isImageCaptureRequired && capturedImageInfo) {
-            if (type === "TIME IN") {
-                setTimeIn(dayjs().format("hh:mm:ss A"));
-                timeInImageIdToSend = capturedImageInfo.id;
-                timeInImagePath = capturedImageInfo.path;
-            } else if (type === "TIME OUT") {
-                setTimeOut(dayjs().format("hh:mm:ss A"));
-                timeOutImageIdToSend = capturedImageInfo.id;
-                timeOutImagePath = capturedImageInfo.path;
-            } else if (type === "BREAK IN") {
-                setBreakIn(dayjs().format("hh:mm:ss A"));
-                breakInImageIdToSend = capturedImageInfo.id;
-                breakInImagePath = capturedImageInfo.path;
-            } else if (type === "BREAK OUT") {
-                setBreakOut(dayjs().format("hh:mm:ss A"));
-                breakOutImageIdToSend = capturedImageInfo.id;
-                breakOutImagePath = capturedImageInfo.path;
-            }
-        } else {
-             // If image capture is not required, just set the time display
-            if (type === "TIME IN") setTimeIn(dayjs().format("hh:mm:ss A"));
-            if (type === "TIME OUT") setTimeOut(dayjs().format("hh:mm:ss A"));
-            if (type === "BREAK IN") setBreakIn(dayjs().format("hh:mm:ss A"));
-            if (type === "BREAK OUT") setBreakOut(dayjs().format("hh:mm:ss A"));
-        }
-
-
-        // 📝 Step 6: Send data to backend
-        const eventData = [
-            {
-                empNo: user.empNo,
-                detail: {
-                    empNo: user.empNo,
-                    date: currentDateStr,
-                    timeIn: type === "TIME IN" ? currentTime : null,
-                    timeOut: type === "TIME OUT" ? currentTime : null,
-                    breakIn: type === "BREAK IN" ? currentTime : null,
-                    breakOut: type === "BREAK OUT" ? currentTime : null,
-                    timeInImageId: timeInImageIdToSend,
-                    timeOutImageId: timeOutImageIdToSend,
-                    breakInImageId: breakInImageIdToSend,
-                    breakOutImageId: breakOutImageIdToSend,
-                    timeInImagePath,
-                    timeOutImagePath,
-                    breakInImagePath,
-                    breakOutImagePath,
-                    // --- MODIFIED: Use optional chaining to safely access coordinates ---
-                    latitude: userCoords?.latitude ?? null,
-                    longitude: userCoords?.longitude ?? null,
-                    locationAddress: address
-                },
+      const getUserLocation = () =>
+        new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error("Geolocation not supported by your browser."));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const { latitude, longitude } = position.coords;
+              resolve({ latitude, longitude });
             },
-        ];
+            (err) => reject(err),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+          );
+        });
 
-        console.log("Upsert Payload:", eventData);
-        const response = await axios.post(API_ENDPOINTS.upsertTimeIn, eventData);
+      userCoords = await getUserLocation();
 
-        if (response.data.status === "success") {
-            Swal.fire("Success", `${type} recorded successfully!`, "success");
-            fetchDTRRecords();
-        } else {
-            Swal.fire("Error", response.data.message || `Failed to record ${type}.`, "error");
-        }
-    } catch (err) {
-        Swal.close();
-        Swal.fire("Error", err.message || "An unexpected error occurred.", "error");
+      setLoading({ show: true, message: "Verifying location..." });
+      address = await reverseGeocode(userCoords.latitude, userCoords.longitude);
+      setLocationAddress(address);
+
+      if (Number(branchLocation.geofence) === 1) {
+        const isAllowedLocation = isWithinRadius(
+          userCoords.latitude,
+          userCoords.longitude,
+          branchLocation.coordinates.latitude,
+          branchLocation.coordinates.longitude,
+          branchLocation.allowedRadius
+        );
+
+      if (!isAllowedLocation) {
+  setLoading({ show: false, message: "" });
+
+  const isMobile = window.matchMedia("(max-width: 640px)").matches; // Tailwind sm breakpoint
+
+Swal.fire({
+  icon: "error",
+  title: "Location Error",
+  html: `
+    <div class="text-left text-sm leading-snug">
+      <p><strong>📍 Current:</strong> ${address}</p>
+      <p><strong>🏢 Assigned:</strong> ${branchLocation.address}</p>
+    </div>
+  `,
+  toast: true,
+  position: "top",                     // center horizontally
+  width: isMobile ? "92vw" : "34rem",  // compact on mobile, wider on desktop
+  timer: 5000,
+  timerProgressBar: true,
+  showConfirmButton: false,
+  customClass: {
+    // Force container centering in case something else set it to end/right
+    container: "!justify-center !items-start", // Tailwind utilities -> center horizontally
+    popup: "mt-20 p-3 sm:p-4 rounded-xl shadow-lg", // push down from the very top
+    title: "text-base font-semibold",
+    icon: "text-red-500",
+  },
+});
+
+
+
+  return;
+}
+      }
+
+      setLoading({ show: false, message: "" });
     }
+
+    // --- Capture & verify image ---
+    if (isImageCaptureRequired) {
+      setLoading({ show: true, message: `Preparing camera for ${type}...` });
+      capturedImageInfo = await captureImageProcess(type);
+
+      if (!capturedImageInfo || !capturedImageInfo.id) {
+        setLoading({ show: false, message: "" });
+        Swal.fire("Failed", "Image capture or face verification failed.", "error");
+        return;
+      }
+      setLoading({ show: false, message: "" });
+    }
+
+    // --- Proceed with saving record ---
+    const currentTime = dayjs().format("HH:mm:ss");
+    const currentDateStr = dayjs().format("YYYY-MM-DD");
+
+    let timeInImageIdToSend = null;
+    let timeOutImageIdToSend = null;
+    let breakInImageIdToSend = null;
+    let breakOutImageIdToSend = null;
+
+    let timeInImagePath = null;
+    let timeOutImagePath = null;
+    let breakInImagePath = null;
+    let breakOutImagePath = null;
+
+    if (isImageCaptureRequired && capturedImageInfo) {
+      if (type === "TIME IN") {
+        setTimeIn(dayjs().format("hh:mm:ss A"));
+        timeInImageIdToSend = capturedImageInfo.id;
+        timeInImagePath = capturedImageInfo.path;
+      } else if (type === "TIME OUT") {
+        setTimeOut(dayjs().format("hh:mm:ss A"));
+        timeOutImageIdToSend = capturedImageInfo.id;
+        timeOutImagePath = capturedImageInfo.path;
+      } else if (type === "BREAK IN") {
+        setBreakIn(dayjs().format("hh:mm:ss A"));
+        breakInImageIdToSend = capturedImageInfo.id;
+        breakInImagePath = capturedImageInfo.path;
+      } else if (type === "BREAK OUT") {
+        setBreakOut(dayjs().format("hh:mm:ss A"));
+        breakOutImageIdToSend = capturedImageInfo.id;
+        breakOutImagePath = capturedImageInfo.path;
+      }
+    } else {
+      if (type === "TIME IN") setTimeIn(dayjs().format("hh:mm:ss A"));
+      if (type === "TIME OUT") setTimeOut(dayjs().format("hh:mm:ss A"));
+      if (type === "BREAK IN") setBreakIn(dayjs().format("hh:mm:ss A"));
+      if (type === "BREAK OUT") setBreakOut(dayjs().format("hh:mm:ss A"));
+    }
+
+    const eventData = [
+      {
+        empNo: user.empNo,
+        detail: {
+          empNo: user.empNo,
+          date: currentDateStr,
+          timeIn: type === "TIME IN" ? currentTime : null,
+          timeOut: type === "TIME OUT" ? currentTime : null,
+          breakIn: type === "BREAK IN" ? currentTime : null,
+          breakOut: type === "BREAK OUT" ? currentTime : null,
+          timeInImageId: timeInImageIdToSend,
+          timeOutImageId: timeOutImageIdToSend,
+          breakInImageId: breakInImageIdToSend,
+          breakOutImageId: breakOutImageIdToSend,
+          timeInImagePath,
+          timeOutImagePath,
+          breakInImagePath,
+          breakOutImagePath,
+          latitude: userCoords?.latitude ?? null,
+          longitude: userCoords?.longitude ?? null,
+          locationAddress: address,
+        },
+      },
+    ];
+
+    console.log("Upsert Payload:", eventData);
+    const response = await axios.post(API_ENDPOINTS.upsertTimeIn, eventData);
+
+    if (response.data.status === "success") {
+      Swal.fire({
+    icon: "success",
+    title: "Success",
+    text: `${type} recorded successfully!`,
+    toast: true,
+    position: "top",
+    timer: 4000,
+    timerProgressBar: true,
+    showConfirmButton: false,
+    customClass: {
+      popup: "w-auto max-w-sm sm:max-w-md p-3 text-md mt-[150px]",
+      title: "text-base font-semibold",
+    },
+  });
+      fetchDTRRecords();
+    } else {
+      Swal.fire({
+    icon: "error",
+    title: "Error",
+    text: response.data.message || `Failed to record ${type}.`,
+    toast: true,
+    position: "top",
+    timer: 4000,
+    timerProgressBar: true,
+    showConfirmButton: false,
+    customClass: {
+      popup: "w-auto max-w-sm sm:max-w-md p-3 text-md mt-[150px]",
+      title: "text-base font-semibold",
+    },
+  });
+    }
+  } catch (err) {
+    setLoading({ show: false, message: "" });
+    Swal.fire({
+    icon: "error",
+    title: "Error",
+    text: err.message || "An unexpected error occurred.",
+    toast: true,
+    position: "top",
+    timer: 4000,
+    timerProgressBar: true,
+    showConfirmButton: false,
+    customClass: {
+      popup: "w-auto max-w-sm sm:max-w-md p-3 text-md mt-[150px]",
+      title: "text-base font-semibold",
+    },
+  });
+  }
 };
+
 
     const fetchDTRRecords = useCallback(async () => {
         if (!user?.empNo || !startDate || !endDate) return;
@@ -1491,7 +1545,7 @@ return (
       </div>
 
     </div>
-    
+    <SpinnerOverlay show={loading.show} message={loading.message} />
   </div>
 );
 

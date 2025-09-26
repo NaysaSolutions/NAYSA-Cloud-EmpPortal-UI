@@ -23,7 +23,7 @@ function Register() {
     
         setLoading(true);
         try {
-            const response = await axios.post('http://localhost:8000/api/register', formData);
+            const response = await axios.post('/api/register', formData);
             
             await Swal.fire({
                 title: 'Registration Successful!',

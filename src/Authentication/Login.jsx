@@ -23,7 +23,7 @@ function Login() {
         setLoading(true);
     
         try {
-            const response = await axios.post('http://localhost:8000/api/login', formData);
+            const response = await axios.post('/api/loginEmp', formData);
     
             if (response.data.status === 'success') {
                 await Swal.fire({

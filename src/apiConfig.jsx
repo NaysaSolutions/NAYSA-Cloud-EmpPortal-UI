@@ -10,8 +10,8 @@
 // const IMAGE_BASE_URL = "/images/timekeeping_images";
 
 const API_BASE_URL = "http://127.0.0.1:8000/api";
-const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
-const IMAGE_BASE_URL  = "http://127.0.0.1:8000/images/timekeeping_images";
+const MODEL_BASE_URL = "http://127.0.0.1:8000/api/models";
+const IMAGE_BASE_URL  = "http://127.0.0.1:8000/api/images/timekeeping_images";
 
 // This URL should be updated based on the environment (development, production, etc.)   
 
