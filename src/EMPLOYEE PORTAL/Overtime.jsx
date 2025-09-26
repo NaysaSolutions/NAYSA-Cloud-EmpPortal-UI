@@ -17,15 +17,41 @@ const OvertimeApplication = () => {
   const [remarks, setRemarks] = useState("");
   const [error, setError] = useState(null); // State to store any error messages encountered during data fetching.
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" }); // State to manage sorting configuration, tracking which key is sorted and in what direction.
-  const [searchFields, setSearchFields] = useState({ 
-    date: "",
-    // durationDays: "",
+  
+  const monthStart = dayjs().startOf('month').format('YYYY-MM-DD');
+  const monthEnd   = dayjs().endOf('month').format('YYYY-MM-DD');
+
+  const [searchFields, setSearchFields] = useState({
+    otDateStart: monthStart,
+    otDateEnd: monthEnd,
     durationHours: "",
-    type: "",
-    remark: "",
+    otType: "",
+    otRemarks: "",
     appRemarks: "",
-    status: "",
+    otStatus: "",
   });
+
+
+    // Map "UI keys" to actual data keys in your entries
+  const FIELD_MAP = {
+    date: "otDate",
+    durationHours: "otHrs",
+    type: "otType",
+    remark: "otRemarks",
+    appRemarks: "appRemarks",
+    status: "otStatus",
+  };
+
+  // for table search row convenience (keeps your current column order)
+  const TABLE_SEARCH_FIELDS = [
+    { uiKey: "date",        label: "OT Date" },         // becomes date range (two inputs)
+    { uiKey: "durationHours", label: "Duration" },      // maps to otHrs
+    { uiKey: "type",        label: "Overtime Type" },   // maps to otType
+    { uiKey: "remark",      label: "Remarks" },         // maps to otRemarks
+    { uiKey: "appRemarks",  label: "Approver's Remarks" },
+    { uiKey: "status",      label: "Status" },          // maps to otStatus
+  ];
+
 
   // Add this at the top of your component file
 const overtimeTypeMap = {
@@ -34,6 +60,19 @@ const overtimeTypeMap = {
   'RD': 'Rest Day',
   'Regular Day': 'Regular Overtime', // Handle legacy values
 };
+
+// View mode: 'card' | 'table' | 'accordion' (accordion optional)
+const [viewMode, setViewMode] = useState('card');
+
+// Auto-default to 'card' on small screens, 'table' on md+
+useEffect(() => {
+  const mq = window.matchMedia('(min-width: 768px)'); // md breakpoint
+  const setByScreen = () => setViewMode(mq.matches ? 'table' : 'card');
+  setByScreen();
+  mq.addEventListener('change', setByScreen);
+  return () => mq.removeEventListener('change', setByScreen);
+}, []);
+
 
 const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
 
@@ -97,79 +136,113 @@ const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
     
 
   // Sorting Function
-  const sortData = (key) => { // Function to handle sorting of data based on the selected key.
+const sortData = (uiKey) => {
+  const key = FIELD_MAP[uiKey] || uiKey; // map to real data key
 
-    let direction = "asc"; // Default sorting direction is ascending.
+  let direction = "asc";
+  if (sortConfig.key === key && sortConfig.direction === "asc") {
+    direction = "desc";
+  }
+  setSortConfig({ key, direction });
 
-    if (sortConfig.key === key && sortConfig.direction === "asc") { // If already sorted in ascending order, switch to descending.
-
-      direction = "desc"; 
+  const sorted = [...filteredApplications].sort((a, b) => {
+    // date
+    if (key === "otDate") {
+      const av = dayjs(a.otDate).valueOf();
+      const bv = dayjs(b.otDate).valueOf();
+      return direction === "asc" ? av - bv : bv - av;
     }
+    // numeric hours
+    if (key === "otHrs") {
+      const av = parseFloat(a.otHrs ?? 0);
+      const bv = parseFloat(b.otHrs ?? 0);
+      return direction === "asc" ? av - bv : bv - av;
+    }
+    // strings
+    const av = String(a[key] ?? "");
+    const bv = String(b[key] ?? "");
+    return direction === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
 
-    setSortConfig({ key, direction }); // Updating the sorting configuration state.
+  setFilteredApplications(sorted);
+};
 
-    const sortedData = [...filteredApplications].sort((a, b) => { 
-    // Sorting a copy of the filteredApplications array.
-
-      if (key === "date") { 
-      // If sorting by date, convert values to Unix timestamps for comparison.
-
-        return direction === "asc"
-          ? dayjs(a[key]).unix() - dayjs(b[key]).unix()
-          : dayjs(b[key]).unix() - dayjs(a[key]).unix();
-
-      } else if (key === "durationHours") { 
-      // If sorting by duration hours, convert values to floating-point numbers.
-
-        return direction === "asc"
-          ? parseFloat(a[key]) - parseFloat(b[key])
-          : parseFloat(b[key]) - parseFloat(a[key]);
-
-      } else { 
-      // Default case: Compare as strings using localeCompare.
-
-        return direction === "asc"
-          ? a[key]?.toString().localeCompare(b[key]?.toString())
-          : b[key]?.toString().localeCompare(a[key]?.toString());
-      }
-    });
-
-    setFilteredApplications(sortedData); 
-    // Updating the state with the sorted applications.
-  };
 
   // Search Function
-  const handleSearchChange = (e, key) => { 
-  // Function to update search state and filter results dynamically.
+  const handleSearchChange = (e, key) => {
+  const { value } = e.target;
+  setSearchFields((prev) => ({ ...prev, [key]: value }));
+};
 
-    const { value } = e.target; 
-    // Extracting the input value.
+useEffect(() => {
+  let filtered = [...overtimeApplications];
 
-    setSearchFields((prev) => ({ ...prev, [key]: value })); 
-    // Updating the search state with the new value.
+  // Date range filter
+  const hasStart = !!searchFields.otDateStart;
+  const hasEnd   = !!searchFields.otDateEnd;
+  if (hasStart || hasEnd) {
+    filtered = filtered.filter((app) => {
+      const d = dayjs(app.otDate).format("YYYY-MM-DD");
+      const afterStart = hasStart ? d >= searchFields.otDateStart : true;
+      const beforeEnd  = hasEnd   ? d <= searchFields.otDateEnd   : true;
+      return afterStart && beforeEnd;
+    });
+  }
 
-    const filtered = overtimeApplications.filter((app) => 
-    // Filtering applications based on whether the search key includes the input value.
-
-      app[key]?.toString().toLowerCase().includes(value.toLowerCase())
+  // Text/number filters
+  if (searchFields.durationHours) {
+    // supports partial numeric text match (e.g., "1.5")
+    filtered = filtered.filter((app) =>
+      String(app.otHrs ?? "").toLowerCase().includes(searchFields.durationHours.toLowerCase())
     );
+  }
+  // if (searchFields.otType) {
+  //   filtered = filtered.filter((app) =>
+  //     String(app.otType ?? "").toLowerCase().includes(searchFields.otType.toLowerCase())
+  //   );
+  // }
 
-    setFilteredApplications(filtered); 
-    // Updating the filteredApplications state.
+  if (searchFields.otType) {
+  filtered = filtered.filter(app => {
+    const norm = app?.otType === "Regular Day" ? "REG" : app?.otType;
+    return norm === searchFields.otType;
+  });
+}
 
-    setCurrentPage(1); 
-    // Resetting to the first page after filtering.
-  };
+  if (searchFields.otRemarks) {
+    filtered = filtered.filter((app) =>
+      String(app.otRemarks ?? "").toLowerCase().includes(searchFields.otRemarks.toLowerCase())
+    );
+  }
+  if (searchFields.appRemarks) {
+    filtered = filtered.filter((app) =>
+      String(app.appRemarks ?? "").toLowerCase().includes(searchFields.appRemarks.toLowerCase())
+    );
+  }
+  // if (searchFields.otStatus) {
+  //   filtered = filtered.filter((app) =>
+  //     String(app.otStatus ?? "").toLowerCase().includes(searchFields.otStatus.toLowerCase())
+  //   );
+    
+  // }
+
+  // Status exact match
+if (searchFields.otStatus) {
+  filtered = filtered.filter(app => (app?.otStatus || "") === searchFields.otStatus);
+}
+
+  setFilteredApplications(filtered);
+  setCurrentPage(1);
+}, [searchFields, overtimeApplications]);
+
 
   // Function to display sort indicator (↑ or ↓)
-  const getSortIndicator = (key) => { 
-  // Function to return an arrow indicator for sorting.
-
-    if (sortConfig.key !== key) return ""; 
-    // If the key is not currently sorted, return an empty string.
-
-    return sortConfig.direction === "asc" ? "↑" : "↓"; // arrow symbol based on sorting direction.
+  const getSortIndicator = (uiKey) => {
+    const key = FIELD_MAP[uiKey] || uiKey;
+    if (sortConfig.key !== key) return "";
+    return sortConfig.direction === "asc" ? "↑" : "↓";
   };
+
 
   const handleSubmit = async () => {
     // Check if any required fields are empty
@@ -288,6 +361,29 @@ useEffect(() => {
   }
 }, [otDate]); // Runs whenever otDate changes
 
+// Unique type options (normalize legacy "Regular Day" -> "REG")
+const typeOptions = React.useMemo(() => {
+  const set = new Set();
+  overtimeApplications.forEach(app => {
+    const raw = app?.otType;
+    if (!raw) return;
+    const norm = raw === "Regular Day" ? "REG" : raw;
+    set.add(norm);
+  });
+  return Array.from(set).sort();
+}, [overtimeApplications]);
+
+// Unique status options
+const statusOptions = React.useMemo(() => {
+  const set = new Set();
+  overtimeApplications.forEach(app => {
+    const s = app?.otStatus?.trim();
+    if (s) set.add(s);
+  });
+  return Array.from(set).sort();
+}, [overtimeApplications]);
+
+
   return (
     <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[200px] mt-[80px] p-4 sm:p-6 bg-gray-100 min-h-screen">
       <div className="mx-auto">
@@ -373,8 +469,8 @@ useEffect(() => {
           </div>
 
           {/* Submit Button */}
-          <div className="mt-6 flex justify-center">
-            <button className="bg-blue-500 text-white px-12 py-2 rounded-md text-md sm:text-lg hover:bg-blue-600 w-full sm:w-auto mx-auto"
+          <div className="mt-4 flex justify-center">
+            <button className="bg-blue-800 text-white px-12 py-2 rounded-md text-md sm:text-base hover:bg-blue-700 w-full sm:w-auto mx-auto"
             onClick={handleSubmit}>
               Submit
             </button>
@@ -382,87 +478,361 @@ useEffect(() => {
         </div>
 
 
+{/* Quick filters for Card/Accordion view (mobile-friendly) */}
+{/* {(viewMode !== 'table') && ( */}
+  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+  {/* Start Date */}
+  <input
+    type="date"
+    value={searchFields.otDateStart}
+    onChange={(e) =>
+      setSearchFields((prev) => ({ ...prev, otDateStart: e.target.value }))
+    }
+    className="w-full px-2 py-2 border rounded text-sm"
+    placeholder="Start Date"
+  />
+  {/* End Date */}
+  <input
+    type="date"
+    value={searchFields.otDateEnd}
+    onChange={(e) =>
+      setSearchFields((prev) => ({ ...prev, otDateEnd: e.target.value }))
+    }
+    className="w-full px-2 py-2 border rounded text-sm"
+    placeholder="End Date"
+  />
+<select
+  value={searchFields.otType}
+  onChange={(e) => setSearchFields(prev => ({ ...prev, otType: e.target.value }))}
+  className="w-full px-2 py-2 border rounded text-sm bg-white"
+>
+  <option value="">All Overtime Types</option>
+  {typeOptions.map(t => (
+    <option key={t} value={t}>
+      {getOvertimeTypeLabel(t)}
+    </option>
+  ))}
+</select>
+
+{/* Status (dropdown) */}
+<select
+  value={searchFields.otStatus}
+  onChange={(e) => setSearchFields(prev => ({ ...prev, otStatus: e.target.value }))}
+  className="w-full px-2 py-2 border rounded text-sm bg-white"
+>
+  <option value="">All Status</option>
+  {statusOptions.map(s => (
+    <option key={s} value={s}>
+      {s}
+    </option>
+  ))}
+</select>
+
+</div>
+
+
+{/* )} */}
+
+
+
         {/* Overtime History Table */}
-        <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-  <h2 className="text-base font-semibold mb-4">Overtime Application History</h2>
+<div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+  {/* Header + View Toggle (from step 3) */}
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+    <h2 className="text-base font-semibold">Overtime Application History</h2>
+    <div className="inline-flex rounded-lg border overflow-hidden self-start">
+      <button
+        className={`px-8 py-2 text-sm ${viewMode === 'card' ? 'bg-blue-800 text-white' : 'bg-white'}`}
+        onClick={() => setViewMode('card')}
+      >
+        Card
+      </button>
+      <button
+        className={`px-8 py-2 text-sm border-l ${viewMode === 'accordion' ? 'bg-blue-800 text-white' : 'bg-white'}`}
+        onClick={() => setViewMode('accordion')}
+      >
+        Accordion
+      </button>
+            <button
+        className={`px-8 py-2 text-sm border-l ${viewMode === 'table' ? 'bg-blue-800 text-white' : 'bg-white'}`}
+        onClick={() => setViewMode('table')}
+      >
+        Table
+      </button>
+    </div>
+  </div>
 
-  {error && <p className="text-red-500 text-center">{error}</p>}
+  {error && <p className="text-red-500 text-center mt-2">{error}</p>}
 
-  {/* Scrollable Table Container */}
-  <div className="w-full overflow-x-auto">
-    <table className="min-w-[800px] w-full text-sm text-center border">
-      <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm lg:text-sm">
-        <tr>
-          {[
-            { key: "date", label: "OT Date" },
-            { key: "durationHours", label: "Duration" },
-            { key: "type", label: "Overtime Type" },
-            { key: "remark", label: "Remarks" },
-            { key: "appRemarks", label: "Approver's Remarks" },
-            { key: "status", label: "Status" },
-          ].map(({ key, label }) => (
-            <th
-              key={key}
-              className="py-2 px-3 cursor-pointer whitespace-nowrap"
-              onClick={() => sortData(key)}
-            >
-              {label} {getSortIndicator(key)}
-            </th>
-          ))}
-        </tr>
-
-        <tr>
-          {Object.keys(searchFields).map((key) => (
-            <td key={key} className="px-2 py-2 whitespace-nowrap">
-              <input
-                type="text"
-                value={searchFields[key]}
-                onChange={(e) => handleSearchChange(e, key)}
-                className="w-full px-2 py-1 border rounded text-sm"
-              />
-            </td>
-          ))}
-        </tr>
-      </thead>
-
-      <tbody className="global-tbody">
+  {/* Card View */}
+  {viewMode === 'card' && (
+    <>
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {currentRecords.length > 0 ? (
-          currentRecords.map((entry, index) => {
-            const textColor =
+          currentRecords.map((entry, idx) => {
+            const statusClass =
               entry.otStatus === "Pending"
-              ? "global-td-status-pending"
-              : entry.otStatus === "Approved"
-              ? "global-td-status-approved"
-              : "global-td-status-disapproved";
+                ? "text-yellow-700 bg-yellow-100 font-semibold"
+                : entry.otStatus === "Approved"
+                ? "text-blue-700 bg-blue-100 font-semibold"
+                : "text-red-700 bg-red-100 font-semibold";
 
             return (
-              <tr
-                key={index}
-                className={`global-tr ${textColor}`}
+              <div key={idx} className="border rounded-lg p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-semibold">
+                    {dayjs(entry.otDate).format("MM/DD/YYYY")}
+                  </div>
+                  <span
+                className={`inline-flex justify-center items-center text-sm w-28 py-1 md:py-2 rounded-lg ${statusClass}`}
               >
-                <td className="global-td text-center whitespace-nowrap">
-                  {dayjs(entry.otDate).format("MM/DD/YYYY")}
-                </td>
-                <td className="global-td text-right whitespace-nowrap">{entry.otHrs} hr(s)</td>
-                <td className="global-td text-left whitespace-nowrap">{getOvertimeTypeLabel(entry.otType)}</td>
-                <td className="global-td text-left">{entry.otRemarks || "N/A"}</td>
-                <td className="global-td text-left">{entry.appRemarks || "N/A"}</td>
-                <td className="global-td-status">{entry.otStatus || "N/A"}</td>
-              </tr>
+                {entry.otStatus || "N/A"}
+              </span>
+                </div>
+
+                <div className="space-y-1 text-[12px] md:text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-semibold">Hours</span>
+                    <span className="font-medium">{entry.otHrs} hr(s)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500 font-semibold">Type</span>
+                    <span className="font-medium">{getOvertimeTypeLabel(entry.otType)}</span>
+                  </div>
+                  <br></br>
+                  <div>
+                    <div className="text-gray-500 font-semibold">Employee Remarks:</div>
+                    
+                    <div className="font-normal break-words text-black">{entry.otRemarks || "N/A"}</div>
+                  </div>                
+                  <br></br>
+                  <div>
+                    <div className="text-gray-500 font-semibold">Approver's Remarks:</div>
+                    <div className="font-normal break-words text-blue-700">{entry.appRemarks || "N/A"}</div>
+                  </div>
+                </div>
+              </div>
             );
           })
         ) : (
-          <tr>
-            <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
-              No overtime applications found.
-            </td>
-          </tr>
+          <div className="col-span-full text-center text-gray-500 py-6">
+            No overtime applications found.
+          </div>
         )}
-      </tbody>
-    </table>
-  </div>
+      </div>
+    </>
+  )}
 
-  {/* Pagination */}
+  {/* Accordion View (optional compact summary) */}
+{viewMode === 'accordion' && (
+  <div className="mt-4 divide-y border rounded-lg">
+    {currentRecords.length > 0 ? (
+      currentRecords.map((entry, idx) => {
+        const statusClass =
+          entry.otStatus === "Pending"
+            ? "text-yellow-700 bg-yellow-100 font-semibold"
+            : entry.otStatus === "Approved"
+            ? "text-blue-700 bg-blue-100 font-semibold"
+            : "text-red-700 bg-red-100 font-semibold";
+
+        return (
+          <details key={idx} className="group p-2 text-[12px] md:text-sm">
+            <summary className="flex items-center justify-between cursor-pointer list-none">
+              <div className="font-medium">
+                {dayjs(entry.otDate).format("MM/DD/YYYY")} • {entry.otHrs} hr(s) • {getOvertimeTypeLabel(entry.otType)}
+              </div>
+              <span
+                className={`inline-flex justify-center items-center w-28 py-1 rounded-lg ${statusClass}`}
+              >
+                {entry.otStatus || "N/A"}
+              </span>
+            </summary>
+            <div className="mt-3 space-y-2">
+              <div>
+                <div className="text-gray-500 font-semibold">Remarks</div>
+                <div>{entry.otRemarks || "N/A"}</div>
+              </div>
+              <div>
+                <div className="text-gray-500 font-semibold">Approver's Remarks</div>
+                <div className="text-blue-800">{entry.appRemarks || "N/A"}</div>
+              </div>
+            </div>
+          </details>
+        );
+      })
+    ) : (
+      <div className="text-center text-gray-500 py-6">
+        No overtime applications found.
+      </div>
+    )}
+  </div>
+)}
+
+
+  {/* Table View (kept, but isolated so it doesn’t stretch the page on mobile) */}
+  {viewMode === 'table' && (
+    <div className="w-full overflow-x-auto mt-4 rounded-lg">
+      <table className="min-w-[800px] w-full text-sm text-center border ">
+        <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm lg:text-sm ">
+  <tr>
+    {[
+      { key: "date", label: "OT Date" },
+      { key: "durationHours", label: "Duration" },
+      { key: "type", label: "Overtime Type" },
+      { key: "remark", label: "Remarks" },
+      { key: "appRemarks", label: "Approver's Remarks" },
+      { key: "status", label: "Status" },
+    ].map(({ key, label }) => (
+      <th
+        key={key}
+        className="py-2 px-3 cursor-pointer whitespace-nowrap"
+        onClick={() => sortData(key)}
+      >
+        {label} {getSortIndicator(key)}
+      </th>
+    ))}
+  </tr>
+
+  {/* 🔎 Search row (Date range uses the first TWO columns) */}
+  <tr>
+    {/* Start Date (column 1: OT Date) */}
+    <td className="px-2 py-2 bg-white whitespace-nowrap">
+      <input
+        type="date"
+        value={searchFields.otDateStart}
+        onChange={(e) =>
+          setSearchFields((prev) => ({ ...prev, otDateStart: e.target.value }))
+        }
+        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
+        placeholder="Start Date"
+      />
+    </td>
+
+    {/* End Date (column 2: Duration column repurposed as Date End filter) */}
+    <td className="px-2 py-2 bg-white whitespace-nowrap">
+      <input
+        type="text"
+        value={searchFields.durationHours}
+        onChange={(e) => handleSearchChange(e, "durationHours")}
+        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
+        placeholder="Filter..."
+      />
+    </td>
+
+    {/* Type */}
+    <td className="px-2 py-2 bg-white whitespace-nowrap">
+      <input
+        type="text"
+        value={searchFields.otType}
+        onChange={(e) => handleSearchChange(e, "otType")}
+        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
+        placeholder="Filter..."
+      />
+    </td>
+
+    {/* Remarks */}
+    <td className="px-2 py-2 bg-white whitespace-nowrap">
+      <input
+        type="text"
+        value={searchFields.otRemarks}
+        onChange={(e) => handleSearchChange(e, "otRemarks")}
+        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
+        placeholder="Filter..."
+      />
+    </td>
+
+    {/* Approver's Remarks */}
+    <td className="px-2 py-2 bg-white whitespace-nowrap">
+      <input
+        type="text"
+        value={searchFields.appRemarks}
+        onChange={(e) => handleSearchChange(e, "appRemarks")}
+        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
+        placeholder="Filter..."
+      />
+    </td>
+
+    {/* Status */}
+    <td className="px-2 py-2 bg-white whitespace-nowrap">
+      <input
+        type="text"
+        value={searchFields.otStatus}
+        onChange={(e) => handleSearchChange(e, "otStatus")}
+        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
+        placeholder="Filter..."
+      />
+    </td>
+  </tr>
+</thead>
+
+
+
+       <tbody className="global-tbody">
+  {currentRecords.length > 0 ? (
+    currentRecords.map((entry, index) => {
+      const textColor =
+        entry.otStatus === "Pending"
+          ? "global-td-status-pending"
+          : entry.otStatus === "Approved"
+          ? "global-td-status-approved"
+          : "global-td-status-disapproved";
+
+      const statusClass =
+        entry.otStatus === "Pending"
+          ? "text-yellow-700 bg-yellow-100 font-semibold"
+          : entry.otStatus === "Approved"
+          ? "text-blue-700 bg-blue-100 font-semibold"
+          : "text-red-700 bg-red-100 font-semibold";
+
+      return (
+        <tr key={index} className={`global-tr ${textColor}`}>
+          <td className="global-td text-center whitespace-nowrap">
+            {dayjs(entry.otDate).format("MM/DD/YYYY")}
+          </td>
+
+          <td className="global-td text-right whitespace-nowrap">
+            {entry.otHrs} hr(s)
+          </td>
+
+          <td className="global-td text-left whitespace-nowrap">
+            {getOvertimeTypeLabel(entry.otType)}
+          </td>
+
+          {/* Remarks — truncate on one line, show full text on hover */}
+          <td className="global-td text-left max-w-[240px] truncate" title={entry.otRemarks || "N/A"}>
+            {entry.otRemarks || "N/A"}
+          </td>
+
+          {/* Approver's Remarks — truncate too */}
+          <td className="global-td text-left max-w-[240px] truncate" title={entry.appRemarks || "N/A"}>
+            {entry.appRemarks || "N/A"}
+          </td>
+
+          {/* Status badge with fixed width */}
+          <td className="global-td text-center whitespace-nowrap">
+            <span
+              className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-lg ${statusClass}`}
+            >
+              {entry.otStatus || "N/A"}
+            </span>
+          </td>
+        </tr>
+      );
+    })
+  ) : (
+    <tr>
+      <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
+        No overtime applications found.
+      </td>
+    </tr>
+  )}
+</tbody>
+
+      </table>
+    </div>
+  )}
+
+  {/* Pagination (shared) */}
   <div className="flex justify-between items-center mt-2 pt-4">
     <div className="text-sm text-gray-600">
       Showing <b>{indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries
@@ -480,7 +850,7 @@ useEffect(() => {
           key={i}
           onClick={() => setCurrentPage(i + 1)}
           className={`px-3 py-1 border-r ${
-            currentPage === i + 1 ? "bg-blue-500 text-white" : "text-gray-700 hover:bg-gray-200"
+            currentPage === i + 1 ? "bg-blue-800 text-white" : "text-gray-700 hover:bg-gray-200"
           }`}
         >
           {i + 1}
@@ -496,6 +866,7 @@ useEffect(() => {
     </div>
   </div>
 </div>
+
 
 
       </div>

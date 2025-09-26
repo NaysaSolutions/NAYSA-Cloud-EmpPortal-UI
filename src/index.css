@@ -69,8 +69,10 @@ body {
       @apply text-gray-800 text-[0.85rem] sm:text-[0.75rem] md:text-[0.85rem] lg:text-[13px] h-full;
     }
 
+
     .global-tr {
-      @apply hover:bg-blue-100 transition odd:bg-white even:bg-blue-50;
+      @apply hover:bg-blue-50 border-b border-t border-gray-100;
+      /* transition odd:bg-white even:bg-blue-50; */
     }
 
     .global-th {

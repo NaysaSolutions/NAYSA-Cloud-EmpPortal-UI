@@ -9,9 +9,20 @@
 // const MODEL_BASE_URL = "/models";             // If you have a route/controller serving models
 // const IMAGE_BASE_URL = "/images/timekeeping_images";
 
+// LOCALHOST
 const API_BASE_URL = "http://127.0.0.1:8000/api";
 const MODEL_BASE_URL = "http://127.0.0.1:8000/api/models";
 const IMAGE_BASE_URL  = "http://127.0.0.1:8000/api/images/timekeeping_images";
+
+// CLIENT SERVER
+// const API_BASE_URL = "http://win-q1lql18rg7f:8443/api";
+// const MODEL_BASE_URL = "http://win-q1lql18rg7f:8443/models";
+// const IMAGE_BASE_URL  = "http://win-q1lql18rg7f:8443/images/timekeeping_images";
+
+// CLOUD SERVER
+// const API_BASE_URL = "/api";
+// const MODEL_BASE_URL = "/models";
+// const IMAGE_BASE_URL  = "/images/timekeeping_images";
 
 // This URL should be updated based on the environment (development, production, etc.)   
 
