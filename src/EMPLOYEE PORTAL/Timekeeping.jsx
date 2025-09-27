@@ -1445,37 +1445,27 @@ return (
   </div>
 
   {/* Export Button */}
-  <div className="flex-2 sm:w-auto sm:flex sm:items-end sm:ml-4">
+  <div className="w-full sm:w-auto flex sm:items-end">
     <button
       onClick={handleExport}
-      className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-2"
+      className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2"
     >
       <Download size={16} />
       Export
     </button>
   </div>
 
-    {/* Filing Button */}
-  <div className="flex-2 sm:w-auto sm:flex sm:items-end sm:ml-4">
+  {/* Filing Button */}
+  <div className="w-full sm:w-auto flex sm:items-end">
     <button
       onClick={() => navigate("/timekeepingAdj")}
-      className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-2"
+      className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2"
     >
       DTR Adjustment
     </button>
   </div>
-
-      {/* Approval Button */}
-  <div className="flex-2 sm:w-auto sm:flex sm:items-end sm:ml-4">
-    <button
-      onClick={() => navigate("/timekeepingAdjApproval")}
-      className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center gap-2"
-    >
-      DTR Approval
-    </button>
-  </div>
-
 </div>
+
 
           {/* View Mode Toggle */}
             <div className="flex gap-2 mb-4">

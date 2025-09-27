@@ -1,31 +1,43 @@
-
-import React, { useState, useEffect, forwardRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { FaCalendarAlt } from "react-icons/fa";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 
-const CustomDateInput = forwardRef(({ value, onClick }, ref) => (
-  <div className="relative">
-    <input type="text" readOnly className="w-full p-2 pl-10 border rounded" value={value} onClick={onClick} ref={ref} />
-    <FaCalendarAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 cursor-pointer" />
-  </div>
-));
-
 const TimekeepingAdjustment = () => {
   const { user } = useAuth();
+
   const [data, setData] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [error, setError] = useState(null);
 
   // form
-  const [dtrType, setDtrType] = useState("timeIn"); // NEW
+  const [dtrType, setDtrType] = useState("timeIn");
   const [shiftDate, setShiftDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [actualDateTime, setActualDateTime] = useState(dayjs().format("YYYY-MM-DDTHH:mm"));
   const [remarks, setRemarks] = useState("");
+
+  // view / pagination
+  const [viewMode, setViewMode] = useState("card");
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+
+  // filters / sorting
+  const monthStart = dayjs().startOf("month").format("YYYY-MM-DD");
+  const monthEnd = dayjs().endOf("month").format("YYYY-MM-DD");
+  const [filters, setFilters] = useState({
+    dateStart: monthStart,
+    dateEnd: monthEnd,
+    type: "",
+    status: "",
+    empRemarks: "",
+    appRemarks: "",
+  });
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+
+  const hasId = (r) => r?.dtrId ?? r?.id ?? r?.requestId ?? null;
 
   const fetchHistory = async () => {
     try {
@@ -34,78 +46,123 @@ const TimekeepingAdjustment = () => {
         START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"),
         END_DATE: dayjs().add(1, "year").format("YYYY-MM-DD"),
       });
-
-      const res = await fetch(API_ENDPOINTS.getDTRAppHistory, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body,
-      });
-
+      const res = await fetch(API_ENDPOINTS.getDTRAppHistory, { method: "POST", headers: { "Content-Type": "application/json" }, body });
       const j = await res.json();
       if (j?.success && Array.isArray(j.data) && j.data[0]?.result) {
         const rows = JSON.parse(j.data[0].result);
         setData(rows);
         setFiltered(rows);
-      } else {
-        setData([]);
-        setFiltered([]);
-      }
-    } catch (e) {
-      setError("Failed to load history.");
-      console.error(e);
-    }
+      } else { setData([]); setFiltered([]); }
+    } catch (e) { setError("Failed to load history."); console.error(e); }
   };
 
   useEffect(() => { if (user?.empNo) fetchHistory(); }, [user?.empNo]);
 
   const handleSubmit = async () => {
-    if (!shiftDate || !actualDateTime || !remarks.trim()) {
-      Swal.fire({ title: "Incomplete", text: "Please fill all fields.", icon: "warning" });
+    if (!shiftDate || !actualDateTime || !remarks.trim()) { await Swal.fire({ title: "Incomplete", text: "Please fill all fields.", icon: "warning" }); return; }
+    const payload = { json_data: { empNo: user.empNo, detail: [{ shiftDate: dayjs(shiftDate).format("YYYY-MM-DD"), actualDatetime: dayjs(actualDateTime).format("YYYY-MM-DDTHH:mm:ss"), dtrRemarks: remarks, dtrType }] } };
+    try {
+      const res = await fetch(API_ENDPOINTS.upsertDTR, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const ok = res.ok; let j = null; try { j = await res.json(); } catch {}
+      if (!ok) throw new Error(j?.message || "Request failed");
+      await Swal.fire({ title: "Submitted", text: "DTR adjustment submitted.", icon: "success" });
+      setRemarks(""); setActualDateTime(dayjs().format("YYYY-MM-DDTHH:mm")); setDtrType("timeIn"); fetchHistory();
+    } catch (e) { await Swal.fire({ title: "Error", text: e.message, icon: "error" }); }
+  };
+
+  // CANCEL
+
+  // Stamp helper for precise cancellation payload
+  const getDtrStamp = (r) =>
+  r?.dtrStamp || r?.DTR_STAMP || r?.stamp || r?.Stamp || r?.guid || null;
+
+
+  const cancelApplication = async (row) => {
+    if ((row?.dtrStatus || "") !== "Pending") return;
+
+    const dtrStamp = getDtrStamp(row);
+    if (!dtrStamp) {
+      await Swal.fire({
+        title: "Missing identifier",
+        text: "Cannot cancel: dtrStamp was not found in this row.",
+        icon: "error",
+      });
       return;
     }
 
-    const payload = {
-      json_data: {
-        empNo: user.empNo,
-        detail: [{
-          shiftDate: dayjs(shiftDate).format("YYYY-MM-DD"),
-          actualDatetime: dayjs(actualDateTime).format("YYYY-MM-DDTHH:mm:ss"),
-          dtrRemarks: remarks,
-          dtrType: dtrType, // NEW
-        }],
-      },
-    };
+    const conf = await Swal.fire({
+      title: "Cancel this application?",
+      text: "This will mark your pending DTR adjustment as cancelled.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, cancel it",
+    });
+    if (!conf.isConfirmed) return;
 
     try {
-      const res = await fetch(API_ENDPOINTS.upsertDTR, {
+      const res = await fetch(API_ENDPOINTS.cancelDTR, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          json_data: { empNo: user.empNo, dtrStamp },
+        }),
       });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j?.status !== "success") {
+        throw new Error(j?.message || "Cancel failed");
+      }
 
-      const ok = res.ok;
-      let j = null
-      try { j = await res.json(); } catch {}
-      if (!ok) throw new Error(j?.message || "Request failed");
-
-      await Swal.fire({ title: "Submitted", text: "DTR adjustment submitted.", icon: "success" });
-      setRemarks("");
-      setActualDateTime(dayjs().format("YYYY-MM-DDTHH:mm"));
-      setDtrType("timeIn");
+      await Swal.fire({
+        title: "Cancelled",
+        text: "Your DTR application was cancelled.",
+        icon: "success",
+      });
+      // Reuse your existing loader
       fetchHistory();
     } catch (e) {
-      Swal.fire({ title: "Error", text: e.message, icon: "error" });
+      await Swal.fire({ title: "Error", text: e.message, icon: "error" });
     }
   };
 
+
+  // filter + sort
+  useEffect(() => {
+    let rows = [...data];
+    const hasStart = !!filters.dateStart; const hasEnd = !!filters.dateEnd;
+    if (hasStart || hasEnd) rows = rows.filter((r) => { const d = dayjs(r.dtrDate).format("YYYY-MM-DD"); return (!hasStart || d >= filters.dateStart) && (!hasEnd || d <= filters.dateEnd); });
+    if (filters.type) rows = rows.filter((r) => (r?.dtrType || "").toLowerCase() === filters.type.toLowerCase());
+    if (filters.status) rows = rows.filter((r) => (r?.dtrStatus || "") === filters.status);
+    if (filters.empRemarks) rows = rows.filter((r) => String(r.dtrRemarks || "").toLowerCase().includes(filters.empRemarks.toLowerCase()));
+    if (filters.appRemarks) rows = rows.filter((r) => String(r.appRemarks || "").toLowerCase().includes(filters.appRemarks.toLowerCase()));
+
+    if (sortConfig.key) {
+      const key = sortConfig.key; const dir = sortConfig.direction === "asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        if (key === "dtrDate") return (dayjs(a.dtrDate).valueOf() - dayjs(b.dtrDate).valueOf()) * dir;
+        return String(a[key] ?? "").localeCompare(String(b[key] ?? "")) * dir;
+      });
+    }
+
+    setFiltered(rows); setCurrentPage(1);
+  }, [filters, sortConfig, data]);
+
+  // options
+  const typeOptions = useMemo(() => Array.from(new Set(data.map((r) => r?.dtrType).filter(Boolean))).sort(), [data]);
+  const statusOptions = useMemo(() => Array.from(new Set(data.map((r) => r?.dtrStatus?.trim()).filter(Boolean))).sort(), [data]);
+
+  // pagination
+  const totalPages = Math.ceil(filtered.length / recordsPerPage) || 1;
+  const indexOfLast = currentPage * recordsPerPage;
+  const indexOfFirst = indexOfLast - recordsPerPage;
+  const current = filtered.slice(indexOfFirst, indexOfLast);
+
   return (
     <div className="ml-0 lg:ml-[200px] mt-[80px] p-4 bg-gray-100 min-h-screen">
-      <div className="global-div-header-ui">
-        <h1 className="global-div-headertext-ui">My Timekeeping Adjustments</h1>
-      </div>
+      <div className="global-div-header-ui"><h1 className="global-div-headertext-ui">My Timekeeping Adjustments</h1></div>
 
-      <div className="mt-6 bg-white p-4 sm:p-6 shadow-md rounded-lg">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* FORM */}
+      <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-lg text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex flex-col">
             <label className="font-semibold mb-1">Type</label>
             <select className="w-full p-2 border rounded" value={dtrType} onChange={(e) => setDtrType(e.target.value)}>
@@ -113,72 +170,148 @@ const TimekeepingAdjustment = () => {
               <option value="timeOut">Time Out</option>
             </select>
           </div>
-
           <div className="flex flex-col">
             <label className="font-semibold mb-1">Shift Date</label>
-            <DatePicker
-              selected={shiftDate ? new Date(shiftDate) : null}
-              onChange={(d) => setShiftDate(dayjs(d).format("YYYY-MM-DD"))}
-              dateFormat="MM/dd/yyyy"
-              customInput={<CustomDateInput />}
-            />
+            <input type="date" value={shiftDate} onChange={(e) => setShiftDate(e.target.value)} className="w-full p-2 border rounded" />
           </div>
-
           <div className="flex flex-col">
             <label className="font-semibold mb-1">Actual Date & Time</label>
-            <DatePicker
-              selected={actualDateTime ? new Date(actualDateTime) : null}
-              onChange={(d) => setActualDateTime(dayjs(d).format("YYYY-MM-DDTHH:mm"))}
-              showTimeSelect
-              timeFormat="HH:mm"
-              timeIntervals={15}
-              dateFormat="MM/dd/yyyy hh:mm aa"
-              customInput={<CustomDateInput />}
-            />
+            <input type="datetime-local" value={actualDateTime} onChange={(e) => setActualDateTime(e.target.value)} className="w-full p-2 border rounded" />
           </div>
         </div>
-
         <div className="mt-6">
           <label className="font-semibold mb-1 block">Remarks</label>
-          <textarea rows="4" className="w-full p-2 border rounded resize-none"
-            value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+          <textarea rows="4" className="w-full p-2 border rounded resize-none" value={remarks} onChange={(e) => setRemarks(e.target.value)} />
         </div>
-
-        <div className="mt-6 flex justify-center">
-          <button className="bg-blue-500 text-white px-12 py-2 rounded-md hover:bg-blue-600"
-            onClick={handleSubmit}>Submit</button>
+        <div className="mt-4 flex justify-center">
+          <button className="bg-blue-800 text-white px-12 py-2 rounded-md hover:bg-blue-700" onClick={handleSubmit}>Submit</button>
         </div>
       </div>
 
+      {/* FILTERS */}
+      <div className="mt-4 grid grid-cols-1 md:grid-cols-5 gap-2">
+        <input type="date" value={filters.dateStart} onChange={(e) => setFilters((p) => ({ ...p, dateStart: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
+        <input type="date" value={filters.dateEnd} onChange={(e) => setFilters((p) => ({ ...p, dateEnd: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
+        <select value={filters.type} onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
+          <option value="">All Types</option>
+          {typeOptions.map((t) => (<option key={t} value={t}>{t}</option>))}
+        </select>
+        <select value={filters.status} onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
+          <option value="">All Status</option>
+          {statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}
+        </select>
+        <input type="text" placeholder="Search remarks" value={filters.empRemarks} onChange={(e) => setFilters((p) => ({ ...p, empRemarks: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
+      </div>
+
+      {/* HISTORY */}
       <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-        <h2 className="text-base font-semibold mb-4">Timekeeping Application History</h2>
-        <div className="w-full overflow-x-auto">
-          <table className="min-w-[900px] w-full text-sm text-center border">
-            <thead className="sticky top-0 z-10 bg-blue-800 text-white">
-              <tr>
-                <th className="py-2 px-3">Type</th>
-                <th className="py-2 px-3">Shift Date</th>
-                <th className="py-2 px-3">Actual Time</th>
-                <th className="py-2 px-3">Remarks</th>
-                <th className="py-2 px-3">Approver's Remarks</th>
-                <th className="py-2 px-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="global-tbody">
-              {filtered.length > 0 ? filtered.map((r, i) => (
-                <tr key={i} className="global-tr">
-                  <td className="global-td">{r.dtrType || ""}</td>
-                  <td className="global-td">{dayjs(r.dtrDate).format("MM/DD/YYYY")}</td>
-                  <td className="global-td">{dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm a")}</td>
-                  <td className="global-td">{r.dtrRemarks || "N/A"}</td>
-                  <td className="global-td">{r.appRemarks || "N/A"}</td>
-                  <td className="global-td-status">{r.dtrStatus || "N/A"}</td>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-base font-semibold">Timekeeping Application History</h2>
+          <div className="inline-flex rounded-lg border overflow-hidden">
+            <button className={`px-8 py-2 text-sm ${viewMode === "card" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("card")}>Card</button>
+            <button className={`px-8 py-2 text-sm border-l ${viewMode === "accordion" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("accordion")}>Accordion</button>
+            <button className={`px-8 py-2 text-sm border-l ${viewMode === "table" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("table")}>Table</button>
+          </div>
+        </div>
+
+        {/* CARD */}
+        {viewMode === "card" && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {current.length ? current.map((r, i) => {
+              const badge = r.dtrStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : r.dtrStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : r.dtrStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
+              return (
+                <div key={i} className="border rounded-lg p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-semibold">{dayjs(r.dtrDate).format("MM/DD/YYYY")}</div>
+                    <span className={`inline-flex justify-center items-center text-sm w-28 py-1 rounded-lg ${badge}`}>{r.dtrStatus || "N/A"}</span>
+                  </div>
+                  <div className="text-sm space-y-1">
+                    <div className="flex justify-between"><span className="text-gray-500 font-semibold">Type</span><span className="font-medium">{r.dtrType}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-semibold">Actual</span><span className="font-medium">{dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm a")}</span></div>
+                    <div className="mt-2"><div className="text-gray-500 font-semibold">Employee Remarks</div><div className="break-words">{r.dtrRemarks || "N/A"}</div></div>
+                    <div className="mt-2"><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="text-blue-700">{r.appRemarks || "N/A"}</div></div>
+                  </div>
+                  {r?.dtrStatus === "Pending" && (
+                    <div className="mt-3 text-right"><button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(r)}>Cancel</button></div>
+                  )}
+                </div>
+              );
+            }) : (<div className="col-span-full text-center text-gray-500 py-6">No applications found.</div>)}
+          </div>
+        )}
+
+        {/* ACCORDION */}
+        {viewMode === "accordion" && (
+          <div className="mt-4 divide-y border rounded-lg">
+            {current.length ? current.map((r, i) => {
+              const badge = r.dtrStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : r.dtrStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : r.dtrStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
+              return (
+                <details key={i} className="group p-2 text-sm">
+                  <summary className="flex items-center justify-between cursor-pointer list-none">
+                    <div className="font-medium">{dayjs(r.dtrDate).format("MM/DD/YYYY")} • {r.dtrType} • {dayjs(r.dtrStart).format("hh:mm a")}</div>
+                    <span className={`inline-flex justify-center items-center w-28 py-1 rounded-lg ${badge}`}>{r.dtrStatus || "N/A"}</span>
+                  </summary>
+                  <div className="mt-3 space-y-2">
+                    <div><div className="text-gray-500 font-semibold">Remarks</div><div>{r.dtrRemarks || "N/A"}</div></div>
+                    <div><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="text-blue-800">{r.appRemarks || "N/A"}</div></div>
+                    {r?.dtrStatus === "Pending" && (<div className="pt-2 text-right"><button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(r)}>Cancel</button></div>)}
+                  </div>
+                </details>
+              );
+            }) : (<div className="text-center text-gray-500 py-6">No applications found.</div>)}
+          </div>
+        )}
+
+        {/* TABLE */}
+        {viewMode === "table" && (
+          <div className="w-full overflow-x-auto mt-4 rounded-lg">
+            <table className="min-w-[900px] w-full text-sm text-center border">
+              <thead className="sticky top-0 z-10 bg-blue-800 text-white">
+                <tr>
+                  {[{ key: "dtrDate", label: "Shift Date" }, { key: "dtrType", label: "Type" }, { key: "dtrStart", label: "Actual Time" }, { key: "dtrRemarks", label: "Remarks" }, { key: "appRemarks", label: "Approver's Remarks" }, { key: "dtrStatus", label: "Status" }, { key: "actions", label: "Actions" }].map(({ key, label }) => (
+                    <th key={key} className="py-2 px-3 whitespace-nowrap cursor-pointer" onClick={() => key !== "actions" && setSortConfig((s) => ({ key, direction: s.key === key && s.direction === "asc" ? "desc" : "asc" }))}>{label} {sortConfig.key === key ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}</th>
+                  ))}
                 </tr>
-              )) : (
-                <tr><td colSpan="6" className="px-4 py-6 text-center text-gray-500">No applications found.</td></tr>
-              )}
-            </tbody>
-          </table>
+                <tr>
+                  <td className="px-1 py-2 bg-white"><input type="date" value={filters.dateStart} onChange={(e) => setFilters((p) => ({ ...p, dateStart: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" /></td>
+                  <td className="px-1 py-2 bg-white text-gray-800"><select value={filters.type} onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs bg-white"><option value="">All</option>{typeOptions.map((t) => (<option key={t} value={t}>{t}</option>))}</select></td>
+                  <td className="px-1 py-2 bg-white"></td>
+                  <td className="px-1 py-2 bg-white"><input type="text" value={filters.empRemarks} onChange={(e) => setFilters((p) => ({ ...p, empRemarks: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs" placeholder="Filter..." /></td>
+                  <td className="px-1 py-2 bg-white"><input type="text" value={filters.appRemarks} onChange={(e) => setFilters((p) => ({ ...p, appRemarks: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs" placeholder="Filter..." /></td>
+                  <td className="px-1 py-2 bg-white text-gray-800"><select value={filters.status} onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs bg-white"><option value="">All</option>{statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>                   
+                  <td className="px-1 py-2 bg-white"></td>
+                </tr>
+              </thead>
+              <tbody className="global-tbody">
+                {current.length ? current.map((r, i) => {
+              const badge = r.dtrStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : r.dtrStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : r.dtrStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
+                  return (
+                    <tr key={i} className="global-tr">
+                      <td className="global-td whitespace-nowrap">{dayjs(r.dtrDate).format("MM/DD/YYYY")}</td>
+                      <td className="global-td whitespace-nowrap">{r.dtrType}</td>
+                      <td className="global-td whitespace-nowrap">{dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm a")}</td>
+                      <td className="global-td text-left max-w-[240px] truncate" title={r.dtrRemarks || "N/A"}>{r.dtrRemarks || "N/A"}</td>
+                      <td className="global-td text-left max-w-[240px] truncate" title={r.appRemarks || "N/A"}>{r.appRemarks || "N/A"}</td>
+                      <td className="global-td text-center whitespace-nowrap"><span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-lg ${badge}`}>{r.dtrStatus || "N/A"}</span></td>
+                      <td className="global-td text-center whitespace-nowrap">{r?.dtrStatus === "Pending" ? (<button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(r)}>Cancel</button>) : ("—")}</td>
+                    </tr>
+                  );
+                }) : (<tr><td colSpan="7" className="px-4 py-6 text-center text-gray-500">No applications found.</td></tr>)}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* PAGINATION */}
+        <div className="flex justify-between items-center mt-2 pt-2">
+          <div className="text-xs text-gray-600">Showing <b>{Math.min(indexOfFirst + 1, filtered.length)}-{Math.min(indexOfLast, filtered.length)}</b> of {filtered.length} entries</div>
+          <div className="flex items-center text-sm border rounded-lg overflow-hidden">
+            <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border-r hover:bg-gray-100 disabled:text-gray-400">&lt;</button>
+            {[...Array(totalPages)].map((_, i) => (
+              <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 border-r ${currentPage === i + 1 ? "bg-blue-800 text-white" : "hover:bg-gray-100"}`}>{i + 1}</button>
+            ))}
+            <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 hover:bg-gray-100 disabled:text-gray-400">&gt;</button>
+          </div>
         </div>
       </div>
     </div>

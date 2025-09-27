@@ -1,26 +1,39 @@
-import React, { useState, useEffect } from "react"; 
-import dayjs from "dayjs"; // dayjs library for working with dates easily.
-import Swal from "sweetalert2"; // SweetAlert2 library for displaying alerts.
-import { useAuth } from "./AuthContext"; //  access authentication details, such as the logged-in user.
+import React, { useState, useEffect, useMemo } from "react";
+import dayjs from "dayjs";
+import Swal from "sweetalert2";
+import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 
-const OvertimeApplication = () => { 
+const overtimeTypeMap = {
+  REG: "Regular Overtime",
+  HOL: "Holiday",
+  RD: "Rest Day",
+  "Regular Day": "Regular Overtime",
+};
 
-  const { user } = useAuth(); // Extracting the user object from the authentication context to get details like employee number.
-  const [overtimeApplications, setOvertimeApplications] = useState([]); // State to store the full list of overtime applications.
+const OvertimeApplication = () => {
+  const { user } = useAuth();
+
+  const [overtimeApplications, setOvertimeApplications] = useState([]);
+  const [filteredApplications, setFilteredApplications] = useState([]);
+  const [error, setError] = useState(null);
+
+  // form
   const [applicationDate, setApplicationDate] = useState("");
-  const [filteredApplications, setFilteredApplications] = useState([]); // State to store the filtered list of applications based on search or sorting.
-  const [otType, setOtType] = useState(""); // Define state for overtime type
-  const [otDate, setOTDate] = useState("");// Define state for overtime date
-  const [otDay, setOtDay] = useState(""); // Define state for overtime day
-  const [overtimeHours, setOvertimeHours] = useState(""); // Define state for overtime hours
+  const [otDate, setOTDate] = useState("");
+  const [otDay, setOtDay] = useState("");
+  const [overtimeHours, setOvertimeHours] = useState("");
+  const [otType, setOtType] = useState("REG");
   const [remarks, setRemarks] = useState("");
-  const [error, setError] = useState(null); // State to store any error messages encountered during data fetching.
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" }); // State to manage sorting configuration, tracking which key is sorted and in what direction.
-  
-  const monthStart = dayjs().startOf('month').format('YYYY-MM-DD');
-  const monthEnd   = dayjs().endOf('month').format('YYYY-MM-DD');
 
+  // view / pagination
+  const [viewMode, setViewMode] = useState("card"); // card | accordion | table
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 10;
+
+  // filters / sorting
+  const monthStart = dayjs().startOf("month").format("YYYY-MM-DD");
+  const monthEnd = dayjs().endOf("month").format("YYYY-MM-DD");
   const [searchFields, setSearchFields] = useState({
     otDateStart: monthStart,
     otDateEnd: monthEnd,
@@ -30,845 +43,405 @@ const OvertimeApplication = () => {
     appRemarks: "",
     otStatus: "",
   });
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const FIELD_MAP = { date: "otDate", durationHours: "otHrs", type: "otType", remark: "otRemarks", appRemarks: "appRemarks", status: "otStatus" };
 
+  // helpers
+  const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
+  const hasId = (r) => r?.otId ?? r?.id ?? r?.requestId ?? null;
 
-    // Map "UI keys" to actual data keys in your entries
-  const FIELD_MAP = {
-    date: "otDate",
-    durationHours: "otHrs",
-    type: "otType",
-    remark: "otRemarks",
-    appRemarks: "appRemarks",
-    status: "otStatus",
-  };
-
-  // for table search row convenience (keeps your current column order)
-  const TABLE_SEARCH_FIELDS = [
-    { uiKey: "date",        label: "OT Date" },         // becomes date range (two inputs)
-    { uiKey: "durationHours", label: "Duration" },      // maps to otHrs
-    { uiKey: "type",        label: "Overtime Type" },   // maps to otType
-    { uiKey: "remark",      label: "Remarks" },         // maps to otRemarks
-    { uiKey: "appRemarks",  label: "Approver's Remarks" },
-    { uiKey: "status",      label: "Status" },          // maps to otStatus
-  ];
-
-
-  // Add this at the top of your component file
-const overtimeTypeMap = {
-  'REG': 'Regular Overtime',
-  'HOL': 'Holiday',
-  'RD': 'Rest Day',
-  'Regular Day': 'Regular Overtime', // Handle legacy values
-};
-
-// View mode: 'card' | 'table' | 'accordion' (accordion optional)
-const [viewMode, setViewMode] = useState('card');
-
-// Auto-default to 'card' on small screens, 'table' on md+
-useEffect(() => {
-  const mq = window.matchMedia('(min-width: 768px)'); // md breakpoint
-  const setByScreen = () => setViewMode(mq.matches ? 'table' : 'card');
-  setByScreen();
-  mq.addEventListener('change', setByScreen);
-  return () => mq.removeEventListener('change', setByScreen);
-}, []);
-
-
-const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
-
-  const [currentPage, setCurrentPage] = useState(1); // State to track the current page number.
-
-  const recordsPerPage = 10; // defining the number of records per page.
-  const totalPages = Math.ceil(filteredApplications.length / recordsPerPage); // Calculating the total number of pages based on filtered applications.
-  const indexOfLastRecord = currentPage * recordsPerPage; // Calculating the index of the last record for the current page.
-  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage; // Calculating the index of the first record for the current page.
-  const currentRecords = filteredApplications.slice(indexOfFirstRecord, indexOfLastRecord); // Extracting the current page's records from the filtered applications list.
-
-
-  useEffect(() => { 
-
-    if (!user || !user.empNo) return; // If the user is not logged in or employee number is unavailable, exit early.
-
-    const fetchOvertimeApplications = async () => {
-      if (!user || !user.empNo) return;
-    
+  // fetch
+  useEffect(() => {
+    if (!user?.empNo) return;
+    const run = async () => {
       try {
-        const today = dayjs("2099-12-31").format("YYYY-MM-DD");
-        const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
-    
-        const response = await fetch(API_ENDPOINTS.fetchOvertimeApplications, {
+        const res = await fetch(API_ENDPOINTS.fetchOvertimeApplications, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             EMP_NO: user.empNo,
-            START_DATE: startDate,
-            END_DATE: "2030-01-01"
+            START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"),
+            END_DATE: "2030-01-01",
           }),
         });
-    
-        const result = await response.json();
-    
-        console.log("Overtime Applications API Response:", result);
-    
-        if (result.success && result.data.length > 0) {
-          const parsedData = JSON.parse(result.data[0].result);
-          setOvertimeApplications(parsedData || []);
-          setFilteredApplications(parsedData || []);
+        const j = await res.json();
+        if (j?.success && j.data?.length) {
+          const rows = JSON.parse(j.data[0].result || "[]");
+          setOvertimeApplications(rows);
+          setFilteredApplications(rows);
         } else {
+          setOvertimeApplications([]);
+          setFilteredApplications([]);
           setError("No overtime applications found.");
         }
-      } catch (err) {
-        console.error("Error fetching overtime applications:", err);
+      } catch (e) {
+        console.error(e);
         setError("An error occurred while fetching overtime applications.");
       }
     };
-    
-      fetchOvertimeApplications();
-    }, [user]);
+    run();
+  }, [user?.empNo]);
 
-    useEffect(() => {
-      const today = new Date().toISOString().split("T")[0];
-      setApplicationDate(today);
-      setOTDate(today);
-      setOtType("REG"); // Default to the code value
-    }, []);
-    
-    
 
-  // Sorting Function
-const sortData = (uiKey) => {
-  const key = FIELD_MAP[uiKey] || uiKey; // map to real data key
-
-  let direction = "asc";
-  if (sortConfig.key === key && sortConfig.direction === "asc") {
-    direction = "desc";
-  }
-  setSortConfig({ key, direction });
-
-  const sorted = [...filteredApplications].sort((a, b) => {
-    // date
-    if (key === "otDate") {
-      const av = dayjs(a.otDate).valueOf();
-      const bv = dayjs(b.otDate).valueOf();
-      return direction === "asc" ? av - bv : bv - av;
-    }
-    // numeric hours
-    if (key === "otHrs") {
-      const av = parseFloat(a.otHrs ?? 0);
-      const bv = parseFloat(b.otHrs ?? 0);
-      return direction === "asc" ? av - bv : bv - av;
-    }
-    // strings
-    const av = String(a[key] ?? "");
-    const bv = String(b[key] ?? "");
-    return direction === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+  const refreshOvertimeList = async () => {
+  const r = await fetch(API_ENDPOINTS.fetchOvertimeApplications, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      EMP_NO: user.empNo,
+      START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"),
+      END_DATE: "2099-12-31",
+    }),
   });
-
-  setFilteredApplications(sorted);
+  const jj = await r.json();
+  const rows =
+    jj?.success && jj.data?.length
+      ? JSON.parse(jj.data[0].result || "[]")
+      : [];
+  setOvertimeApplications(rows);
+  setFilteredApplications(rows);
 };
 
 
-  // Search Function
-  const handleSearchChange = (e, key) => {
-  const { value } = e.target;
-  setSearchFields((prev) => ({ ...prev, [key]: value }));
-};
+  // form defaults
+  useEffect(() => {
+    const today = dayjs().format("YYYY-MM-DD");
+    setApplicationDate(today);
+    setOTDate(today);
+    setOtType("REG");
+  }, []);
 
-useEffect(() => {
-  let filtered = [...overtimeApplications];
+  // day label
+  useEffect(() => { if (otDate) setOtDay(dayjs(otDate).format("dddd")); }, [otDate]);
 
-  // Date range filter
-  const hasStart = !!searchFields.otDateStart;
-  const hasEnd   = !!searchFields.otDateEnd;
-  if (hasStart || hasEnd) {
-    filtered = filtered.filter((app) => {
-      const d = dayjs(app.otDate).format("YYYY-MM-DD");
-      const afterStart = hasStart ? d >= searchFields.otDateStart : true;
-      const beforeEnd  = hasEnd   ? d <= searchFields.otDateEnd   : true;
-      return afterStart && beforeEnd;
+  // unique filter options
+  const typeOptions = useMemo(() => {
+    const set = new Set();
+    overtimeApplications.forEach((a) => {
+      const raw = a?.otType; if (!raw) return;
+      set.add(raw === "Regular Day" ? "REG" : raw);
     });
-  }
+    return Array.from(set).sort();
+  }, [overtimeApplications]);
 
-  // Text/number filters
-  if (searchFields.durationHours) {
-    // supports partial numeric text match (e.g., "1.5")
-    filtered = filtered.filter((app) =>
-      String(app.otHrs ?? "").toLowerCase().includes(searchFields.durationHours.toLowerCase())
-    );
-  }
-  // if (searchFields.otType) {
-  //   filtered = filtered.filter((app) =>
-  //     String(app.otType ?? "").toLowerCase().includes(searchFields.otType.toLowerCase())
-  //   );
-  // }
+  const statusOptions = useMemo(() => {
+    const set = new Set();
+    overtimeApplications.forEach((a) => { const s = a?.otStatus?.trim(); if (s) set.add(s); });
+    return Array.from(set).sort();
+  }, [overtimeApplications]);
 
-  if (searchFields.otType) {
-  filtered = filtered.filter(app => {
-    const norm = app?.otType === "Regular Day" ? "REG" : app?.otType;
-    return norm === searchFields.otType;
-  });
-}
+  // filter
+  useEffect(() => {
+    let rows = [...overtimeApplications];
 
-  if (searchFields.otRemarks) {
-    filtered = filtered.filter((app) =>
-      String(app.otRemarks ?? "").toLowerCase().includes(searchFields.otRemarks.toLowerCase())
-    );
-  }
-  if (searchFields.appRemarks) {
-    filtered = filtered.filter((app) =>
-      String(app.appRemarks ?? "").toLowerCase().includes(searchFields.appRemarks.toLowerCase())
-    );
-  }
-  // if (searchFields.otStatus) {
-  //   filtered = filtered.filter((app) =>
-  //     String(app.otStatus ?? "").toLowerCase().includes(searchFields.otStatus.toLowerCase())
-  //   );
-    
-  // }
-
-  // Status exact match
-if (searchFields.otStatus) {
-  filtered = filtered.filter(app => (app?.otStatus || "") === searchFields.otStatus);
-}
-
-  setFilteredApplications(filtered);
-  setCurrentPage(1);
-}, [searchFields, overtimeApplications]);
-
-
-  // Function to display sort indicator (↑ or ↓)
-  const getSortIndicator = (uiKey) => {
-    const key = FIELD_MAP[uiKey] || uiKey;
-    if (sortConfig.key !== key) return "";
-    return sortConfig.direction === "asc" ? "↑" : "↓";
-  };
-
-
-  const handleSubmit = async () => {
-    // Check if any required fields are empty
-    if (!otDate || !otDay || !otType || !remarks.trim()) {
-      Swal.fire({
-        title: "Incomplete Form",
-        text: "Please fill in all required fields before submitting.",
-        icon: "warning",
-        confirmButtonText: "OK",
+    const hasStart = !!searchFields.otDateStart;
+    const hasEnd = !!searchFields.otDateEnd;
+    if (hasStart || hasEnd) {
+      rows = rows.filter((r) => {
+        const d = dayjs(r.otDate).format("YYYY-MM-DD");
+        return (!hasStart || d >= searchFields.otDateStart) && (!hasEnd || d <= searchFields.otDateEnd);
       });
-      return; // Stop execution to prevent API call
     }
-  
-    const OvertimeData = {
+    if (searchFields.durationHours) rows = rows.filter((r) => String(r.otHrs ?? "").includes(searchFields.durationHours));
+    if (searchFields.otType) rows = rows.filter((r) => (r?.otType === "Regular Day" ? "REG" : r?.otType) === searchFields.otType);
+    if (searchFields.otRemarks) rows = rows.filter((r) => String(r.otRemarks ?? "").toLowerCase().includes(searchFields.otRemarks.toLowerCase()));
+    if (searchFields.appRemarks) rows = rows.filter((r) => String(r.appRemarks ?? "").toLowerCase().includes(searchFields.appRemarks.toLowerCase()));
+    if (searchFields.otStatus) rows = rows.filter((r) => (r?.otStatus || "") === searchFields.otStatus);
+
+    // sort
+    if (sortConfig.key) {
+      const key = sortConfig.key;
+      const dir = sortConfig.direction === "asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        if (key === "otDate") return (dayjs(a.otDate).valueOf() - dayjs(b.otDate).valueOf()) * dir;
+        if (key === "otHrs") return ((+a.otHrs || 0) - (+b.otHrs || 0)) * dir;
+        return String(a[key] ?? "").localeCompare(String(b[key] ?? "")) * dir;
+      });
+    }
+
+    setFilteredApplications(rows);
+    setCurrentPage(1);
+  }, [searchFields, sortConfig, overtimeApplications]);
+
+  const sortData = (uiKey) => {
+    const key = FIELD_MAP[uiKey] || uiKey;
+    const direction = sortConfig.key === key && sortConfig.direction === "asc" ? "desc" : "asc";
+    setSortConfig({ key, direction });
+  };
+  const getSortIndicator = (uiKey) => { const key = FIELD_MAP[uiKey] || uiKey; return sortConfig.key === key ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""; };
+
+  // submit
+  const handleSubmit = async () => {
+    if (!otDate || !otDay || !otType || !remarks.trim()) {
+      await Swal.fire({ title: "Incomplete Form", text: "Please fill in all required fields before submitting.", icon: "warning" });
+      return;
+    }
+    const payload = {
       json_data: {
         empNo: user.empNo,
-        detail: [
-          {
-            otDate: otDate,
-            otDay: otDay,
-            otType: otType,
-            otRemarks: remarks,
-            otHrs: overtimeHours ? parseFloat(overtimeHours) : 0,
-          },
-        ],
+        detail: [{ otDate, otDay, otType, otRemarks: remarks, otHrs: overtimeHours ? parseFloat(overtimeHours) : 0 }],
       },
     };
-  
-    console.log("Sending Overtime Data:", JSON.stringify(OvertimeData, null, 2));
-  
     try {
-      const response = await fetch(API_ENDPOINTS.saveOvertimeApplication, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(OvertimeData),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("API Error Response:", errorText);
-        Swal.fire({
-          title: "Error!",
-          text: "An error occurred with the API. Please check the API endpoint or try again later.",
-          icon: "error",
-          confirmButtonText: "OK",
-        });
-        return;
-      }
-
-      const result = await response.json();
-      console.log("API Response:", result);
-
-      if (result.status === "success") {
-        Swal.fire({
-          title: "Success!",
-          text: "Overtime application submitted successfully.",
-          icon: "success",
-          confirmButtonText: "OK",
-        }).then(async () => {
-          // Reset form fields
-          setOTDate("");
-          setOtDay("");
-          setOvertimeHours("");
-          setRemarks("");
-          setOtType("REG"); // Reset to default value
-  
-          // Refresh the data
-          try {
-            const today = dayjs().format("YYYY-MM-DD");
-            const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
-  
-            const response = await fetch(API_ENDPOINTS.fetchOvertimeApplications, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                EMP_NO: user.empNo,
-                START_DATE: startDate,
-                END_DATE: "2099-12-31" // Use a far future date
-              }),
-            });
-  
-            const result = await response.json();
-            
-            if (result.success && result.data.length > 0) {
-              const parsedData = JSON.parse(result.data[0].result);
-              setOvertimeApplications(parsedData || []);
-              setFilteredApplications(parsedData || []);
-            }
-          } catch (err) {
-            console.error("Error refreshing data:", err);
-          }
-        });
+      const res = await fetch(API_ENDPOINTS.saveOvertimeApplication, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const j = await res.json();
+      if (j?.status === "success") {
+        await Swal.fire({ title: "Success!", text: "Overtime application submitted successfully.", icon: "success" });
+        setOTDate(""); setOtDay(""); setOvertimeHours(""); setRemarks(""); setOtType("REG");
+        // refresh
+        const r = await fetch(API_ENDPOINTS.fetchOvertimeApplications, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"), END_DATE: "2099-12-31" }) });
+        const jj = await r.json();
+        const rows = jj?.success && jj.data?.length ? JSON.parse(jj.data[0].result || "[]") : [];
+        setOvertimeApplications(rows);
+        setFilteredApplications(rows);
       } else {
-        Swal.fire({
-          title: "Failed!",
-          text: "Failed to submit overtime. Please try again.",
-          icon: "error",
-          confirmButtonText: "OK",
-        });
+        await Swal.fire({ title: "Failed!", text: j?.message || "Failed to submit overtime.", icon: "error" });
       }
-    } catch (err) {
-      console.error("Error submitting overtime application:", err);
-      Swal.fire({
-        title: "Error!",
-        text: "An error occurred while submitting. Please check your connection and try again.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
+    } catch (e) {
+      console.error(e);
+      await Swal.fire({ title: "Error!", text: e.message || "An error occurred while submitting.", icon: "error" });
     }
   };
-  
-useEffect(() => {
-  if (otDate) {
-    const dayOfWeek = dayjs(otDate).format("dddd"); // Get day name (e.g., Monday)
-    setOtDay(dayOfWeek);
+
+const getStamp = (r) =>
+  r?.otStamp || r?.OT_STAMP || r?.stamp || r?.Stamp || r?.guid || r?.OT_STAMP_ID || null;
+
+const cancelApplication = async (entry) => {
+  if ((entry?.otStatus || "") !== "Pending") return;
+
+  const otStamp = getStamp(entry);
+  if (!otStamp) {
+    await Swal.fire({
+      title: "Missing identifier",
+      text: "Cannot cancel: otStamp was not found in this row.",
+      icon: "error",
+    });
+    return;
   }
-}, [otDate]); // Runs whenever otDate changes
 
-// Unique type options (normalize legacy "Regular Day" -> "REG")
-const typeOptions = React.useMemo(() => {
-  const set = new Set();
-  overtimeApplications.forEach(app => {
-    const raw = app?.otType;
-    if (!raw) return;
-    const norm = raw === "Regular Day" ? "REG" : raw;
-    set.add(norm);
+  const conf = await Swal.fire({
+    title: "Cancel this application?",
+    text: "This will mark your pending request as cancelled.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Yes, cancel it",
   });
-  return Array.from(set).sort();
-}, [overtimeApplications]);
+  if (!conf.isConfirmed) return;
 
-// Unique status options
-const statusOptions = React.useMemo(() => {
-  const set = new Set();
-  overtimeApplications.forEach(app => {
-    const s = app?.otStatus?.trim();
-    if (s) set.add(s);
-  });
-  return Array.from(set).sort();
-}, [overtimeApplications]);
+  try {
+    const payload = {
+      json_data: {
+        empNo: user.empNo,
+        otStamp, // <- EXACTLY what your API expects
+      },
+    };
 
+    const res = await fetch(API_ENDPOINTS.cancelOvertimeApplication, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.status !== "success") {
+      throw new Error(j?.message || "Cancel failed");
+    }
+
+    await Swal.fire({ title: "Cancelled", text: "Your overtime application was cancelled.", icon: "success" });
+    await refreshOvertimeList(); // call your existing fetch logic
+  } catch (e) {
+    await Swal.fire({ title: "Error", text: e.message, icon: "error" });
+  }
+};
+
+  // pagination slices
+  const totalPages = Math.ceil(filteredApplications.length / recordsPerPage) || 1;
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentRecords = filteredApplications.slice(indexOfFirstRecord, indexOfLastRecord);
 
   return (
-    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[200px] mt-[80px] p-4 sm:p-6 bg-gray-100 min-h-screen">
+    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[200px] mt-[80px] p-2 sm:p-4 bg-gray-100 min-h-screen">
       <div className="mx-auto">
-        {/* Header Section */}
+        {/* Header */}
         <div className="global-div-header-ui">
           <h1 className="global-div-headertext-ui">My Overtime Applications</h1>
         </div>
 
-        {/* Overtime Details Section */}
-        <div className="mt-6 bg-white p-4 sm:p-6 shadow-md rounded-lg">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex flex-col">
-      <span className="block font-semibold mb-1 propercase">Date</span>
-      <input 
-        type="date" 
-        className="w-full p-2 border rounded" 
-        value={applicationDate} 
-        onChange={(e) => setApplicationDate(e.target.value)} // Allow user to change date if needed
-      />
-    </div>
-
-    <div className="flex flex-col">
-  <span className="block font-semibold mb-1">Date of Overtime</span>
-  <input 
-    value={otDate} 
-    onChange={(e) => setOTDate(e.target.value)}
-    type="date" 
-    // min={applicationDate} // Prevent selecting a date before the application date
-    className="w-full p-2 border rounded"
-  />
-</div>
-{/* <div>
-  <span className="block font-semibold mb-1 propercase">Number of Days</span>
-  <input 
-    type="text"
-    className="w-full p-2 border rounded bg-gray-100"
-    value={otDay}
-    readOnly
-  />
-</div> */}
-
-<div className="flex flex-col">
-  <span className="block font-semibold mb-1">Number of Hours</span>
-  <input 
-    type="number" 
-    className="w-full p-2 border rounded"
-    min="0" 
-    step="0.5"
-    value={overtimeHours}
-    onChange={(e) => {
-      const value = parseFloat(e.target.value);
-      setOvertimeHours(isNaN(value) || value < 0 ? 0 : value);
-    }}
-    placeholder="Enter Overtime hours"
-  />
-</div>
-
-<div className="flex flex-col">
+        {/* Form */}
+        <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-lg text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1 propercase">Date</span>
+              <input type="date" className="w-full p-2 border rounded" value={applicationDate} onChange={(e) => setApplicationDate(e.target.value)} />
+            </div>
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1">Date of Overtime</span>
+              <input value={otDate} onChange={(e) => setOTDate(e.target.value)} type="date" className="w-full p-2 border rounded" />
+            </div>
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1">Number of Hours</span>
+              <input type="number" className="w-full p-2 border rounded" min="0" step="0.5" value={overtimeHours} onChange={(e) => { const v = parseFloat(e.target.value); setOvertimeHours(isNaN(v) || v < 0 ? 0 : v); }} placeholder="Enter Overtime hours" />
+            </div>
+            <div className="flex flex-col">
               <span className="block font-semibold mb-1">Overtime Type</span>
-<select
-  className="w-full p-2 border rounded"
-  value={otType}
-  onChange={(e) => setOtType(e.target.value)}
->
-  <option value="">Select Overtime Type</option>
-  <option value="REG">Regular Overtime</option>
-  <option value="HOL">Holiday</option>
-  <option value="RD">Rest Day</option>
-</select>
+              <select className="w-full p-2 border rounded" value={otType} onChange={(e) => setOtType(e.target.value)}>
+                <option value="">Select Overtime Type</option>
+                <option value="REG">Regular Overtime</option>
+                <option value="HOL">Holiday</option>
+                <option value="RD">Rest Day</option>
+              </select>
             </div>
           </div>
 
-          {/* Remarks Section */}
           <div className="mt-6">
             <span className="block font-semibold mb-1">Remarks</span>
-            <textarea
-            value={remarks}
-              onChange={(e) => setRemarks(e.target.value)}
-              rows="4"
-              className="w-full p-2 border rounded"
-               placeholder="Enter Remarks"
-            ></textarea>
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows="4" className="w-full p-2 border rounded" placeholder="Enter Remarks" />
           </div>
 
-          {/* Submit Button */}
           <div className="mt-4 flex justify-center">
-            <button className="bg-blue-800 text-white px-12 py-2 rounded-md text-md sm:text-base hover:bg-blue-700 w-full sm:w-auto mx-auto"
-            onClick={handleSubmit}>
-              Submit
-            </button>
+            <button className="bg-blue-800 text-white px-12 py-2 rounded-md hover:bg-blue-700" onClick={handleSubmit}>Submit</button>
           </div>
         </div>
 
+        {/* Filters */}
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+          <input type="date" value={searchFields.otDateStart} onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
+          <input type="date" value={searchFields.otDateEnd} onChange={(e) => setSearchFields((p) => ({ ...p, otDateEnd: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
+          <select value={searchFields.otType} onChange={(e) => setSearchFields((p) => ({ ...p, otType: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
+            <option value="">All Overtime Types</option>
+            {typeOptions.map((t) => (<option key={t} value={t}>{getOvertimeTypeLabel(t)}</option>))}
+          </select>
+          <select value={searchFields.otStatus} onChange={(e) => setSearchFields((p) => ({ ...p, otStatus: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
+            <option value="">All Status</option>
+            {statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}
+          </select>
+        </div>
 
-{/* Quick filters for Card/Accordion view (mobile-friendly) */}
-{/* {(viewMode !== 'table') && ( */}
-  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-  {/* Start Date */}
-  <input
-    type="date"
-    value={searchFields.otDateStart}
-    onChange={(e) =>
-      setSearchFields((prev) => ({ ...prev, otDateStart: e.target.value }))
-    }
-    className="w-full px-2 py-2 border rounded text-sm"
-    placeholder="Start Date"
-  />
-  {/* End Date */}
-  <input
-    type="date"
-    value={searchFields.otDateEnd}
-    onChange={(e) =>
-      setSearchFields((prev) => ({ ...prev, otDateEnd: e.target.value }))
-    }
-    className="w-full px-2 py-2 border rounded text-sm"
-    placeholder="End Date"
-  />
-<select
-  value={searchFields.otType}
-  onChange={(e) => setSearchFields(prev => ({ ...prev, otType: e.target.value }))}
-  className="w-full px-2 py-2 border rounded text-sm bg-white"
->
-  <option value="">All Overtime Types</option>
-  {typeOptions.map(t => (
-    <option key={t} value={t}>
-      {getOvertimeTypeLabel(t)}
-    </option>
-  ))}
-</select>
-
-{/* Status (dropdown) */}
-<select
-  value={searchFields.otStatus}
-  onChange={(e) => setSearchFields(prev => ({ ...prev, otStatus: e.target.value }))}
-  className="w-full px-2 py-2 border rounded text-sm bg-white"
->
-  <option value="">All Status</option>
-  {statusOptions.map(s => (
-    <option key={s} value={s}>
-      {s}
-    </option>
-  ))}
-</select>
-
-</div>
-
-
-{/* )} */}
-
-
-
-        {/* Overtime History Table */}
-<div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
-  {/* Header + View Toggle (from step 3) */}
-  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-    <h2 className="text-base font-semibold">Overtime Application History</h2>
-    <div className="inline-flex rounded-lg border overflow-hidden self-start">
-      <button
-        className={`px-8 py-2 text-sm ${viewMode === 'card' ? 'bg-blue-800 text-white' : 'bg-white'}`}
-        onClick={() => setViewMode('card')}
-      >
-        Card
-      </button>
-      <button
-        className={`px-8 py-2 text-sm border-l ${viewMode === 'accordion' ? 'bg-blue-800 text-white' : 'bg-white'}`}
-        onClick={() => setViewMode('accordion')}
-      >
-        Accordion
-      </button>
-            <button
-        className={`px-8 py-2 text-sm border-l ${viewMode === 'table' ? 'bg-blue-800 text-white' : 'bg-white'}`}
-        onClick={() => setViewMode('table')}
-      >
-        Table
-      </button>
-    </div>
-  </div>
-
-  {error && <p className="text-red-500 text-center mt-2">{error}</p>}
-
-  {/* Card View */}
-  {viewMode === 'card' && (
-    <>
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {currentRecords.length > 0 ? (
-          currentRecords.map((entry, idx) => {
-            const statusClass =
-              entry.otStatus === "Pending"
-                ? "text-yellow-700 bg-yellow-100 font-semibold"
-                : entry.otStatus === "Approved"
-                ? "text-blue-700 bg-blue-100 font-semibold"
-                : "text-red-700 bg-red-100 font-semibold";
-
-            return (
-              <div key={idx} className="border rounded-lg p-4 shadow-sm">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="font-semibold">
-                    {dayjs(entry.otDate).format("MM/DD/YYYY")}
-                  </div>
-                  <span
-                className={`inline-flex justify-center items-center text-sm w-28 py-1 md:py-2 rounded-lg ${statusClass}`}
-              >
-                {entry.otStatus || "N/A"}
-              </span>
-                </div>
-
-                <div className="space-y-1 text-[12px] md:text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-semibold">Hours</span>
-                    <span className="font-medium">{entry.otHrs} hr(s)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500 font-semibold">Type</span>
-                    <span className="font-medium">{getOvertimeTypeLabel(entry.otType)}</span>
-                  </div>
-                  <br></br>
-                  <div>
-                    <div className="text-gray-500 font-semibold">Employee Remarks:</div>
-                    
-                    <div className="font-normal break-words text-black">{entry.otRemarks || "N/A"}</div>
-                  </div>                
-                  <br></br>
-                  <div>
-                    <div className="text-gray-500 font-semibold">Approver's Remarks:</div>
-                    <div className="font-normal break-words text-blue-700">{entry.appRemarks || "N/A"}</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })
-        ) : (
-          <div className="col-span-full text-center text-gray-500 py-6">
-            No overtime applications found.
-          </div>
-        )}
-      </div>
-    </>
-  )}
-
-  {/* Accordion View (optional compact summary) */}
-{viewMode === 'accordion' && (
-  <div className="mt-4 divide-y border rounded-lg">
-    {currentRecords.length > 0 ? (
-      currentRecords.map((entry, idx) => {
-        const statusClass =
-          entry.otStatus === "Pending"
-            ? "text-yellow-700 bg-yellow-100 font-semibold"
-            : entry.otStatus === "Approved"
-            ? "text-blue-700 bg-blue-100 font-semibold"
-            : "text-red-700 bg-red-100 font-semibold";
-
-        return (
-          <details key={idx} className="group p-2 text-[12px] md:text-sm">
-            <summary className="flex items-center justify-between cursor-pointer list-none">
-              <div className="font-medium">
-                {dayjs(entry.otDate).format("MM/DD/YYYY")} • {entry.otHrs} hr(s) • {getOvertimeTypeLabel(entry.otType)}
-              </div>
-              <span
-                className={`inline-flex justify-center items-center w-28 py-1 rounded-lg ${statusClass}`}
-              >
-                {entry.otStatus || "N/A"}
-              </span>
-            </summary>
-            <div className="mt-3 space-y-2">
-              <div>
-                <div className="text-gray-500 font-semibold">Remarks</div>
-                <div>{entry.otRemarks || "N/A"}</div>
-              </div>
-              <div>
-                <div className="text-gray-500 font-semibold">Approver's Remarks</div>
-                <div className="text-blue-800">{entry.appRemarks || "N/A"}</div>
-              </div>
+        {/* History */}
+        <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <h2 className="text-base font-semibold">Overtime Application History</h2>
+            <div className="inline-flex rounded-lg border overflow-hidden self-start">
+              <button className={`px-8 py-2 text-sm ${viewMode === "card" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("card")}>Card</button>
+              <button className={`px-8 py-2 text-sm border-l ${viewMode === "accordion" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("accordion")}>Accordion</button>
+              <button className={`px-8 py-2 text-sm border-l ${viewMode === "table" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("table")}>Table</button>
             </div>
-          </details>
-        );
-      })
-    ) : (
-      <div className="text-center text-gray-500 py-6">
-        No overtime applications found.
-      </div>
-    )}
-  </div>
-)}
+          </div>
+          {error && <p className="text-red-500 text-center mt-2">{error}</p>}
 
+          {/* CARD VIEW */}
+          {viewMode === "card" && (
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {currentRecords.length ? currentRecords.map((entry, idx) => {
+                const statusClass = entry.otStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : entry.otStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : entry.otStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
+                return (
+                  <div key={idx} className="border rounded-lg p-4 shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="font-semibold">{dayjs(entry.otDate).format("MM/DD/YYYY")}</div>
+                      <span className={`inline-flex justify-center items-center text-sm w-28 py-1 rounded-lg ${statusClass}`}>{entry.otStatus || "N/A"}</span>
+                    </div>
+                    <div className="space-y-1 text-[12px] md:text-sm">
+                      <div className="flex justify-between"><span className="text-gray-500 font-semibold">Hours</span><span className="font-medium">{entry.otHrs} hr(s)</span></div>
+                      <div className="flex justify-between"><span className="text-gray-500 font-semibold">Type</span><span className="font-medium">{getOvertimeTypeLabel(entry.otType)}</span></div>
+                      <div className="mt-2"><div className="text-gray-500 font-semibold">Employee Remarks:</div><div className="font-normal break-words text-black">{entry.otRemarks || "N/A"}</div></div>
+                      <div className="mt-2"><div className="text-gray-500 font-semibold">Approver's Remarks:</div><div className="font-normal break-words text-blue-700">{entry.appRemarks || "N/A"}</div></div>
+                    </div>
+                    {entry?.otStatus === "Pending" && (
+                      <div className="mt-3 text-right">
+                        <button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button>
+                      </div>
+                    )}
+                  </div>
+                );
+              }) : (<div className="col-span-full text-center text-gray-500 py-6">No overtime applications found.</div>)}
+            </div>
+          )}
 
-  {/* Table View (kept, but isolated so it doesn’t stretch the page on mobile) */}
-  {viewMode === 'table' && (
-    <div className="w-full overflow-x-auto mt-4 rounded-lg">
-      <table className="min-w-[800px] w-full text-sm text-center border ">
-        <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm lg:text-sm ">
-  <tr>
-    {[
-      { key: "date", label: "OT Date" },
-      { key: "durationHours", label: "Duration" },
-      { key: "type", label: "Overtime Type" },
-      { key: "remark", label: "Remarks" },
-      { key: "appRemarks", label: "Approver's Remarks" },
-      { key: "status", label: "Status" },
-    ].map(({ key, label }) => (
-      <th
-        key={key}
-        className="py-2 px-3 cursor-pointer whitespace-nowrap"
-        onClick={() => sortData(key)}
-      >
-        {label} {getSortIndicator(key)}
-      </th>
-    ))}
-  </tr>
+          {/* ACCORDION VIEW */}
+          {viewMode === "accordion" && (
+            <div className="mt-4 divide-y border rounded-lg">
+              {currentRecords.length ? currentRecords.map((entry, idx) => {
+                const statusClass = entry.otStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : entry.otStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : entry.otStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
+                return (
+                  <details key={idx} className="group p-2 text-[12px] md:text-sm">
+                    <summary className="flex items-center justify-between cursor-pointer list-none">
+                      <div className="font-medium">{dayjs(entry.otDate).format("MM/DD/YYYY")} • {entry.otHrs} hr(s) • {getOvertimeTypeLabel(entry.otType)}</div>
+                      <span className={`inline-flex justify-center items-center w-28 py-1 rounded-lg ${statusClass}`}>{entry.otStatus || "N/A"}</span>
+                    </summary>
+                    <div className="mt-3 space-y-2">
+                      <div><div className="text-gray-500 font-semibold">Remarks</div><div>{entry.otRemarks || "N/A"}</div></div>
+                      <div><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="text-blue-800">{entry.appRemarks || "N/A"}</div></div>
+                      {entry?.otStatus === "Pending" && (
+                        <div className="pt-2 text-right"><button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button></div>
+                      )}
+                    </div>
+                  </details>
+                );
+              }) : (<div className="text-center text-gray-500 py-6">No overtime applications found.</div>)}
+            </div>
+          )}
 
-  {/* 🔎 Search row (Date range uses the first TWO columns) */}
-  <tr>
-    {/* Start Date (column 1: OT Date) */}
-    <td className="px-2 py-2 bg-white whitespace-nowrap">
-      <input
-        type="date"
-        value={searchFields.otDateStart}
-        onChange={(e) =>
-          setSearchFields((prev) => ({ ...prev, otDateStart: e.target.value }))
-        }
-        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
-        placeholder="Start Date"
-      />
-    </td>
+          {/* TABLE VIEW */}
+          {viewMode === "table" && (
+            <div className="w-full overflow-x-auto mt-4 rounded-lg">
+              <table className="min-w-[900px] w-full text-sm text-center border ">
+                <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm">
+                  <tr>
+                    {[{ key: "date", label: "OT Date" }, { key: "durationHours", label: "Duration" }, { key: "type", label: "Overtime Type" }, { key: "remark", label: "Remarks" }, { key: "appRemarks", label: "Approver's Remarks" }, { key: "status", label: "Status" }, { key: "actions", label: "Actions" }].map(({ key, label }) => (
+                      <th key={key} className="py-2 px-3 whitespace-nowrap cursor-pointer" onClick={() => key !== "actions" && sortData(key)}>
+                        {label} {key !== "actions" ? getSortIndicator(key) : ""}
+                      </th>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td className="px-1 py-2 bg-white"><input type="date" value={searchFields.otDateStart} onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" /></td>
+                    <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.durationHours} onChange={(e) => setSearchFields((p) => ({ ...p, durationHours: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" placeholder="Filter..." /></td>
+                    <td className="px-1 py-2 bg-white"><select value={searchFields.otType} onChange={(e) => setSearchFields((p) => ({ ...p, otType: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"><option value="">All</option>{typeOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
+                    <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.otRemarks} onChange={(e) => setSearchFields((p) => ({ ...p, otRemarks: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" placeholder="Filter..." /></td>
+                    <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.appRemarks} onChange={(e) => setSearchFields((p) => ({ ...p, appRemarks: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" placeholder="Filter..." /></td>
+                    <td className="px-1 py-2 bg-white"><select value={searchFields.otStatus} onChange={(e) => setSearchFields((p) => ({ ...p, otStatus: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-white"><option value="">All</option>{statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
+                    <td className="px-1 py-2 bg-white"></td>
+                  </tr>
+                </thead>
+                <tbody className="global-tbody">
+                  {currentRecords.length ? currentRecords.map((entry, i) => {
+                const statusClass = entry.otStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : entry.otStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : entry.otStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
+                    return (
+                      <tr key={i} className="global-tr">
+                        <td className="global-td whitespace-nowrap">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
+                        <td className="global-td whitespace-nowrap text-right">{entry.otHrs} hr(s)</td>
+                        <td className="global-td whitespace-nowrap text-left">{getOvertimeTypeLabel(entry.otType)}</td>
+                        <td className="global-td text-left max-w-[240px] truncate" title={entry.otRemarks || "N/A"}>{entry.otRemarks || "N/A"}</td>
+                        <td className="global-td text-left max-w-[240px] truncate" title={entry.appRemarks || "N/A"}>{entry.appRemarks || "N/A"}</td>
+                        <td className="global-td text-center whitespace-nowrap"><span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-lg ${statusClass}`}>{entry.otStatus || "N/A"}</span></td>
+                        <td className="global-td text-center whitespace-nowrap">
+                          {entry?.otStatus === "Pending" ? (
+                            <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button>
+                          ) : ("—")}
+                        </td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr><td colSpan="7" className="px-4 py-6 text-center text-gray-500">No overtime applications found.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-    {/* End Date (column 2: Duration column repurposed as Date End filter) */}
-    <td className="px-2 py-2 bg-white whitespace-nowrap">
-      <input
-        type="text"
-        value={searchFields.durationHours}
-        onChange={(e) => handleSearchChange(e, "durationHours")}
-        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
-        placeholder="Filter..."
-      />
-    </td>
-
-    {/* Type */}
-    <td className="px-2 py-2 bg-white whitespace-nowrap">
-      <input
-        type="text"
-        value={searchFields.otType}
-        onChange={(e) => handleSearchChange(e, "otType")}
-        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
-        placeholder="Filter..."
-      />
-    </td>
-
-    {/* Remarks */}
-    <td className="px-2 py-2 bg-white whitespace-nowrap">
-      <input
-        type="text"
-        value={searchFields.otRemarks}
-        onChange={(e) => handleSearchChange(e, "otRemarks")}
-        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
-        placeholder="Filter..."
-      />
-    </td>
-
-    {/* Approver's Remarks */}
-    <td className="px-2 py-2 bg-white whitespace-nowrap">
-      <input
-        type="text"
-        value={searchFields.appRemarks}
-        onChange={(e) => handleSearchChange(e, "appRemarks")}
-        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
-        placeholder="Filter..."
-      />
-    </td>
-
-    {/* Status */}
-    <td className="px-2 py-2 bg-white whitespace-nowrap">
-      <input
-        type="text"
-        value={searchFields.otStatus}
-        onChange={(e) => handleSearchChange(e, "otStatus")}
-        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-sm text-gray-800"
-        placeholder="Filter..."
-      />
-    </td>
-  </tr>
-</thead>
-
-
-
-       <tbody className="global-tbody">
-  {currentRecords.length > 0 ? (
-    currentRecords.map((entry, index) => {
-      const textColor =
-        entry.otStatus === "Pending"
-          ? "global-td-status-pending"
-          : entry.otStatus === "Approved"
-          ? "global-td-status-approved"
-          : "global-td-status-disapproved";
-
-      const statusClass =
-        entry.otStatus === "Pending"
-          ? "text-yellow-700 bg-yellow-100 font-semibold"
-          : entry.otStatus === "Approved"
-          ? "text-blue-700 bg-blue-100 font-semibold"
-          : "text-red-700 bg-red-100 font-semibold";
-
-      return (
-        <tr key={index} className={`global-tr ${textColor}`}>
-          <td className="global-td text-center whitespace-nowrap">
-            {dayjs(entry.otDate).format("MM/DD/YYYY")}
-          </td>
-
-          <td className="global-td text-right whitespace-nowrap">
-            {entry.otHrs} hr(s)
-          </td>
-
-          <td className="global-td text-left whitespace-nowrap">
-            {getOvertimeTypeLabel(entry.otType)}
-          </td>
-
-          {/* Remarks — truncate on one line, show full text on hover */}
-          <td className="global-td text-left max-w-[240px] truncate" title={entry.otRemarks || "N/A"}>
-            {entry.otRemarks || "N/A"}
-          </td>
-
-          {/* Approver's Remarks — truncate too */}
-          <td className="global-td text-left max-w-[240px] truncate" title={entry.appRemarks || "N/A"}>
-            {entry.appRemarks || "N/A"}
-          </td>
-
-          {/* Status badge with fixed width */}
-          <td className="global-td text-center whitespace-nowrap">
-            <span
-              className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-lg ${statusClass}`}
-            >
-              {entry.otStatus || "N/A"}
-            </span>
-          </td>
-        </tr>
-      );
-    })
-  ) : (
-    <tr>
-      <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
-        No overtime applications found.
-      </td>
-    </tr>
-  )}
-</tbody>
-
-      </table>
-    </div>
-  )}
-
-  {/* Pagination (shared) */}
-  <div className="flex justify-between items-center mt-2 pt-4">
-    <div className="text-sm text-gray-600">
-      Showing <b>{indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries
-    </div>
-    <div className="flex items-center border rounded-lg overflow-hidden">
-      <button
-        onClick={() => setCurrentPage(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="px-3 py-1 border-r text-gray-700 hover:bg-blue-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-      >
-        &lt;
-      </button>
-      {[...Array(totalPages)].map((_, i) => (
-        <button
-          key={i}
-          onClick={() => setCurrentPage(i + 1)}
-          className={`px-3 py-1 border-r ${
-            currentPage === i + 1 ? "bg-blue-800 text-white" : "text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          {i + 1}
-        </button>
-      ))}
-      <button
-        onClick={() => setCurrentPage(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className="px-3 py-1 text-gray-700 hover:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-      >
-        &gt;
-      </button>
-    </div>
-  </div>
-</div>
-
-
-
+          {/* Pagination */}
+          <div className="flex justify-between items-center mt-2 pt-2">
+            <div className="text-xs text-gray-600">Showing <b>{Math.min(indexOfFirstRecord + 1, filteredApplications.length)}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries</div>
+            <div className="flex items-center text-sm border rounded-lg overflow-hidden">
+              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border-r hover:bg-gray-100 disabled:text-gray-400">&lt;</button>
+              {[...Array(totalPages)].map((_, i) => (
+                <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 border-r ${currentPage === i + 1 ? "bg-blue-800 text-white" : "hover:bg-gray-100"}`}>{i + 1}</button>
+              ))}
+              <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 hover:bg-gray-100 disabled:text-gray-400">&gt;</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

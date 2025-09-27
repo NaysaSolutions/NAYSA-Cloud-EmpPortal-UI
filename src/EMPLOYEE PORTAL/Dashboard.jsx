@@ -6,7 +6,7 @@ import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext"; // Import AuthContext
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowUp } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUp, faClock } from "@fortawesome/free-solid-svg-icons";
 import LeaveCreditModal from "./LeaveCreditModal";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import "@/index.css";
@@ -37,6 +37,20 @@ const Dashboard = () => {
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const [showBackToTop, setShowBackToTop] = useState(false);
+
+  const DEFAULT_SUM = {
+    LVApplicationCount: 0,
+    LVApprovalCount: 0,
+    OTApplicationCount: 0,
+    OTApprovalCount: 0,
+    OBApplicationCount: 0,
+    OBApprovalCount: 0,
+    DTRApplicationCount: 0,
+    DTRApprovalCount: 0,
+  };
+
+  const [approvalsum, setApprovalsum] = useState(DEFAULT_SUM);
+
 
   useEffect(() => {
     const handleScroll = () => {
@@ -124,6 +138,21 @@ const Dashboard = () => {
         setLeaveApplication(employee.leaveApplication || []);
         setOtApplication(employee.otApplication || []);
         setOfficialBusinessApplication(employee.obApplication || []);
+
+        const raw = employee.approvalsum;
+        const one = Array.isArray(raw) ? (raw[0] || DEFAULT_SUM) : (raw || DEFAULT_SUM);
+
+        setApprovalsum({
+          LVApplicationCount: Number(one.LVApplicationCount ?? 0),
+          LVApprovalCount:  Number(one.LVApprovalCount ?? 0),
+          OTApplicationCount: Number(one.OTApplicationCount ?? 0),
+          OTApprovalCount:  Number(one.OTApprovalCount ?? 0),
+          OBApplicationCount: Number(one.OBApplicationCount ?? 0),
+          OBApprovalCount:  Number(one.OBApprovalCount ?? 0),
+          DTRApplicationCount: Number(one.DTRApplicationCount ?? 0),
+          DTRApprovalCount:  Number(one.DTRApprovalCount ?? 0),
+        });
+
       } else {
         setError("API response format is incorrect or no data found.");
       }
@@ -141,7 +170,8 @@ const Dashboard = () => {
     console.log("Leave Approval Data:", leaveApproval);
     console.log("OT Approval Data:", otApproval);
     console.log("OB Approval Data:", obApproval);
-  }, [leaveApproval, otApproval, obApproval]);
+    console.log("Approval Data:", approvalsum);
+  }, [leaveApproval, otApproval, obApproval, approvalsum]);
 
   // Current Date and Time
   useEffect(() => {
@@ -272,24 +302,25 @@ const Dashboard = () => {
   };
 
   // Calculate totals for stat cards
-  const pendingLeaveCount = leaveApplication.filter(
-    (leave) => leave.leavestatus === "Pending"
-  ).length;
-  const pendingOtCount = otApplication.filter(
-    (ot) => ot.otstatus === "Pending"
-  ).length;
-  const pendingObCount = obApplication.filter(
-    (ob) => ob.obstatus === "Pending"
-  ).length;
-  const pendingLeaveApproval = leaveApproval.filter(
-    (leave) => leave.leavestatus === "Pending"
-  ).length;
-  const pendingOtApproval = otApproval.filter(
-    (ot) => ot.otstatus === "Pending"
-  ).length;
-  const pendingObApproval = obApproval.filter(
-    (ob) => ob.obstatus === "Pending"
-  ).length;
+  // const pendingLeaveCount = leaveApplication.filter(
+  //   (leave) => leave.leavestatus === "Pending"
+  // ).length;
+  // const pendingOtCount = otApplication.filter(
+  //   (ot) => ot.otstatus === "Pending"
+  // ).length;
+  //  const pendingDTRCount = DTRApplication.filter(
+  //   (dtr) => dtr.dtrstatus === "Pending"
+  // ).length;
+  // const pendingLeaveApproval = leaveApproval.filter(
+  //   (leave) => leave.leavestatus === "Pending"
+  // ).length;
+  // const pendingOtApproval = otApproval.filter(
+  //   (ot) => ot.otstatus === "Pending"
+  // ).length;
+  // const pendingObApproval = obApproval.filter(
+  //   (ob) => ob.obstatus === "Pending"
+  // ).length;
+
 
   return (
     <div className="mt-[80px] p-4 bg-gray-100 min-h-screen ml-0 lg:ml-[200px]">
@@ -324,18 +355,20 @@ const Dashboard = () => {
   </div> */}
             <div className="w-full md:w-auto">
               <button
-                className="bg-blue-300 text-blue-900 font-bold px-5 py-4 rounded-md text-md sm:text-lg hover:bg-blue-900 hover:text-white w-full sm:w-auto mx-auto"
+                className="bg-blue-700 border border-blue-400 text-white font-bold px-5 py-4 rounded-md text-md sm:text-lg hover:bg-blue-800 hover:text-white hover:border-blue-300 w-full sm:w-auto mx-auto"
                 onClick={() => navigate("/timekeeping")}
               >
+                <FontAwesomeIcon icon={faClock} size="lg" className="mr-2" />
                 Timekeeping
               </button>
+              
             </div>
           </div>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div
           className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
           onClick={() => navigate("/leave")}
@@ -343,7 +376,7 @@ const Dashboard = () => {
           <h3 className="font-bold text-xs md:text-base">
             Pending LV Applications
           </h3>
-          <p className="text-xl md:text-2xl">{pendingLeaveCount}</p>
+          <p className="text-xl md:text-2xl">{approvalsum?.LVApplicationCount ?? 0}</p>
         </div>
         <div
           className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
@@ -352,7 +385,7 @@ const Dashboard = () => {
           <h3 className="font-bold text-xs md:text-base">
             Pending OT Applications
           </h3>
-          <p className="text-xl md:text-2xl">{pendingOtCount}</p>
+          <p className="text-xl md:text-2xl">{approvalsum?.OTApplicationCount ?? 0}</p>
         </div>
         <div
           className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
@@ -361,13 +394,22 @@ const Dashboard = () => {
           <h3 className="font-bold text-xs md:text-base">
             Pending OB Applications
           </h3>
-          <p className="text-xl md:text-2xl">{pendingObCount}</p>
+          <p className="text-xl md:text-2xl">{approvalsum?.OBApplicationCount ?? 0}</p>
+        </div>
+        <div
+          className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
+          onClick={() => navigate("/timekeepingAdj")}
+        >
+          <h3 className="font-bold text-xs md:text-base">
+            Pending DTR Applications
+          </h3>
+          <p className="text-xl md:text-2xl">{approvalsum?.DTRApplicationCount ?? 0}</p>
         </div>
       </div>
 
       {user.approver === "1" && (
         <>
-          <div className="grid grid-cols-3 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div
               className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
               onClick={() => navigate("/leaveApproval")}
@@ -375,7 +417,7 @@ const Dashboard = () => {
               <h3 className="font-bold text-xs md:text-base">
                 Pending LV for my Approval
               </h3>
-              <p className="text-xl md:text-2xl">{pendingLeaveApproval}</p>
+              <p className="text-xl md:text-2xl">{approvalsum?.LVApprovalCount ?? 0}</p>
             </div>
             <div
               className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
@@ -384,7 +426,7 @@ const Dashboard = () => {
               <h3 className="font-bold text-xs md:text-base">
                 Pending OT for my Approval
               </h3>
-              <p className="text-xl md:text-2xl">{pendingOtApproval}</p>
+              <p className="text-xl md:text-2xl">{approvalsum?.OTApprovalCount ?? 0}</p>
             </div>
             <div
               className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
@@ -393,7 +435,16 @@ const Dashboard = () => {
               <h3 className="font-bold text-xs md:text-base">
                 Pending OB for my Approval
               </h3>
-              <p className="text-xl md:text-2xl">{pendingObApproval}</p>
+              <p className="text-xl md:text-2xl">{approvalsum?.OBApprovalCount ?? 0}</p>
+            </div>
+            <div
+              className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
+              onClick={() => navigate("/timekeepingAdjApproval")}
+            >
+              <h3 className="font-bold text-xs md:text-base">
+                Pending DTR for my Approval
+              </h3>
+              <p className="text-xl md:text-2xl">{approvalsum?.DTRApprovalCount ?? 0}</p>
             </div>
           </div>
         </>

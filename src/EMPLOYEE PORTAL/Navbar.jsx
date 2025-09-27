@@ -30,7 +30,17 @@ const Navbar = () => {
   // Build nav items only if user is loaded
   const navItems = user ? [
     { path: "/dashboard", label: "Inquiry" },
-    { path: "/timekeeping", label: "Timekeeping" },
+    // { path: "/timekeeping", label: "Timekeeping" },
+    ...(user.approver !== "1"
+      ? [{ path: "/timekeeping", label: "Timekeeping" }]
+      : [{
+          label: "Timekeeping",
+          children: [
+            { path: "/timekeeping", label: "Timekeeping (In and Out)" },
+            { path: "/timekeepingAdjApproval", label: "Timekeeping for Approval" }
+          ]
+        }]
+    ),
     { path: "/payslipviewer", label: "Payslip" }, // ← Insert here
     ...(user.approver !== "1"
       ? [{ path: "/overtime", label: "Overtime" }]

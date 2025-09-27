@@ -10,9 +10,9 @@
 // const IMAGE_BASE_URL = "/images/timekeeping_images";
 
 // LOCALHOST
-const API_BASE_URL = "http://127.0.0.1:8000/api";
-const MODEL_BASE_URL = "http://127.0.0.1:8000/api/models";
-const IMAGE_BASE_URL  = "http://127.0.0.1:8000/api/images/timekeeping_images";
+// const API_BASE_URL = "http://127.0.0.1:8000/api";
+// const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
+// const IMAGE_BASE_URL  = "http://127.0.0.1:8000/images/timekeeping_images";
 
 // CLIENT SERVER
 // const API_BASE_URL = "http://win-q1lql18rg7f:8443/api";
@@ -20,9 +20,9 @@ const IMAGE_BASE_URL  = "http://127.0.0.1:8000/api/images/timekeeping_images";
 // const IMAGE_BASE_URL  = "http://win-q1lql18rg7f:8443/images/timekeeping_images";
 
 // CLOUD SERVER
-// const API_BASE_URL = "/api";
-// const MODEL_BASE_URL = "/models";
-// const IMAGE_BASE_URL  = "/images/timekeeping_images";
+const API_BASE_URL = "/api";
+const MODEL_BASE_URL = "/models";
+const IMAGE_BASE_URL  = "/images/timekeeping_images";
 
 // This URL should be updated based on the environment (development, production, etc.)   
 
@@ -36,12 +36,16 @@ const API_ENDPOINTS = {
     //Overtime
     fetchOvertimeApplications: `${API_BASE_URL}/getOTAppHistory`,
     saveOvertimeApplication: `${API_BASE_URL}/OTupsert`,
+    cancelOvertimeApplication: `${API_BASE_URL}/cancelOT`,
     OvertimeHistoryApplication: `${API_BASE_URL}/getOTApprInq`,
     approvedOvertimeHistory: `${API_BASE_URL}/getOTApprHistory`,
     overtimeApproval: `${API_BASE_URL}/approvalOT`,
     
     //Leave
      fetchLeaveApplications: `${API_BASE_URL}/getLVAppHistory`,
+     leaveTypes: `${API_BASE_URL}/leaveTypes`,
+     cancelLeaveApplication: `${API_BASE_URL}/cancelLV`,
+     fetchLeaveBalance: `${API_BASE_URL}/getLVBalance`,
      saveLeaveApplication: `${API_BASE_URL}/upsertLV`,
      LeaveHistoryApplication: `${API_BASE_URL}/getLVApprInq`,
      approvedLeaveHistory: `${API_BASE_URL}/getLVApprHistory`,
@@ -51,6 +55,7 @@ const API_ENDPOINTS = {
      fetchOfficialBusinessApplicationsHistory: `${API_BASE_URL}/getOBAppHistory`,
      fetchOfficialBusinessApplications: `${API_BASE_URL}/getOBAppInq`,
      saveOfficialBusinessApplication: `${API_BASE_URL}/upsertOB`,
+     cancelOfficialBusinessApplication: `${API_BASE_URL}/cancelOB`,
      OfficialBusinessHistoryApplication: `${API_BASE_URL}/getOBApprInq`,
      approvedOfficialBusinessHistory: `${API_BASE_URL}/getOBApprHistory`,
      officialBusinessApproval: `${API_BASE_URL}/approvalOB`,
@@ -69,6 +74,7 @@ const API_ENDPOINTS = {
     getDTRApprHistory:       `${API_BASE_URL}/getDTRApprHistory`,
     upsertDTR:               `${API_BASE_URL}/upsertDTR`,
     approvalDTR:             `${API_BASE_URL}/approvalDTR`,
+    cancelDTR:               `${API_BASE_URL}/cancelDTR`,
 
     // Payslip
     payslipMain:             `${API_BASE_URL}/reports/payslip`,

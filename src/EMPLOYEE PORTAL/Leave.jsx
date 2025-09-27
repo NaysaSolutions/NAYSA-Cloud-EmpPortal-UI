@@ -1,78 +1,155 @@
-import React, { useState, useEffect } from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css"; // already installed
+import React, { useEffect, useMemo, useState } from "react";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSortUp, faSortDown } from "@fortawesome/free-solid-svg-icons";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
+import axios from "axios";
+
 
 const Leave = () => {
   const { user } = useAuth();
+
+  // --- Data ---
   const [leaveApplications, setLeaveApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
   const [error, setError] = useState(null);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+
+  // --- Form state ---
   const [applicationDate, setApplicationDate] = useState("");
-
-  // const [selectedStartDate, setSelectedStartDate] = useState("");
-  // const [selectedEndDate, setSelectedEndDate] = useState("");
-  const [selectedStartDate, setSelectedStartDate] = useState(null);
-  const [selectedEndDate, setSelectedEndDate] = useState(null);
-
-  const [leaveHours, setLeaveHours] = useState("8");
-  const [leaveDays, setLeaveDays] = useState("1");
+  const [selectedStartDate, setSelectedStartDate] = useState("");
+  const [selectedEndDate, setSelectedEndDate] = useState("");
+  const [leaveHours, setLeaveHours] = useState("");
+  const [leaveDays, setLeaveDays] = useState("");
   const [leaveType, setLeaveType] = useState("");
   const [remarks, setRemarks] = useState("");
-  const [holidays, setHolidays] = useState([]);
 
-  // Search State
+  // --- Sorting ---
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+
+  // --- View Mode ---
+  // 'card' | 'accordion' | 'table'
+  const [viewMode, setViewMode] = useState("card");
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const setByScreen = () => setViewMode(mq.matches ? "table" : "card");
+    setByScreen();
+    mq.addEventListener("change", setByScreen);
+    return () => mq.removeEventListener("change", setByScreen);
+  }, []);
+
+  // --- Filters (defaults to current month) ---
+  const monthStart = dayjs().startOf("month").format("YYYY-MM-DD");
+  const monthEnd = dayjs().endOf("month").format("YYYY-MM-DD");
   const [searchFields, setSearchFields] = useState({
-    leaveStart: "",
-    leaveEnd: "",
+    leaveDateStart: monthStart,
+    leaveDateEnd: monthEnd,
     leaveDays: "",
-    leaveCode: "",
+    leaveType: "",
+    leaveDesc: "",
     leaveRemarks: "",
-    ApprRemarks: "",
+    appRemarks: "",
     leaveStatus: "",
   });
 
-  // Pagination
+  // --- Pagination ---
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
-  const totalPages = Math.ceil(filteredApplications.length / recordsPerPage);
+  const totalPages = Math.ceil(filteredApplications.length / recordsPerPage) || 1;
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
   const currentRecords = filteredApplications.slice(indexOfFirstRecord, indexOfLastRecord);
 
+  // constants (adjust if your policy differs)
+  const WORK_HOURS_PER_DAY = 8;
 
+  const [leaveTypes, setLeaveTypes] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const [leaveBalDays, setLeaveBalDays] = useState(0);
+  const [leaveBalHours, setLeaveBalHours] = useState(0);
+
+  // optional: simple validation message
+  const [balanceError, setBalanceError] = useState("");
+
+useEffect(() => {
+  let alive = true;
+
+  const fetchLeaveTypes = async () => {
+    try {
+      setLoading(true);
+
+      const res = await fetch(API_ENDPOINTS.leaveTypes, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          // If you use a tenant header, include it:
+          // "X-Company-DB": selectedCompanyCode,
+        },
+        body: JSON.stringify({ EMP_NO: user.empNo }),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(`HTTP ${res.status} ${res.statusText} ${txt}`);
+      }
+
+      const payload = await res.json(); // this is what axios's { data } was
+
+      if (!alive) return;
+
+      if (payload?.success && Array.isArray(payload.data)) {
+        const seen = new Set();
+        const cleaned = payload.data
+          .filter(r => r?.lvtype && r?.lvdesc)
+          .filter(r => (seen.has(r.lvtype) ? false : seen.add(r.lvtype)))
+          .sort((a, b) => a.lvdesc.localeCompare(b.lvdesc));
+
+        setLeaveTypes(cleaned);
+      } else {
+        setLeaveTypes([]);
+      }
+    } catch (err) {
+      if (alive) {
+        console.error("Error fetching leave types:", err);
+        setLeaveTypes([]);
+      }
+    } finally {
+      if (alive) setLoading(false);
+    }
+  };
+
+  if (user?.empNo) fetchLeaveTypes();
+  return () => { alive = false; };
+}, [user?.empNo]);
+
+
+
+
+  // --- Fetch ---
   useEffect(() => {
-    if (!user || !user.empNo) return;
+    if (!user?.empNo) return;
+
     const fetchLeaveApplications = async () => {
       try {
-        const today = dayjs().format("YYYY-MM-DD");
         const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
-    
-        const response = await fetch(API_ENDPOINTS.fetchLeaveApplications, { 
+        const response = await fetch(API_ENDPOINTS.fetchLeaveApplications, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             EMP_NO: user.empNo,
             START_DATE: startDate,
-            END_DATE: "2030-01-01"
+            END_DATE: "2030-01-01",
           }),
         });
-    
-  
         const result = await response.json();
-        console.log("Leave Applications API Response:", result);
-  
-        if (result.success && result.data.length > 0) {
-          const parsedData = JSON.parse(result.data[0].result);
-          setLeaveApplications(parsedData || []);
-          setFilteredApplications(parsedData || []);
+        if (result?.success && result?.data?.length > 0) {
+          const parsed = JSON.parse(result.data[0].result) || [];
+          setLeaveApplications(parsed);
+          setFilteredApplications(parsed);
         } else {
+          setLeaveApplications([]);
+          setFilteredApplications([]);
           setError("No leave applications found.");
         }
       } catch (err) {
@@ -80,620 +157,911 @@ const Leave = () => {
         setError("An error occurred while fetching leave applications.");
       }
     };
-  
-    // Initial fetch
-    fetchLeaveApplications(); 
-  
-    // Set up auto-refresh every 10 seconds
-    const interval = setInterval(() => {
-      fetchLeaveApplications();
-    }, 10000); // Fetch every 10 seconds
-  
-    // Cleanup function to clear interval when component unmounts
-    return () => clearInterval(interval);
-  }, [user]); // Depend on user to re-run when user changes
 
+    fetchLeaveApplications();
+  }, [user]);
+
+  // --- Init defaults ---
   useEffect(() => {
-    // const today = new Date().toISOString().split("T")[0]; // Get today's date in YYYY-MM-DD format
-    const today = new Date();
+    const today = dayjs().format("YYYY-MM-DD");
     setApplicationDate(today);
     setSelectedStartDate(today);
     setSelectedEndDate(today);
   }, []);
 
-  // Sorting Function
-  const sortData = (key) => {
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc";
+
+
+  // --- Derived options from data ---
+  const typeOptions = useMemo(() => {
+    const set = new Set();
+    leaveApplications.forEach((x) => x?.leaveCode && set.add(x.leaveCode));
+    return Array.from(set).sort();
+  }, [leaveApplications]);
+
+  const statusOptions = useMemo(() => {
+    const set = new Set();
+    leaveApplications.forEach((x) => x?.leaveStatus && set.add(x.leaveStatus));
+    return Array.from(set).sort();
+  }, [leaveApplications]);
+
+  // --- Filter application list whenever filters or data change ---
+  useEffect(() => {
+    let filtered = [...leaveApplications];
+
+    // Date range: keep rows if any overlap with [leaveDateStart..leaveDateEnd]
+    const hasStart = !!searchFields.leaveDateStart;
+    const hasEnd = !!searchFields.leaveDateEnd;
+    if (hasStart || hasEnd) {
+      filtered = filtered.filter((row) => {
+        const start = dayjs(row.leaveStart).format("YYYY-MM-DD");
+        const end = dayjs(row.leaveEnd).format("YYYY-MM-DD");
+        const afterStart = hasStart ? end >= searchFields.leaveDateStart : true; // overlaps interval
+        const beforeEnd = hasEnd ? start <= searchFields.leaveDateEnd : true;
+        return afterStart && beforeEnd;
+      });
     }
-    setSortConfig({ key, direction });
 
-    const sortedData = [...filteredApplications].sort((a, b) => {
-      if (key === "leaveStart" || key === "leaveEnd") {
-        return direction === "asc"
-          ? dayjs(a[key]).unix() - dayjs(b[key]).unix()
-          : dayjs(b[key]).unix() - dayjs(a[key]).unix();
-      } else if (key === "leaveDays") {
-        return direction === "asc"
-          ? parseFloat(a[key]) - parseFloat(b[key])
-          : parseFloat(b[key]) - parseFloat(a[key]);
-      } else {
-        return direction === "asc"
-          ? a[key]?.toString().localeCompare(b[key]?.toString())
-          : b[key]?.toString().localeCompare(a[key]?.toString());
-      }
-    });
+    if (searchFields.leaveDays) {
+      filtered = filtered.filter((r) =>
+        String(r.leaveDays ?? "").toLowerCase().includes(String(searchFields.leaveDays).toLowerCase())
+      );
+    }
+    if (searchFields.leaveType) {
+      filtered = filtered.filter((r) => (r?.leaveCode || "") === searchFields.leaveType);
+    }
+    if (searchFields.leaveStatus) {
+      filtered = filtered.filter((r) => (r?.leaveStatus || "") === searchFields.leaveStatus);
+    }
+    if (searchFields.leaveRemarks) {
+      filtered = filtered.filter((r) => String(r.leaveRemarks ?? "").toLowerCase().includes(searchFields.leaveRemarks.toLowerCase()));
+    }
+    if (searchFields.appRemarks) {
+      filtered = filtered.filter((r) => String(r.appRemarks ?? "").toLowerCase().includes(searchFields.appRemarks.toLowerCase()));
+    }
 
-    setFilteredApplications(sortedData);
-  };
-
-  // Search Function
-  const handleSearchChange = (e, key) => {
-    const { value } = e.target;
-    setSearchFields((prev) => ({ ...prev, [key]: value }));
-
-    const filtered = leaveApplications.filter((app) =>
-      app[key]?.toString().toLowerCase().includes(value.toLowerCase())
-    );
     setFilteredApplications(filtered);
     setCurrentPage(1);
+  }, [searchFields, leaveApplications]);
+
+  // --- Sorting ---
+  const FIELD_MAP = {
+    startDate: "leaveStart",
+    endDate: "leaveEnd",
+    durationDays: "leaveDays",
+    type: "leaveCode",
+    remark: "leaveRemarks",
+    appRemarks: "appRemarks",
+    status: "leaveStatus",
   };
 
-  // Function to display sort indicator (↑ or ↓)
-  const getSortIndicator = (key) => {
-    if (sortConfig.key !== key) return null;
-    return (
-      <FontAwesomeIcon
-        icon={sortConfig.direction === "asc" ? faSortUp : faSortDown}
-        className="ml-1"
-      />
-    );
-  };
-  
+  const sortData = (uiKey) => {
+    const key = FIELD_MAP[uiKey] || uiKey;
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") direction = "desc";
+    setSortConfig({ key, direction });
 
-   // List of holidays (Modify this array based on your holidays)
-  //  const holidays = ["2025-04-01", "2025-05-04"]; // Example holidays (New Year, Christmas, etc.)
- 
-  const fetchHolidays = async () => {
-    try {
-      const response = await fetch(API_ENDPOINTS.dashBoard, { // Use dynamic API endpoint here
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ EMP_NO: user.empNo }),
-      });
-      const holidayDates = response.data.map((holiday) =>
-        dayjs(holiday.holdate).format("YYYY-MM-DD")
-      );
-      // setHolidays(holidays);
-      setHolidays(parsedData[0]?.holidays || []);
-    } catch (error) {
-      console.error("Error fetching holidays:", error);
-    }
+    const sorted = [...filteredApplications].sort((a, b) => {
+      if (key === "leaveStart" || key === "leaveEnd") {
+        const av = dayjs(a[key]).valueOf();
+        const bv = dayjs(b[key]).valueOf();
+        return direction === "asc" ? av - bv : bv - av;
+      }
+      if (key === "leaveDays") {
+        const av = parseFloat(a.leaveDays ?? 0);
+        const bv = parseFloat(b.leaveDays ?? 0);
+        return direction === "asc" ? av - bv : bv - av;
+      }
+      const av = String(a[key] ?? "");
+      const bv = String(b[key] ?? "");
+      return direction === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+
+    setFilteredApplications(sorted);
   };
 
-  const toUTCDate = (dateStr) => {
-    const [year, month, day] = dateStr.split("-");
-    return new Date(Date.UTC(year, month, day));
+  const getSortIndicator = (uiKey) => {
+    const key = FIELD_MAP[uiKey] || uiKey;
+    if (sortConfig.key !== key) return "";
+    return sortConfig.direction === "asc" ? "↑" : "↓";
   };
   
-  // excludeDates={holidays.map(toUTCDate)}
-  
+  // Search Function
+  const handleSearchChange = (e, key) => {
+  const { value } = e.target;
+  setSearchFields((prev) => ({ ...prev, [key]: value }));
+};
+  // --- Form helpers ---
+  const calculateDaysFromHours = (h) => (h ? (Number(h) / 8).toFixed(2) : "");
 
+  // const handleHoursChange = (e) => {
+  //   const h = e.target.value;
+  //   setLeaveHours(h);
+  //   setLeaveDays(calculateDaysFromHours(h));
+  // };
 
-  // const fetchHolidays = async () => {
-  //   if (user?.empNo) {
-  //     fetchHolidays();
-  //   }
-  
-  //     try {
-  //       const response = await fetch(API_ENDPOINTS.dashBoard, { // Use dynamic API endpoint here
-  //         method: "POST",
-  //         headers: { "Content-Type": "application/json" },
-  //         body: JSON.stringify({ EMP_NO: user.empNo }),
-  //       });
-  
-  //       const result = await response.json();
-  //       console.log("Raw API Response:", result);
-  
-  //       if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
-  //         const parsedData = JSON.parse(result.data[0].result);
-  //         console.log("Parsed Employee Summary:", parsedData);
-  
-  //         let apiLeaveCredits = parsedData[0]?.leaveCredit || [];
-  
-  //         // Merge API leave credits with default leave types
-  //         const mergedLeaveCredits = defaultLeaveTypes.map((defaultLeave) => {
-  //           const foundLeave = apiLeaveCredits.find(
-  //             (apiLeave) => apiLeave.description === defaultLeave.description
-  //           );
-  //           return foundLeave ? foundLeave : defaultLeave;
-  //         });
-        
-  //         setHolidays(parsedData[0]?.holidays || []);
-  //         // console.log("Holidays:", parsedData[0]?.holidays);
-  
-  //       } else {
-  //         setError("API response format is incorrect or no data found.");
-  //       }
-  //     } catch (err) {
-  //       console.error("Error fetching daily time records:", err);
-  //       setError("An error occurred while fetching the records.");
-  //     }
-  //   };
+  // const handleDaysChange = (e) => {
+  //   const d = e.target.value;
+  //   setLeaveDays(d);
+  //   setLeaveHours(d ? String(Number(d) * 8) : "");
+  // };
 
+  const handleDaysChange = (e) => {
+  const d = Number(e.target.value || 0);
+  let h = Number((d * WORK_HOURS_PER_DAY).toFixed(2));
+  const { d: d2, h: h2 } = clampRequestToBalance(d, h);
+  setLeaveDays(d2);
+  setLeaveHours(h2);
+};
 
+const handleHoursChange = (e) => {
+  const h = Number(e.target.value || 0);
+  let d = Number((h / WORK_HOURS_PER_DAY).toFixed(2)); // keep decimals if needed
+  const { d: d2, h: h2 } = clampRequestToBalance(d, h);
+  setLeaveHours(h2);
+  setLeaveDays(d2);
+};
 
-   // Function to calculate leave days excluding weekends & holidays
-   const calculateLeaveDays = (startDate, endDate) => {
-    if (!startDate || !endDate) return 0; // Return 0 if either date is missing
-    
-    let start = new Date(startDate);
-    let end = new Date(endDate);
-    let count = 0;
-    
-    while (start <= end) {
-      const day = start.getDay(); // 0 = Sunday, 6 = Saturday
-      const formattedDate = start.toISOString().split("T")[0]; // Format YYYY-MM-DD
-      
-      // Count weekdays that are not holidays
-      if (day !== 0 && day !== 6 && !holidays.includes(formattedDate)) {
-        count++;
-      }
-      
-      start.setDate(start.getDate() + 1); // Move to the next day
-    }
-    
-    return count;
-  };
-  
-  
-  const handleDateChange = (field, value) => {
-    if (!value) return;
-  
-    if (field === "start") {
-      setSelectedStartDate(value);
-  
-      let adjustedEndDate = selectedEndDate;
-      if (!selectedEndDate || value > selectedEndDate) {
-        adjustedEndDate = value;
-        setSelectedEndDate(value);
-      }
-  
-      if (adjustedEndDate) {
-        const days = calculateLeaveDays(value, adjustedEndDate);
-        if (days === 0) {
-          Swal.fire({
-            icon: "warning",
-            title: "Invalid Leave Duration",
-            text: "Leave duration must be at least one valid working day.",
-          });
-          setLeaveDays(0);
-          setLeaveHours(0);
-          return;
-        }
-        setLeaveDays(days);
-        setLeaveHours(days * 8);
-      }
-    }
-  
-    if (field === "end") {
-      if (selectedStartDate && value < selectedStartDate) {
-        Swal.fire({
-          icon: "warning",
-          title: "Invalid End Date",
-          text: "End date cannot be earlier than start date.",
-        });
-        return;
-      }
-  
-  
-      if (selectedStartDate && value) {
-        const days = calculateLeaveDays(selectedStartDate, value);
-        if (days < 0) {
-          Swal.fire({
-            icon: "warning",
-            title: "Invalid Leave Duration",
-            text: "Leave duration must be at least one valid working day.",
-          });
-          setLeaveDays(1);
-          setLeaveHours(8);
-          return;
-        }
-        setLeaveDays(days);
-        setLeaveHours(days * 8);
-      }
-
-      
+  const handleStartDateChange = (value) => {
+    setSelectedStartDate(value);
+    if (!selectedEndDate || dayjs(value).isAfter(selectedEndDate)) {
       setSelectedEndDate(value);
-
     }
   };
-  
-  
- 
-    
-    
-      const handleHoursChange = (e) => {
-        const hours = e.target.value;
-        setLeaveHours(hours);
-        setLeaveDays(hours ? (hours / 8).toFixed(2) : ""); // Convert to days
-      };
-    
-      const handleDaysChange = (e) => {
-        const days = e.target.value;
-        setLeaveDays(days);
-        setLeaveHours(days ? days * 8 : ""); // Convert to hours
-      };
 
-
-  const handleSubmit = async () => {
-    // Check if any required fields are empty
-    if (!selectedStartDate || !selectedEndDate || !leaveType || !remarks.trim()) {
-        Swal.fire({
-            title: "Incomplete Form",
-            text: "Please fill in all required fields before submitting.",
-            icon: "warning",
-            confirmButtonText: "OK",
-        });
-        return; // Stop execution to prevent API call
+  const handleEndDateChange = (value) => {
+    if (selectedStartDate && dayjs(value).isBefore(selectedStartDate)) {
+      Swal.fire({ icon: "warning", title: "Invalid End Date", text: "End date cannot be earlier than start date." });
+      return;
     }
+    setSelectedEndDate(value);
+  };
 
-    const leaveData = {
-        json_data: {
-            empNo: user.empNo,
-            detail: [
-                {
-                    leaveStart: selectedStartDate,
-                    leaveEnd: selectedEndDate,
-                    leaveCode: leaveType,
-                    leaveRemarks: remarks,
-                    leaveHours: leaveHours ? parseFloat(leaveHours) : 0,
-                    leaveDays: leaveDays ? parseFloat(leaveDays) : 0,
-                },
-            ],
-        },
-    };
+  // call this when the select changes
+const handleLeaveTypeChange = (e) => {
+  const val = e.target.value;
+  setLeaveType(val);
 
-    console.log("Sending Leave Data:", JSON.stringify(leaveData, null, 2));
+  // find selected row from the cached /leaveTypes
+  const sel = leaveTypes.find(x => x.lvtype === val);
 
-    try {
-      const response = await fetch(API_ENDPOINTS.saveLeaveApplication, { 
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(leaveData),
-      });
+  if (sel) {
+    const days = Number(sel.balance ?? 0);
+    // use balancehrs if provided, else derive from days
+    const hours = sel.balancehrs != null
+      ? Number(sel.balancehrs)
+      : Number((days * WORK_HOURS_PER_DAY).toFixed(2));
 
-        const result = await response.json();
-        console.log("API Response:", result);
+    setLeaveBalDays(days);
+    setLeaveBalHours(hours);
 
-        if (result.status === "success") {
-            Swal.fire({
-                title: "Success!",
-                text: "Leave application submitted successfully.",
-                icon: "success",
-                confirmButtonText: "OK",
-            }).then(() => {
-                // Reset all input fields after successful submission
-                setSelectedStartDate("");
-                setSelectedEndDate("");
-                setLeaveType("");
-                setRemarks("");  // Ensure remarks are cleared
-                setLeaveHours("");
-                setLeaveDays("");
+    // (optional) reset request counts on change
+    setLeaveDays(0);
+    setLeaveHours(0);
+    setBalanceError("");
+  } else {
+    setLeaveBalDays(0);
+    setLeaveBalHours(0);
+    setLeaveDays(0);
+    setLeaveHours(0);
+    setBalanceError("");
+  }
+};
 
-                setLeaveApplications(); // Refresh leave applications list
-            });
-        } else {
-            Swal.fire({
-                title: "Failed!",
-                text: "Failed to submit leave. Please try again.",
-                icon: "error",
-                confirmButtonText: "OK",
-            });
-        }
-    } catch (err) {
-        console.error("Error submitting leave application:", err);
-        Swal.fire({
-            title: "Error!",
-            text: "An error occurred while submitting. Please check your connection and try again.",
-            icon: "error",
-            confirmButtonText: "OK",
-        });
-    }
+const clampRequestToBalance = (days, hours) => {
+  // if either exceeds balance, clamp and set a note
+  let d = days, h = hours;
+  let msg = "";
+
+  if (d > leaveBalDays) {
+    d = leaveBalDays;
+    msg = "Requested days exceed available balance. Reset to maximum balance.";
+  }
+  if (h > leaveBalHours) {
+    h = leaveBalHours;
+    msg = "Requested hours exceed available balance. Reset to maximum balance.";
+  }
+  setBalanceError(msg);
+  return { d, h };
 };
 
 
+
+
+
+    // --- Auto-compute Days/Hours from Start–End range (8 hrs/day, inclusive) ---
+  useEffect(() => {
+    if (!selectedStartDate || !selectedEndDate) return;
+
+    const start = dayjs(selectedStartDate);
+    const end = dayjs(selectedEndDate);
+
+    if (end.isBefore(start)) return; // already handled by validation
+
+    const inclusiveDays = end.diff(start, "day") + 1; // e.g., Sep 1–1 = 1 day
+    const hours = inclusiveDays * 8;
+
+    setLeaveDays(String(inclusiveDays));
+    setLeaveHours(String(hours));
+  }, [selectedStartDate, selectedEndDate]);
+
+
+  const handleSubmit = async () => {
+    if (!selectedStartDate || !selectedEndDate || !leaveType || !remarks.trim()) {
+      Swal.fire({ title: "Incomplete Form", text: "Please fill in all required fields before submitting.", icon: "warning" });
+      return;
+    }
+
+    const payload = {
+      json_data: {
+        empNo: user.empNo,
+        detail: [
+          {
+            leaveStart: selectedStartDate,
+            leaveEnd: selectedEndDate,
+            leaveCode: leaveType,
+            leaveRemarks: remarks,
+            leaveHours: leaveHours ? parseFloat(leaveHours) : 0,
+            leaveDays: leaveDays ? parseFloat(leaveDays) : 0,
+          },
+        ],
+      },
+    };
+
+    try {
+      const res = await fetch(API_ENDPOINTS.saveLeaveApplication, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        console.error("API Error Response:", t);
+        Swal.fire({ title: "Error!", text: "An error occurred with the API. Please try again later.", icon: "error" });
+        return;
+      }
+
+      const result = await res.json();
+      if (result?.status === "success") {
+        Swal.fire({ title: "Success!", text: "Leave application submitted successfully.", icon: "success" }).then(async () => {
+          // reset
+          const today = dayjs().format("YYYY-MM-DD");
+          setApplicationDate(today);
+          setSelectedStartDate(today);
+          setSelectedEndDate(today);
+          setLeaveType("");
+          setRemarks("");
+          setLeaveHours("");
+          setLeaveDays("");
+
+          // refresh listing
+          try {
+            const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
+            const response = await fetch(API_ENDPOINTS.fetchLeaveApplications, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: startDate, END_DATE: "2030-01-01" }),
+            });
+            const refresh = await response.json();
+            if (refresh?.success && refresh?.data?.length > 0) {
+              const parsed = JSON.parse(refresh.data[0].result) || [];
+              setLeaveApplications(parsed);
+              setFilteredApplications(parsed);
+            }
+          } catch (e) {
+            console.error("Error refreshing leave list:", e);
+          }
+        });
+      } else {
+        Swal.fire({ title: "Failed!", text: "Failed to submit leave. Please try again.", icon: "error" });
+      }
+    } catch (err) {
+      console.error("Error submitting leave:", err);
+      Swal.fire({ title: "Error!", text: "An error occurred while submitting. Please check your connection and try again.", icon: "error" });
+    }
+  };
+
+  // Put below your fetchLeaveApplications() effect or with other helpers
+
+  const refreshLeaveList = async () => {
+    const r = await fetch(API_ENDPOINTS.fetchLeaveApplications, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        EMP_NO: user.empNo,
+        START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"),
+        END_DATE: "2099-12-31",
+      }),
+    });
+    const jj = await r.json();
+    const rows =
+      jj?.success && jj.data?.length
+        ? JSON.parse(jj.data[0].result || "[]")
+        : [];
+    setLeaveApplications(rows);
+    setFilteredApplications(rows);
+  };
+
+  // Try a few likely stamp keys coming from API rows
+// Heuristic finder: try common keys and then scan any key that looks like a stamp/id/guid
+const getLeaveStamp = (row) => {
+  if (!row) return null;
+  // Try common/likely names first (adjust order as you learn the real one)
+  const candidates = [
+    row.lvStamp, row.leaveStamp, row.LV_STAMP, row.LVSTAMP,
+    row.lvId, row.leaveId, row.LeaveID, row.id, row.ID, row.guid, row.GUID,
+    row.appStamp, row.docStamp, row.transStamp, row.tranStamp, row.lvTranStamp
+  ].filter(Boolean);
+  if (candidates.length) return candidates[0];
+
+  // Fallback: scan keys for something that contains "stamp" or ends with "id"/"guid"
+  for (const [k, v] of Object.entries(row)) {
+    const lk = String(k).toLowerCase();
+    if (lk.includes("stamp") || lk === "id" || lk.endsWith("id") || lk.endsWith("guid")) {
+      if (v) return v;
+    }
+  }
+  return null;
+};
+
+
+  const cancelLeaveApplication = async (entry) => {
+    if ((entry?.leaveStatus || "") !== "Pending") return;
+
+    const lvStamp = getLeaveStamp(entry);
+    if (!lvStamp) {
+      await Swal.fire({
+        title: "Missing identifier",
+        text: "Cannot cancel: leave stamp (lvStamp) not found in this row.",
+        icon: "error",
+      });
+      return;
+    }
+
+    const conf = await Swal.fire({
+      title: "Cancel this application?",
+      text: "This will mark your pending leave request as Cancelled.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, cancel it",
+    });
+    if (!conf.isConfirmed) return;
+
+    try {
+      // Mirror your OT payload shape: { json_data: { empNo, lvStamp } }
+      const payload = { json_data: { empNo: user.empNo, lvStamp } };
+
+      const res = await fetch(API_ENDPOINTS.cancelLeaveApplication, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j?.status !== "success") {
+        throw new Error(j?.message || "Cancel failed");
+      }
+
+      await Swal.fire({
+        title: "Cancelled",
+        text: "Your leave application was cancelled.",
+        icon: "success",
+      });
+      await refreshLeaveList();
+    } catch (e) {
+      await Swal.fire({ title: "Error", text: e.message, icon: "error" });
+    }
+  };
+
+
   return (
-      
-    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[200px] mt-[80px] p-4 sm:p-6 bg-gray-100 min-h-screen overflow-x-hidden">
+    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[200px] mt-[80px] p-2 sm:p-4 bg-gray-100 min-h-screen">
       <div className="mx-auto">
-        
-        {/* Header Section */}
+        {/* Header */}
         <div className="global-div-header-ui">
           <h1 className="global-div-headertext-ui">My Leave Applications</h1>
         </div>
 
-        {/* Leave Details Section */}
-        <div className="mt-6 bg-white p-4 sm:p-6 shadow-md rounded-lg">
-          
-          {/* <div className="grid grid-cols-3 gap-6"> */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          <div className="flex flex-col">
-            <span className="block font-semibold mb-1 propercase">Date</span>
-            {/* <input
-              type="date"
-              className="w-full p-2 border rounded"
-              value={applicationDate}
-              onChange={(e) => setApplicationDate(e.target.value)}
-            /> */}
-            <DatePicker 
-              selected={applicationDate ? new Date(applicationDate) : null}
-              onChange={(date) => setApplicationDate(date)}
-              dateFormat="MM/dd/yyyy"
-              placeholderText="Select Application date"
-              className="w-full p-2 border rounded"
-            />
-          </div>
-
-          <div className="flex flex-col">
-            <span className="block font-semibold mb-1">Start Date</span>
-            {/* <input 
-            type="date" 
-            className="w-full p-2 border rounded" 
-            value={selectedStartDate} 
-            min={selectedStartDate}
-            onChange={(e) => handleDateChange("start", e.target.value)}
-          /> */}
-            <DatePicker 
-              selected={selectedStartDate ? new Date(selectedStartDate) : null}
-              onChange={(date) => handleDateChange("start", date)}
-              excludeDates={holidays.map(toUTCDate)}
-              minDate={new Date(applicationDate)}
-              dateFormat="MM/dd/yyyy"
-              placeholderText="Select Leave Start Date"
-              className="w-full p-2 border rounded"
-            />
-
-          </div>
-
-          <div className="flex flex-col">
-            <span className="block font-semibold mb-1">End Date</span>
-            {/* <input 
-            type="date" 
-            className="w-full p-2 border rounded" 
-            value={selectedEndDate} 
-            min={selectedStartDate}
-            onChange={(e) => handleDateChange("end", e.target.value)}
-          /> */}
-          <DatePicker
-              selected={selectedEndDate ? new Date(selectedEndDate) : null}
-              onChange={(date) => handleDateChange("end", date)}
-              excludeDates={holidays.map(toUTCDate)}
-              minDate={new Date(selectedStartDate)}
-              dateFormat="MM/dd/yyyy"
-              placeholderText="Select Leave End Date"
-              className="w-full p-2 border rounded"
-            />
-          </div>
-
-
-<div className="flex flex-col">
-              <span className="block font-semibold mb-1 propercase">Application Type</span>
-              <select
-  className="w-full p-2 border rounded"
-  value={leaveType}
-  onChange={(e) => setLeaveType(e.target.value)}
->
-  <option value="">Select Leave Type</option>
-  <option value="SL">Sick Leave</option>
-  <option value="VL">Vacation Leave</option>
-  <option value="SIL">Service Incentive Leave</option>
-  <option value="PL">Paternity Leave</option>
-  <option value="ML">Maternity Leave</option>
-  <option value="BL">Birthday Leave</option>
-</select>
+        {/* Form Card */}
+        <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-lg text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1 propercase">Date</span>
+              <input
+                type="date"
+                className="w-full p-2 border rounded"
+                value={applicationDate}
+                onChange={(e) => setApplicationDate(e.target.value)}
+              />
             </div>
 
             <div className="flex flex-col">
-              <span className="block font-semibold mb-1 propercase">Number of Days</span>
-              <input 
-  type="number" 
-  className="w-full p-2 border rounded" 
-  value={leaveDays} 
-  min="0" 
-  step="1"
-  placeholder="Enter Leave Days"
-  defaultValue="1"
-  // onChange={(e) => setLeaveDays(e.target.value)} 
-  onChange={handleDaysChange}
-  
-/>
+              <span className="block font-semibold mb-1">Start Date</span>
+              <input
+                type="date"
+                className="w-full p-2 border rounded"
+                value={selectedStartDate}
+                onChange={(e) => handleStartDateChange(e.target.value)}
+              />
             </div>
 
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1">End Date</span>
+              <input
+                type="date"
+                className="w-full p-2 border rounded"
+                value={selectedEndDate}
+                min={selectedStartDate}
+                onChange={(e) => handleEndDateChange(e.target.value)}
+              />
+            </div>
+{/* 
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1">Leave Type</span>
+              <select className="w-full p-2 border rounded" value={leaveType} onChange={(e) => setLeaveType(e.target.value)}>
+                <option value="">Select Leave Type</option>
+                <option value="SL">Sick Leave</option>
+                <option value="VL">Vacation Leave</option>
+                <option value="SIL">Service Incentive Leave</option>
+                <option value="PL">Paternity Leave</option>
+                <option value="ML">Maternity Leave</option>
+                <option value="BL">Birthday Leave</option>
+              </select>
+            </div> */}
+
+            {/* Leave Type */}
+<div className="flex flex-col">
+  <span className="block font-semibold mb-1">Leave Type</span>
+  <select
+    className="w-full p-2 border rounded"
+    value={leaveType}
+    onChange={handleLeaveTypeChange}
+    disabled={loading}
+  >
+    <option value="">Select Leave Type</option>
+    {leaveTypes.map((lt) => (
+      <option key={lt.lvtype} value={lt.lvtype}>
+        {lt.lvdesc}
+      </option>
+    ))}
+  </select>
+</div>
+</div>
+
+{/* Balances */}
+<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+  
+  <div className="flex flex-col">
+    <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance in Days</span>
+    <input
+      type="number"
+      className="w-full p-2 border rounded text-red-600 font-semibold"
+      min="0"
+      step="0.01"
+      value={leaveBalDays}
+      readOnly
+      disabled
+    />
+  </div>
+  <div className="flex flex-col">
+    <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance in Hours</span>
+    <input
+      type="number"
+      className="w-full p-2 border rounded text-red-600 font-semibold"
+      min="0"
+      step="0.25"
+      value={leaveBalHours}
+      readOnly
+      disabled
+    />
+  </div>
+{/* </div> */}
+
+{/* Requested */}
+
+          {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4"> */}
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1">Number of Days</span>
+              <input type="number" className="w-full p-2 border rounded" min="0" step="1" value={leaveDays} onChange={handleDaysChange} placeholder="Enter leave days" />
+            </div>
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Number of Hours</span>
-              <input 
-  type="number" 
-  className="w-full p-2 border rounded" 
-  min="0" 
-  step="0.5"
-  placeholder="Enter hours"
-  value={leaveHours} 
-  // onChange={(e) => setLeaveHours(e.target.value)} 
-  onChange={handleHoursChange}
-
-/>
+              <input type="number" className="w-full p-2 border rounded" min="0" step="0.5" value={leaveHours} onChange={handleHoursChange} placeholder="Enter leave hours" />
             </div>
-
-            </div>
-
-          {/* Remarks Section */}
-          {/* <div className="mt-6"> */}
-          <div className="flex flex-col mt-4">
-            <span className="block font-semibold mb-1">Remarks</span>
-            <textarea
-              onChange={(e) => setRemarks(e.target.value)}
-              rows="4"
-              className="w-full p-2 border rounded"
-
-
-              placeholder="Enter Remarks"
-              value={remarks}
-              required
-            ></textarea>
           </div>
 
-          {/* Submit Button */}
-          <div className="mt-6 flex justify-center">
-            <button className="bg-blue-500 text-white px-12 py-2 rounded-md text-md sm:text-lg hover:bg-blue-600 w-full sm:w-auto mx-auto"
-            onClick={handleSubmit}>
+{/* Optional inline validation */}
+{balanceError && (
+  <div className="mt-2 text-sm text-red-600">{balanceError}</div>
+)}
+
+
+
+          <div className="mt-6">
+            <span className="block font-semibold mb-1">Remarks</span>
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows="4" className="w-full p-2 border rounded" placeholder="Enter Remarks"></textarea>
+          </div>
+
+          <div className="mt-4 flex justify-center">
+            <button className="bg-blue-800 text-white px-12 py-2 rounded-md text-md sm:text-base hover:bg-blue-700 w-full sm:w-auto mx-auto" onClick={handleSubmit}>
               Submit
             </button>
           </div>
         </div>
 
-        {/* Leave History Table */}
-        <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
-          <h2 className="text-base font-semibold mb-4">Leave Application History</h2>
+        {/* Quick Filters (like Overtime) */}
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+          {/* Start */}
+          <input
+            type="date"
+            value={searchFields.leaveDateStart}
+            onChange={(e) => setSearchFields((p) => ({ ...p, leaveDateStart: e.target.value }))}
+            className="w-full px-2 py-2 border rounded text-sm"
+          />
+          {/* End */}
+          <input
+            type="date"
+            value={searchFields.leaveDateEnd}
+            onChange={(e) => setSearchFields((p) => ({ ...p, leaveDateEnd: e.target.value }))}
+            className="w-full px-2 py-2 border rounded text-sm"
+          />
+          {/* Type */}
+          <select
+            value={searchFields.leaveType}
+            onChange={(e) => setSearchFields((p) => ({ ...p, leaveType: e.target.value }))}
+            className="w-full px-2 py-2 border rounded text-sm bg-white"
+          >
+            <option value="">All Leave Types</option>
+            {typeOptions.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          {/* Status */}
+          <select
+            value={searchFields.leaveStatus}
+            onChange={(e) => setSearchFields((p) => ({ ...p, leaveStatus: e.target.value }))}
+            className="w-full px-2 py-2 border rounded text-sm bg-white"
+          >
+            <option value="">All Status</option>
+            {statusOptions.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
 
-          {error && <p className="text-red-500 text-center">{error}</p>}
-
-          <div className="overflow-x-auto w-full scrollbar-thin scrollbar-thumb-gray-400 scrollbar-track-gray-100">
-          <div>
-            {/* <table className="w-full text-sm text-center border border-gray-200 rounded-lg shadow-md">   */}
-          <table className="w-full text-sm text-center rounded-lg border">
-
-          <thead className="sticky top-[0px] z-[1] bg-blue-800 text-white text-xs sm:text-sm ms:text-sm lg:text-sm">
-          <tr>
-                  {[
-                    { key: "leaveStart", label: "Start Date" },
-                    { key: "leaveEnd", label: "End Date" },
-                    { key: "leaveDays", label: "Duration" },
-                    { key: "leaveCode", label: "Leave Type" },
-                    { key: "leaveRemarks", label: "Remarks" },
-                    { key: "AppRemarks", label: "Approver's Remarks" },
-                    { key: "leaveStatus", label: "Status" },
-                  ].map(({ key, label }) => (
-                    <th
-                      key={key}
-                      className="py-2 cursor-pointer whitespace-nowrap"
-                      onClick={() => sortData(key)}
-                    >
-                      {label} {getSortIndicator(key)}
-                    </th>
-                  ))}
-                </tr>
-                {/* Search Row */}
-                <tr>
-                  {Object.keys(searchFields).map((key) => (
-                    <td key={key} className="px-2 py-2">
-                      <input
-                        type="text"
-                        value={searchFields[key]}
-                        onChange={(e) => handleSearchChange(e, key)}
-                        className="w-full px-2 py-1 rounded text-sm"
-                      />
-                    </td>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="global-tbody">
-                {currentRecords.length > 0 ? (
-    currentRecords.map((leave, index) => {
-      // Determine row text color based on status
-      const textColor =
-      leave.leaveStatus === "Pending"
-          ? "global-td-status-pending"
-          : leave.leaveStatus === "Approved"
-          ? "global-td-status-approved"
-          : "global-td-status-disapproved";
-
-      return (
-                    <tr
-          key={index}
-          className={`global-tr ${textColor}`}
-        >
-                      <td className="global-td text-center whitespace-nowrap">{dayjs(leave.leaveStart).format("MM/DD/YYYY")}</td>
-                      <td className="global-td text-center whitespace-nowrap">{dayjs(leave.leaveEnd).format("MM/DD/YYYY")}</td>
-                      <td className="global-td text-right whitespace-nowrap">{leave.leaveDays} Days</td>
-                      <td className="global-td text-center whitespace-nowrap">{leave.leaveCode}</td>
-                      <td className="global-td text-left">{leave.leaveRemarks || "N/A"}</td>
-                      <td className="global-td text-left">{leave.appRemarks || "N/A"}</td>
-                      <td className="global-td-status">{leave.leaveStatus || "N/A"}</td>
-                        {/* <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            leave.leaveStatus === "Pending"
-                              ? "bg-yellow-100 text-yellow-600"
-                              : leave.leaveStatus === "Approved"
-                              ? "bg-green-100 text-green-600"
-                              : "bg-red-100 text-red-600"
-                          }`}
-                        >
-                          {leave.leaveStatus}
-                        </span>
-                      </td>*/}
-                    </tr>
-
-      );
-    })
-  ) : (
-    <tr>
-      <td colSpan="6" className="px-4 py-6 text-center text-gray-500">
-        No overtime applications found.
-      </td>
-    </tr>
-  )}
-</tbody>
-
-            </table>
+        {/* History Card */}
+        <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <h2 className="text-base font-semibold">Leave Application History</h2>
+            <div className="inline-flex rounded-lg border overflow-hidden self-start">
+              <button className={`px-8 py-2 text-sm ${viewMode === "card" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("card")}>Card</button>
+              <button className={`px-8 py-2 text-sm border-l ${viewMode === "accordion" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("accordion")}>
+                Accordion
+              </button>
+              <button className={`px-8 py-2 text-sm border-l ${viewMode === "table" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("table")}>Table</button>
             </div>
           </div>
 
-           {/* Pagination */}
-{/* <div className="flex justify-between items-center mt-4 border-t pt-4"> */}
-<div className="flex flex-wrap justify-between items-center mt-4 border-t pt-4">
-  {/* Left: Showing Text */}
-  <div className="text-sm text-gray-600">
-    Showing <b>{indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries
-  </div>
+          {error && <p className="text-red-500 text-center mt-2">{error}</p>}
 
-  {/* Right: Pagination Controls */}
-  <div className="flex items-center border rounded-lg overflow-hidden">
-    {/* Previous Button */}
-    <button
-      onClick={() => setCurrentPage(currentPage - 1)}
-      disabled={currentPage === 1}
-      className="px-3 py-1 border-r text-gray-700 hover:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-    >
-      &lt;
-    </button>
-
-    {/* Page Numbers */}
-    {[...Array(totalPages)].map((_, i) => (
-      <button
-        key={i}
-        onClick={() => setCurrentPage(i + 1)}
-        className={`px-3 py-1 border-r ${
-          currentPage === i + 1 ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-200"
-        }`}
-      >
-        {i + 1}
-      </button>
-    ))}
-
-    {/* Next Button */}
-    <button
-      onClick={() => setCurrentPage(currentPage + 1)}
-      disabled={currentPage === totalPages}
-      className="px-3 py-1 text-gray-700 hover:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
-    >
-      &gt;
-    </button>
-  </div>
-</div>
+          {/* Card View */}
+          {viewMode === "card" && (
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {currentRecords.length > 0 ? (
+                currentRecords.map((entry, idx) => {
+                  const statusClass =
+                  entry.leaveStatus === "Pending"
+                    ? "text-yellow-700 bg-yellow-100 font-semibold"
+                    : entry.leaveStatus === "Approved"
+                    ? "text-blue-700 bg-blue-100 font-semibold"
+                    : entry.leaveStatus === "Cancelled"
+                    ? "text-gray-700 bg-gray-200 font-semibold"
+                    : "text-red-700 bg-red-100 font-semibold";
 
 
+                  return (
+                    <div key={idx} className="border rounded-lg p-4 shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-semibold">
+                          {dayjs(entry.leaveStart).format("MM/DD/YYYY")} – {dayjs(entry.leaveEnd).format("MM/DD/YYYY")}
+                        </div>
+                        <span className={`inline-flex justify-center items-center text-sm w-28 py-1 md:py-2 rounded-lg ${statusClass}`}>
+                          {entry.leaveStatus || "N/A"}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1 text-[12px] md:text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-semibold">Days</span>
+                          <span className="font-medium">{entry.leaveDays} day(s)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-semibold">Type</span>
+                          <span className="font-medium">{entry.leaveDesc}</span>
+                        </div>
+                        <br />
+                        <div>
+                          <div className="text-gray-500 font-semibold">Employee Remarks:</div>
+                          <div className="font-normal break-words text-black">{entry.leaveRemarks || "N/A"}</div>
+                        </div>
+                        <br />
+                        <div>
+                          <div className="text-gray-500 font-semibold">Approver's Remarks:</div>
+                          <div className="font-normal break-words text-blue-700">{entry.appRemarks || "N/A"}</div>
+                        </div>
+                      </div>
+                      {/* Existing card body … */}
+                      {entry?.leaveStatus === "Pending" && (
+                        <div className="mt-3 text-right">
+                          <button
+                            className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700"
+                            onClick={() => cancelLeaveApplication(entry)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="col-span-full text-center text-gray-500 py-6">No leave applications found.</div>
+              )}
+            </div>
+          )}
+
+          {/* Accordion View */}
+          {viewMode === "accordion" && (
+            <div className="mt-4 divide-y border rounded-lg">
+              {currentRecords.length > 0 ? (
+                currentRecords.map((entry, idx) => {
+                  const statusClass =
+                  entry.leaveStatus === "Pending"
+                    ? "text-yellow-700 bg-yellow-100 font-semibold"
+                    : entry.leaveStatus === "Approved"
+                    ? "text-blue-700 bg-blue-100 font-semibold"
+                    : entry.leaveStatus === "Cancelled"
+                    ? "text-gray-700 bg-gray-200 font-semibold"
+                    : "text-red-700 bg-red-100 font-semibold";
+
+                  return (
+                    <details key={idx} className="group p-2 text-[12px] md:text-sm">
+                      <summary className="flex items-center justify-between cursor-pointer list-none">
+                        <div className="font-medium">
+                          {dayjs(entry.leaveStart).format("MM/DD/YYYY")} – {dayjs(entry.leaveEnd).format("MM/DD/YYYY")} • {entry.leaveDays} day(s) • {entry.leaveDesc}
+                        </div>
+                        <span className={`inline-flex justify-center items-center w-28 py-1 rounded-lg ${statusClass}`}>{entry.leaveStatus || "N/A"}</span>
+                      </summary>
+                      <div className="mt-3 space-y-2">
+                        <div>
+                          <div className="text-gray-500 font-semibold">Remarks</div>
+                          <div>{entry.leaveRemarks || "N/A"}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 font-semibold">Approver's Remarks</div>
+                          <div className="text-blue-800">{entry.appRemarks || "N/A"}</div>
+                        </div>
+                      </div>
+                      {/* Inside <details> content */}
+                      {entry?.leaveStatus === "Pending" && (
+                        <div className="pt-2 text-right">
+                          <button
+                            className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700"
+                            onClick={() => cancelLeaveApplication(entry)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+
+                    </details>
+                  );
+                })
+              ) : (
+                <div className="text-center text-gray-500 py-6">No leave applications found.</div>
+              )}
+            </div>
+          )}
+
+          {/* Table View */}
+          {viewMode === "table" && (
+            <div className="w-full overflow-x-auto mt-4 rounded-lg">
+              <table className="min-w-[900px] w-full text-sm text-center border">
+                <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm">
+                  <tr>
+                    {[
+                      { key: "startDate", label: "Start Date" },
+                      { key: "endDate", label: "End Date" },
+                      { key: "durationDays", label: "Duration" },
+                      { key: "type", label: "Leave Type" },
+                      { key: "remark", label: "Remarks" },
+                      { key: "appRemarks", label: "Approver's Remarks" },
+                      { key: "status", label: "Status" },
+                      { key: "actions", label: "Actions" },   // ← add this
+                    ].map(({ key, label }) => (
+                      <th key={key} className="py-2 px-3 cursor-pointer whitespace-nowrap" onClick={() => sortData(key)}>
+                        {label} {getSortIndicator(key)}
+                      </th>
+                    ))}
+                  </tr>
+                  
+  {/* 🔎 Search row (Date range uses the first TWO columns) */}
+  <tr>
+    {/* Start Date (column 1: OT Date) */}
+    <td className="px-1 py-2 bg-white whitespace-nowrap">
+      <input
+        type="date"
+        value={searchFields.leaveDateStart}
+        onChange={(e) => handleSearchChange(e, "leaveDateStart")}
+        // onChange={(e) =>
+        //   setSearchFields((prev) => ({ ...prev, otDateStart: e.target.value }))
+        // }
+        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
+        placeholder="Filter..."
+      />
+    </td>
+
+    {/* End Date (column 1: OT Date) */}
+    <td className="px-1 py-2 bg-white whitespace-nowrap">
+      <input
+        type="date"
+        value={searchFields.leaveDateEnd}
+        onChange={(e) => handleSearchChange(e, "leaveDateEnd")}
+        // onChange={(e) =>
+        //   setSearchFields((prev) => ({ ...prev, otDateStart: e.target.value }))
+        // }
+        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
+        placeholder="Filter..."
+      />
+    </td>
+
+    {/* Duration  */}
+    <td className="px-1 py-2 bg-white whitespace-nowrap">
+      <input
+        type="text"
+        value={searchFields.durationHours}
+        onChange={(e) => handleSearchChange(e, "durationHours")}
+        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
+        placeholder="Filter..."
+      />
+    </td>
+
+    {/* Type */}
+    <td className="px-1 py-2 bg-white whitespace-nowrap">
+      <input
+        type="text"
+        value={searchFields.leaveType}
+        onChange={(e) => handleSearchChange(e, "leaveType")}
+        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
+        placeholder="Filter..."
+      />
+    </td>
+
+    {/* Remarks */}
+    <td className="px-1 py-2 bg-white whitespace-nowrap">
+      <input
+        type="text"
+        value={searchFields.leaveRemarks}
+        onChange={(e) => handleSearchChange(e, "leaveRemarks")}
+        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
+        placeholder="Filter..."
+      />
+    </td>
+
+    {/* Approver's Remarks */}
+    <td className="px-1 py-2 bg-white whitespace-nowrap">
+      <input
+        type="text"
+        value={searchFields.appRemarks}
+        onChange={(e) => handleSearchChange(e, "appRemarks")}
+        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
+        placeholder="Filter..."
+      />
+    </td>
+
+    
+                        {/* Status */}
+                    <td className="px-1 py-2 bg-white whitespace-nowrap">
+                      <select
+                        value={searchFields.leaveStatus}
+                        onChange={(e) => handleSearchChange(e, "leaveStatus")}
+                        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-white"
+                      >
+                        <option value="">All</option>
+                        {statusOptions.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+
+                    <td className="px-1 py-2 bg-white"></td> {/* Actions col filter placeholder */}
+
+
+  </tr>
+                </thead>
+                <tbody className="global-tbody">
+                  {currentRecords.length > 0 ? (
+                    currentRecords.map((entry, index) => {
+                    const statusClass =
+                    entry.leaveStatus === "Pending"
+                      ? "text-yellow-700 bg-yellow-100 font-semibold"
+                      : entry.leaveStatus === "Approved"
+                      ? "text-blue-700 bg-blue-100 font-semibold"
+                      : entry.leaveStatus === "Cancelled"
+                      ? "text-gray-700 bg-gray-200 font-semibold"
+                      : "text-red-700 bg-red-100 font-semibold";
+
+                      return (
+                        <tr key={index} className="global-tr">
+                          <td className="global-td text-center whitespace-nowrap">{dayjs(entry.leaveStart).format("MM/DD/YYYY")}</td>
+                          <td className="global-td text-center whitespace-nowrap">{dayjs(entry.leaveEnd).format("MM/DD/YYYY")}</td>
+                          <td className="global-td text-right whitespace-nowrap">{entry.leaveDays} day(s)</td>
+                          <td className="global-td text-left whitespace-nowrap">{entry.leaveDesc}</td>
+                          <td className="global-td text-left max-w-[240px] truncate" title={entry.leaveRemarks || "N/A"}>
+                            {entry.leaveRemarks || "N/A"}
+                          </td>
+                          <td className="global-td text-left max-w-[240px] truncate" title={entry.appRemarks || "N/A"}>
+                            {entry.appRemarks || "N/A"}
+                          </td>
+                          <td className="global-td text-center whitespace-nowrap">
+                            <span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-lg ${statusClass}`}>
+                              {entry.leaveStatus || "N/A"}
+                            </span>
+                          </td>
+                          <td className="global-td text-center whitespace-nowrap">
+                            {entry?.leaveStatus === "Pending" ? (
+                              <button
+                                className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700"
+                                onClick={() => cancelLeaveApplication(entry)}
+                              >
+                                Cancel
+                              </button>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="px-4 py-6 text-center text-gray-500">
+                        No leave applications found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          <div className="flex justify-between items-center mt-2 pt-2">
+            <div className="text-xs text-gray-600">
+              Showing <b>{filteredApplications.length === 0 ? 0 : indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries
+            </div>
+            <div className="flex items-center text-sm border rounded-lg overflow-hidden">
+              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border-r text-gray-700 hover:bg-blue-200 disabled:text-gray-400 disabled:cursor-not-allowed">
+                &lt;
+              </button>
+              {Array.from({ length: totalPages }).map((_, i) => (
+                <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 border-r ${currentPage === i + 1 ? "bg-blue-800 text-white" : "text-gray-700 hover:bg-gray-200"}`}>
+                  {i + 1}
+                </button>
+              ))}
+              <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 text-gray-700 hover:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed">
+                &gt;
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
