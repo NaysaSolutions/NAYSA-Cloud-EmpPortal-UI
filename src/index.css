@@ -62,7 +62,7 @@ body {
     }
 
     .global-thead-approval {
-      @apply sticky top-[0px] z-[1] bg-blue-800 rounded-lg text-white text-[12px] sm:text-xs md:text-xs lg:text-sm text-nowrap;
+      @apply sticky top-[0px] z-[1] bg-blue-800 text-white text-[12px] sm:text-xs md:text-xs lg:text-sm text-nowrap;
     }
 
     .global-tbody {
@@ -154,6 +154,56 @@ body {
 input[type="date"]::-webkit-clear-button {
   display: none;
 } */
+
+
+/* Let date inputs behave nicely on iOS */
+/* input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+} */
+
+/* Align the internal text properly */
+/* input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  padding: 0;
+  height: 100%;
+} */
+
+/* Keep the calendar indicator inside the right padding */
+/* input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.7;
+} */
+
+/* Normalize the native control, esp. on iOS */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  /* height: 2.5rem;  */
+  /* line-height: 1.5rem;  */
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Correct pseudo-element (for type="date") */
+input[type="date"]::-webkit-datetime-edit {
+  padding: 0;               /* remove extra top padding in iOS */
+  line-height: 1.4rem;
+}
+
+/* Keep the calendar indicator on the right, vertically centered */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 0.75rem;           /* matches pr-10 padding */
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.7;
+}
+
+
 
     
   }

@@ -244,17 +244,41 @@ const OBReview = ({ obData, onClose, pendingOBs, setPendingOBs, setHistory, refr
 
           <div>
             <label className="block text-gray-700 text-sm mb-1 text-xs">Employee Name</label>
-            <input className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={formData.empname || ""} readOnly />
+            <input className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={formData.empname || ""} readOnly disabled/>
           </div>
 
-          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-2">
+          <div className="mt-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-2">
             <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">Start</label>
-              <input type="datetime-local" className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={formData.obstart} readOnly />
+              <input type="datetime-local" className="border rounded-md px-3 py-2 w-full bg-gray-50 text-[11px]" value={formData.obstart} readOnly disabled/>
             </div>
             <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">End</label>
-              <input type="datetime-local" className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={formData.obend} readOnly />
+              <input type="datetime-local" className="border rounded-md px-3 py-2 w-full bg-gray-50 text-[11px]" value={formData.obend} readOnly disabled/>
+            </div>
+          </div>
+
+          
+          <div className="mt-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-2">
+
+            <div>
+              <label className="block text-gray-700 text-sm mb-1 text-xs">OB Hours</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                name="approvedHrs"
+                className="border rounded-md px-3 py-2 w-full text-xs"
+                value={formData.duration}
+                inputMode="decimal"
+                readOnly disabled
+              />
+              {showDiff && (
+                <p className="mt-1 text-[11px]">
+                  You changed from <span className="font-medium">{formData.duration}</span> to {" "}
+                  <span className="font-medium">{formData.approvedHrs}</span>
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">Approved Hours</label>
@@ -267,7 +291,8 @@ const OBReview = ({ obData, onClose, pendingOBs, setPendingOBs, setHistory, refr
                 className="border rounded-md px-3 py-2 w-full text-xs"
                 value={formData.approvedHrs}
                 onChange={handleChange}
-                inputMode="decimal"
+                inputMode="decimal"           
+                readOnly disabled
               />
               {showDiff && (
                 <p className="mt-1 text-[11px]">

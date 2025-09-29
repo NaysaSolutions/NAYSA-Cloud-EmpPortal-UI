@@ -170,13 +170,27 @@ const TimekeepingAdjustment = () => {
               <option value="timeOut">Time Out</option>
             </select>
           </div>
-          <div className="flex flex-col">
-            <label className="font-semibold mb-1">Shift Date</label>
-            <input type="date" value={shiftDate} onChange={(e) => setShiftDate(e.target.value)} className="w-full p-2 border rounded" />
+          <div className="min-w-0">
+            <label className="block font-semibold mb-1">Date</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={shiftDate}
+                  onChange={(e) => setShiftDate(e.target.value)}
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                />
+              </div>
           </div>
-          <div className="flex flex-col">
-            <label className="font-semibold mb-1">Actual Date & Time</label>
-            <input type="datetime-local" value={actualDateTime} onChange={(e) => setActualDateTime(e.target.value)} className="w-full p-2 border rounded" />
+          <div className="min-w-0">
+            <label className="block font-semibold mb-1">Actual Date & Time</label>
+              <div className="relative">
+                <input
+                  type="datetime-local"
+                  value={actualDateTime}
+                  onChange={(e) => setActualDateTime(e.target.value)}
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                />
+              </div>
           </div>
         </div>
         <div className="mt-6">
@@ -189,9 +203,27 @@ const TimekeepingAdjustment = () => {
       </div>
 
       {/* FILTERS */}
+      <div className="mt-4 bg-white p-4 shadow-md rounded-lg">
+        <h2 className="text-base font-semibold">Filter Timekeeping Adjustments</h2>
       <div className="mt-4 grid grid-cols-1 md:grid-cols-5 gap-2">
-        <input type="date" value={filters.dateStart} onChange={(e) => setFilters((p) => ({ ...p, dateStart: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
-        <input type="date" value={filters.dateEnd} onChange={(e) => setFilters((p) => ({ ...p, dateEnd: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
+        <div className="relative">
+            <input
+              type="date"
+              value={filters.dateStart}
+              onChange={(e) => setFilters((p) => ({ ...p, dateStart: e.target.value }))}
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+            />
+          </div>
+          <div className="relative">
+            <input
+              type="date"
+              value={filters.dateEnd}
+              onChange={(e) => setFilters((p) => ({ ...p, dateEnd: e.target.value }))}
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+            />
+          </div>
+        
+        
         <select value={filters.type} onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
           <option value="">All Types</option>
           {typeOptions.map((t) => (<option key={t} value={t}>{t}</option>))}
@@ -202,9 +234,10 @@ const TimekeepingAdjustment = () => {
         </select>
         <input type="text" placeholder="Search remarks" value={filters.empRemarks} onChange={(e) => setFilters((p) => ({ ...p, empRemarks: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
       </div>
+      </div>
 
       {/* HISTORY */}
-      <div className="mt-6 bg-white p-6 shadow-md rounded-lg">
+      <div className="mt-4 bg-white p-6 shadow-md rounded-lg">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-base font-semibold">Timekeeping Application History</h2>
           <div className="inline-flex rounded-lg border overflow-hidden">

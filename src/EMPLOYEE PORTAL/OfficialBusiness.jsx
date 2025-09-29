@@ -244,27 +244,68 @@ const OfficialBusiness = () => {
     return Array.from(s).sort();
   }, [obApplications]);
 
-  const handleDateChange = (field, value) => {
-    if (!value) return;
-    const dateVal = value instanceof Date ? value : new Date(value);
 
+// --- helpers ---
+const toLocalInputValue = (date) => {
+  if (!date) return "";
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+// Robust local parser for "YYYY-MM-DDTHH:mm"
+const fromLocalInputValue = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
+    const [d, t] = value.split("T");
+    const [y, m, day] = d.split("-").map(Number);
+    const [hh, mm] = t.split(":").map(Number);
+    return new Date(y, m - 1, day, hh, mm, 0, 0); // local time
+  }
+  const d2 = new Date(value);
+  return isNaN(d2) ? null : d2;
+};
+
+  // --- updated handler ---
+const handleDateChange = (field, value) => {
+  const dateVal = fromLocalInputValue(value);
+  // allow clearing
+  if (!dateVal) {
     if (field === "start") {
-      setSelectedStartDate(dateVal);
-      if (!selectedEndDate || dateVal.getTime() > selectedEndDate.getTime()) {
-        setSelectedEndDate(dateVal);
-        setOBHrs("0");
-      } else {
-        setOBHrs(String(calculateObHrs(dateVal, selectedEndDate)));
-      }
+      setSelectedStartDate(null);
+      setOBHrs("0");
+      // keep end as-is, or also clear if you prefer
     } else if (field === "end") {
-      if (selectedStartDate && dateVal.getTime() < selectedStartDate.getTime()) {
-        Swal.fire({ icon: "warning", title: "Invalid End Time", text: "End datetime cannot be earlier than start." });
-        return;
-      }
-      setSelectedEndDate(dateVal);
-      if (selectedStartDate) setOBHrs(String(calculateObHrs(selectedStartDate, dateVal)));
+      setSelectedEndDate(null);
+      if (selectedStartDate) setOBHrs("0");
     }
-  };
+    return;
+  }
+
+  if (field === "start") {
+    setSelectedStartDate(dateVal);
+    if (!selectedEndDate || dateVal.getTime() > selectedEndDate.getTime()) {
+      setSelectedEndDate(dateVal);
+      setOBHrs("0");
+    } else {
+      setOBHrs(String(calculateObHrs(dateVal, selectedEndDate)));
+    }
+  } else if (field === "end") {
+    if (selectedStartDate && dateVal.getTime() < selectedStartDate.getTime()) {
+      Swal.fire({
+        icon: "warning",
+        title: "Invalid End Time",
+        text: "End datetime cannot be earlier than start.",
+      });
+      return;
+    }
+    setSelectedEndDate(dateVal);
+    if (selectedStartDate) {
+      setOBHrs(String(calculateObHrs(selectedStartDate, dateVal)));
+    }
+  }
+};
+
 
   // ---------- Submit ----------
   const handleSubmit = async () => {
@@ -373,15 +414,25 @@ const OfficialBusiness = () => {
         <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-lg text-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             {/* Application Date */}
-            <div className="flex flex-col">
+            {/* <div className="flex flex-col">
               <span className="block font-semibold mb-1">Date</span>
               <div className="relative">
                 <input type="date" className="w-full p-2 border rounded" value={applicationDate} onChange={(e) => setApplicationDate(e.target.value)} />
               </div>
+            </div> */}
+            <div className="min-w-0">
+              <label className="block font-semibold mb-1">Date</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={applicationDate}
+                  onChange={(e) => setApplicationDate(e.target.value)}
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                />
+              </div>
             </div>
 
-            {/* Start */}
-            <div className="flex flex-col">
+            {/* <div className="flex flex-col">
               <span className="block font-semibold mb-1">Start Datetime</span>
               <div className="relative">
                 <DatePicker
@@ -401,7 +452,6 @@ const OfficialBusiness = () => {
               </div>
             </div>
 
-            {/* End */}
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">End Datetime</span>
               <div className="relative">
@@ -421,7 +471,36 @@ const OfficialBusiness = () => {
                 />
                 <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
               </div>
+            </div> */}
+
+
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1">Start Datetime</span>
+              <div className="relative">
+            <input
+              type="datetime-local"
+              value={toLocalInputValue(selectedStartDate)}
+              onChange={(e) => handleDateChange("start", e.target.value)}
+              step="1800" // 30-minute steps
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+            />
             </div>
+            </div>
+
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1">End Datetime</span>
+              <div className="relative">
+            <input
+              type="datetime-local"
+              value={toLocalInputValue(selectedEndDate)}
+              min={toLocalInputValue(selectedStartDate)}
+              onChange={(e) => handleDateChange("end", e.target.value)}
+              step="1800"
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+            />
+            </div>
+            </div>
+
 
             {/* Hours (auto) */}
             <div className="flex flex-col">
@@ -443,14 +522,32 @@ const OfficialBusiness = () => {
         </div>
 
         {/* Quick filters */}
+        <div className="mt-4 bg-white p-4 shadow-md rounded-lg">
+          <h2 className="text-base font-semibold">Filter Official Business Applications</h2>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-          <input type="date" value={searchFields.obDateStart} onChange={(e) => setSearchFields((p) => ({ ...p, obDateStart: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
-          <input type="date" value={searchFields.obDateEnd} onChange={(e) => setSearchFields((p) => ({ ...p, obDateEnd: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
+          <div className="relative">
+            <input
+              type="date"
+              value={searchFields.obDateStart}
+              onChange={(e) => setSearchFields((p) => ({ ...p, obDateStart: e.target.value }))}
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+            />
+          </div>
+          <div className="relative">
+            <input
+              type="date"
+              value={searchFields.obDateEnd}
+              onChange={(e) => setSearchFields((p) => ({ ...p, obDateEnd: e.target.value }))}
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+            />
+          </div>
+          
           <select value={searchFields.obStatus} onChange={(e) => setSearchFields((p) => ({ ...p, obStatus: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
             <option value="">All Status</option>
             {statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}
           </select>
           <input type="text" value={searchFields.obRemarks} onChange={(e) => handleSearchChange(e, "obRemarks")} className="w-full px-2 py-2 border rounded text-sm" placeholder="Remarks contains…" />
+        </div>
         </div>
 
         {/* History block */}
@@ -553,11 +650,41 @@ const OfficialBusiness = () => {
                   {/* Search Row */}
                   <tr>
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
-                      <input type="date" value={searchFields.obDateStart} onChange={(e) => handleSearchChange(e, "obDateStart")} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" />
-                    </td>                   
-                    <td className="px-1 py-2 bg-white whitespace-nowrap"></td>
-                    <td className="px-1 py-2 bg-white whitespace-nowrap"></td>
-                    <td className="px-1 py-2 bg-white whitespace-nowrap"></td>
+                      <input
+                        type="date"
+                        value={searchFields.obDateStart}
+                        onChange={(e) => handleSearchChange(e, "obDateStart")}
+                        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+                        placeholder="N/A..."
+                        disabled
+                        readonly
+                      />
+                    </td>                 
+                    <td className="px-1 py-2 bg-white whitespace-nowrap">
+                      <input
+                        type="date"
+                        value={searchFields.obDateStart}
+                        onChange={(e) => handleSearchChange(e, "obDateStart")}
+                        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+                        placeholder="N/A..."
+                        disabled
+                        readonly
+                      />
+                    </td>     
+                    <td className="px-1 py-2 bg-white whitespace-nowrap">
+                      <input
+                        type="date"
+                        value={searchFields.obDateEnd}
+                        onChange={(e) => handleSearchChange(e, "obDateEnd")}
+                        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+                        placeholder="N/A..."
+                        disabled
+                        readonly
+                      />
+                    </td>
+                    <td className="px-1 py-2 bg-white whitespace-nowrap">
+                      <input className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
+                    </td>
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
                       <input type="text" value={searchFields.obRemarks} onChange={(e) => handleSearchChange(e, "obRemarks")} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" placeholder="Filter..." />
                     </td>
@@ -570,7 +697,9 @@ const OfficialBusiness = () => {
                         {statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}
                       </select>
                     </td>
-                    <td className="px-1 py-2 bg-white whitespace-nowrap"></td>
+                    <td className="px-1 py-2 bg-white whitespace-nowrap">
+                      <input className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
+                    </td>
                   </tr>
                 </thead>
 

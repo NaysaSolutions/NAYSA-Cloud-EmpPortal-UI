@@ -258,13 +258,13 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
 
           <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">Employee Name</label>
-              <input className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={formData.empName || ""} readOnly />
+              <input className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={formData.empName || ""} readOnly disabled/>
           </div>
           <div className="mt-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-2">
 
             <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">Department</label>
-              <input className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={formData.department || ""} readOnly />
+              <input className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={formData.department || ""} readOnly disabled/>
             </div>
             <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">Overtime Date</label>
@@ -273,11 +273,12 @@ const OvertimeReview = ({ overtimeData, onClose, setPendingOt, setHistory, refre
                 className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs"
                 value={formData.otDate || ""}
                 readOnly
+                disabled
               />
             </div>
             <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">Requested Hours</label>
-              <input className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={formData.otHrs || ""} readOnly />
+              <input className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={formData.otHrs || ""} readOnly disabled/>
             </div>
       
 

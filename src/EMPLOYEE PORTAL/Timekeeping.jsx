@@ -1419,52 +1419,58 @@ return (
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-base font-bold mb-4">Daily Time Record</h1>
- 
-{/* Filters */}
-<div className="flex flex-wrap sm:flex-nowrap gap-4 mb-4">
-  {/* Start Date */}
-  <div className="flex-1 min-w-[150px]">
-    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-    <input
-      type="date"
-      value={startDate}
-      onChange={(e) => setStartDate(e.target.value)}
-      className="w-full px-3 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-    />
-  </div>
+      
+      {/* Filters */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        {/* Start Date */}
+        <div className="">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+          <div className="relative">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full min-w-0 text-[16px] h-10 px-3 pr-10 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+            />
+            {/* calendar icon space handled by pr-10; indicator sits right via CSS below */}
+          </div>
+        </div>
 
-  {/* End Date */}
-  <div className="flex-1 min-w-[150px]">
-    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-    <input
-      type="date"
-      value={endDate}
-      onChange={(e) => setEndDate(e.target.value)}
-      className="w-full px-3 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-    />
-  </div>
+        {/* End Date */}
+        <div className="">
+          <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+          <div className="relative">
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full min-w-0 text-[16px] h-10 px-3 pr-10 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+            />
+          </div>
+        </div>
 
-  {/* Export Button */}
-  <div className="w-full sm:w-auto flex sm:items-end">
-    <button
-      onClick={handleExport}
-      className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2"
-    >
-      <Download size={16} />
-      Export
-    </button>
-  </div>
+        {/* Export Button */}
+        <div className="sm:self-end">
+          <button
+            onClick={handleExport}
+            className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2"
+          >
+            <Download size={16} />
+            Export
+          </button>
+        </div>
 
-  {/* Filing Button */}
-  <div className="w-full sm:w-auto flex sm:items-end">
-    <button
-      onClick={() => navigate("/timekeepingAdj")}
-      className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2"
-    >
-      DTR Adjustment
-    </button>
-  </div>
-</div>
+        {/* Filing Button (will wrap to new row on lg if needed) */}
+        <div className="sm:self-end sm:justify-self-end">
+          <button
+            onClick={() => navigate('/timekeepingAdj')}
+            className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            DTR Adjustment
+          </button>
+        </div>
+      </div>
+
 
 
           {/* View Mode Toggle */}

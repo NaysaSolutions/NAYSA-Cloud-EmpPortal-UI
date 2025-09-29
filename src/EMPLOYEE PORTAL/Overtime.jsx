@@ -50,6 +50,12 @@ const OvertimeApplication = () => {
   const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
   const hasId = (r) => r?.otId ?? r?.id ?? r?.requestId ?? null;
 
+  const isoToUS = (iso) => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-");
+    return `${m}/${d}/${y}`;
+  };
+
   // fetch
   useEffect(() => {
     if (!user?.empNo) return;
@@ -271,14 +277,29 @@ const cancelApplication = async (entry) => {
         {/* Form */}
         <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-lg text-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex flex-col">
-              <span className="block font-semibold mb-1 propercase">Date</span>
-              <input type="date" className="w-full p-2 border rounded" value={applicationDate} onChange={(e) => setApplicationDate(e.target.value)} />
+            <div className="min-w-0">
+              <label className="block font-semibold mb-1">Date</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={applicationDate}
+                  onChange={(e) => setApplicationDate(e.target.value)}
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                />
+              </div>
             </div>
-            <div className="flex flex-col">
-              <span className="block font-semibold mb-1">Date of Overtime</span>
-              <input value={otDate} onChange={(e) => setOTDate(e.target.value)} type="date" className="w-full p-2 border rounded" />
+            <div className="min-w-0">
+              <label className="block font-semibold mb-1">Date of Overtime</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={otDate}
+                  onChange={(e) => setOTDate(e.target.value)}
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                />
+              </div>
             </div>
+            
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Number of Hours</span>
               <input type="number" className="w-full p-2 border rounded" min="0" step="0.5" value={overtimeHours} onChange={(e) => { const v = parseFloat(e.target.value); setOvertimeHours(isNaN(v) || v < 0 ? 0 : v); }} placeholder="Enter Overtime hours" />
@@ -305,9 +326,26 @@ const cancelApplication = async (entry) => {
         </div>
 
         {/* Filters */}
+        <div className="mt-4 bg-white p-4 shadow-md rounded-lg">
+          <h2 className="text-base font-semibold">Filter Overtime Applications</h2>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-          <input type="date" value={searchFields.otDateStart} onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
-          <input type="date" value={searchFields.otDateEnd} onChange={(e) => setSearchFields((p) => ({ ...p, otDateEnd: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
+          <div className="relative">
+            <input
+              type="date"
+              value={searchFields.otDateStart}
+              onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))}
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+            />
+          </div>
+          <div className="relative">
+            <input
+              type="date"
+              value={searchFields.otDateEnd}
+              onChange={(e) => setSearchFields((p) => ({ ...p, otDateEnd: e.target.value }))}
+              min={searchFields.otDateStart}
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+            />
+          </div>        
           <select value={searchFields.otType} onChange={(e) => setSearchFields((p) => ({ ...p, otType: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
             <option value="">All Overtime Types</option>
             {typeOptions.map((t) => (<option key={t} value={t}>{getOvertimeTypeLabel(t)}</option>))}
@@ -316,6 +354,7 @@ const cancelApplication = async (entry) => {
             <option value="">All Status</option>
             {statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}
           </select>
+        </div>
         </div>
 
         {/* History */}
@@ -338,7 +377,7 @@ const cancelApplication = async (entry) => {
                 return (
                   <div key={idx} className="border rounded-lg p-4 shadow-sm">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="font-semibold">{dayjs(entry.otDate).format("MM/DD/YYYY")}</div>
+                      <div className="font-semibold text-sm md:text-base">{dayjs(entry.otDate).format("MM/DD/YYYY")}</div>
                       <span className={`inline-flex justify-center items-center text-sm w-28 py-1 rounded-lg ${statusClass}`}>{entry.otStatus || "N/A"}</span>
                     </div>
                     <div className="space-y-1 text-[12px] md:text-sm">
@@ -395,13 +434,28 @@ const cancelApplication = async (entry) => {
                     ))}
                   </tr>
                   <tr>
-                    <td className="px-1 py-2 bg-white"><input type="date" value={searchFields.otDateStart} onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" /></td>
-                    <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.durationHours} onChange={(e) => setSearchFields((p) => ({ ...p, durationHours: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" placeholder="Filter..." /></td>
+                    {/* <td className="px-1 py-2 bg-white"><input type="date" value={searchFields.otDateStart} onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" /></td> */}
+                    <td className="px-1 py-2 bg-white whitespace-nowrap">
+                      <input
+                        type="date"
+                        value={searchFields.otDateStart}
+                        onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))}
+                        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+                        placeholder="N/A..."
+                        disabled
+                        readonly
+                      />
+                    </td>
+                    <td className="px-1 py-2 bg-white whitespace-nowrap">
+                      <input className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
+                    </td>
                     <td className="px-1 py-2 bg-white"><select value={searchFields.otType} onChange={(e) => setSearchFields((p) => ({ ...p, otType: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"><option value="">All</option>{typeOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
                     <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.otRemarks} onChange={(e) => setSearchFields((p) => ({ ...p, otRemarks: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" placeholder="Filter..." /></td>
                     <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.appRemarks} onChange={(e) => setSearchFields((p) => ({ ...p, appRemarks: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" placeholder="Filter..." /></td>
                     <td className="px-1 py-2 bg-white"><select value={searchFields.otStatus} onChange={(e) => setSearchFields((p) => ({ ...p, otStatus: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-white"><option value="">All</option>{statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
-                    <td className="px-1 py-2 bg-white"></td>
+                    <td className="px-1 py-2 bg-white whitespace-nowrap">
+                      <input className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
+                    </td>
                   </tr>
                 </thead>
                 <tbody className="global-tbody">

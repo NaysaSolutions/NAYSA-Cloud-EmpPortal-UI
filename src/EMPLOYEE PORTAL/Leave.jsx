@@ -565,99 +565,94 @@ const getLeaveStamp = (row) => {
         {/* Form Card */}
         <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-lg text-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex flex-col">
-              <span className="block font-semibold mb-1 propercase">Date</span>
-              <input
-                type="date"
-                className="w-full p-2 border rounded"
-                value={applicationDate}
-                onChange={(e) => setApplicationDate(e.target.value)}
-              />
+
+            <div className="min-w-0">
+              <label className="block font-semibold mb-1">Date</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={applicationDate}
+                  onChange={(e) => setApplicationDate(e.target.value)}
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                />
+              </div>
             </div>
 
-            <div className="flex flex-col">
-              <span className="block font-semibold mb-1">Start Date</span>
-              <input
-                type="date"
-                className="w-full p-2 border rounded"
-                value={selectedStartDate}
-                onChange={(e) => handleStartDateChange(e.target.value)}
-              />
+            <div className="min-w-0">
+              <label className="block font-semibold mb-1">Start Date</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={selectedStartDate}
+                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                />
+              </div>
             </div>
 
-            <div className="flex flex-col">
-              <span className="block font-semibold mb-1">End Date</span>
-              <input
-                type="date"
-                className="w-full p-2 border rounded"
-                value={selectedEndDate}
-                min={selectedStartDate}
-                onChange={(e) => handleEndDateChange(e.target.value)}
-              />
+            <div className="min-w-0">
+              <label className="block font-semibold mb-1">End Date</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={selectedEndDate}
+                  min={selectedStartDate}
+                  onChange={(e) => handleEndDateChange(e.target.value)}
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                />
+              </div>
             </div>
-{/* 
-            <div className="flex flex-col">
-              <span className="block font-semibold mb-1">Leave Type</span>
-              <select className="w-full p-2 border rounded" value={leaveType} onChange={(e) => setLeaveType(e.target.value)}>
-                <option value="">Select Leave Type</option>
-                <option value="SL">Sick Leave</option>
-                <option value="VL">Vacation Leave</option>
-                <option value="SIL">Service Incentive Leave</option>
-                <option value="PL">Paternity Leave</option>
-                <option value="ML">Maternity Leave</option>
-                <option value="BL">Birthday Leave</option>
-              </select>
-            </div> */}
+
 
             {/* Leave Type */}
-<div className="flex flex-col">
-  <span className="block font-semibold mb-1">Leave Type</span>
-  <select
-    className="w-full p-2 border rounded"
-    value={leaveType}
-    onChange={handleLeaveTypeChange}
-    disabled={loading}
-  >
-    <option value="">Select Leave Type</option>
-    {leaveTypes.map((lt) => (
-      <option key={lt.lvtype} value={lt.lvtype}>
-        {lt.lvdesc}
-      </option>
-    ))}
-  </select>
-</div>
-</div>
+            <div className="flex flex-col">
+              <span className="block font-semibold mb-1">Leave Type</span>
+              <select
+                className="w-full p-2 border rounded"
+                value={leaveType}
+                onChange={handleLeaveTypeChange}
+                disabled={loading}
+              >
+                <option value="">Select Leave Type</option>
+                {leaveTypes.map((lt) => (
+                  <option key={lt.lvtype} value={lt.lvtype}>
+                    {lt.lvdesc}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
 
-{/* Balances */}
-<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-  
-  <div className="flex flex-col">
-    <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance in Days</span>
-    <input
-      type="number"
-      className="w-full p-2 border rounded text-red-600 font-semibold"
-      min="0"
-      step="0.01"
-      value={leaveBalDays}
-      readOnly
-      disabled
-    />
-  </div>
-  <div className="flex flex-col">
-    <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance in Hours</span>
-    <input
-      type="number"
-      className="w-full p-2 border rounded text-red-600 font-semibold"
-      min="0"
-      step="0.25"
-      value={leaveBalHours}
-      readOnly
-      disabled
-    />
-  </div>
-{/* </div> */}
+        {/* Balances */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          
+          <div className="flex flex-col">
+            <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance in Days</span>
+            <input
+              type="number"
+              className="w-full p-2 border rounded text-red-600 font-semibold"
+              min="0"
+              step="0.01"
+              value={leaveBalDays}
+              readOnly
+              disabled
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance in Hours</span>
+            <input
+              type="number"
+              className="w-full p-2 border rounded text-red-600 font-semibold"
+              min="0"
+              step="0.25"
+              value={leaveBalHours}
+              readOnly
+              disabled
+            />
+          </div>
+        {/* </div> */}
 
-{/* Requested */}
+          {/* Requested */}
 
           {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4"> */}
             <div className="flex flex-col">
@@ -670,10 +665,10 @@ const getLeaveStamp = (row) => {
             </div>
           </div>
 
-{/* Optional inline validation */}
-{balanceError && (
-  <div className="mt-2 text-sm text-red-600">{balanceError}</div>
-)}
+      {/* Optional inline validation */}
+      {balanceError && (
+        <div className="mt-2 text-sm text-red-600">{balanceError}</div>
+      )}
 
 
 
@@ -690,21 +685,34 @@ const getLeaveStamp = (row) => {
         </div>
 
         {/* Quick Filters (like Overtime) */}
+        <div className="mt-4 bg-white p-4 shadow-md rounded-lg">
+        <h2 className="text-base font-semibold">Filter Leave Applications</h2>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
           {/* Start */}
-          <input
-            type="date"
-            value={searchFields.leaveDateStart}
-            onChange={(e) => setSearchFields((p) => ({ ...p, leaveDateStart: e.target.value }))}
-            className="w-full px-2 py-2 border rounded text-sm"
-          />
+          <div className="min-w-0">
+            <div className="relative">
+              <input
+                type="date"
+                value={searchFields.leaveDateStart}
+                onChange={(e) => setSearchFields((p) => ({ ...p, leaveDateStart: e.target.value }))}
+                className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              />
+            </div>
+          </div>
+
           {/* End */}
-          <input
-            type="date"
-            value={searchFields.leaveDateEnd}
-            onChange={(e) => setSearchFields((p) => ({ ...p, leaveDateEnd: e.target.value }))}
-            className="w-full px-2 py-2 border rounded text-sm"
-          />
+          <div className="min-w-0">
+            <div className="relative">
+              <input
+                type="date"
+                value={searchFields.leaveDateEnd}
+                min={searchFields.leaveDateStart}
+                onChange={(e) => setSearchFields((p) => ({ ...p, leaveDateEnd: e.target.value }))}
+                className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              />
+            </div>
+          </div>
+
           {/* Type */}
           <select
             value={searchFields.leaveType}
@@ -731,6 +739,7 @@ const getLeaveStamp = (row) => {
               </option>
             ))}
           </select>
+        </div>
         </div>
 
         {/* History Card */}
@@ -766,7 +775,7 @@ const getLeaveStamp = (row) => {
                   return (
                     <div key={idx} className="border rounded-lg p-4 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
-                        <div className="font-semibold">
+                        <div className="font-semibold text-sm md:text-base">
                           {dayjs(entry.leaveStart).format("MM/DD/YYYY")} – {dayjs(entry.leaveEnd).format("MM/DD/YYYY")}
                         </div>
                         <span className={`inline-flex justify-center items-center text-sm w-28 py-1 md:py-2 rounded-lg ${statusClass}`}>
@@ -898,11 +907,10 @@ const getLeaveStamp = (row) => {
         type="date"
         value={searchFields.leaveDateStart}
         onChange={(e) => handleSearchChange(e, "leaveDateStart")}
-        // onChange={(e) =>
-        //   setSearchFields((prev) => ({ ...prev, otDateStart: e.target.value }))
-        // }
-        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
-        placeholder="Filter..."
+        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+        placeholder="N/A..."
+        disabled
+        readonly
       />
     </td>
 
@@ -912,22 +920,23 @@ const getLeaveStamp = (row) => {
         type="date"
         value={searchFields.leaveDateEnd}
         onChange={(e) => handleSearchChange(e, "leaveDateEnd")}
-        // onChange={(e) =>
-        //   setSearchFields((prev) => ({ ...prev, otDateStart: e.target.value }))
-        // }
-        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
-        placeholder="Filter..."
+        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+        placeholder="N/A..."
+        disabled
+        readonly
       />
     </td>
 
     {/* Duration  */}
-    <td className="px-1 py-2 bg-white whitespace-nowrap">
+    <td className="px-1 py-2 bg-white whitespace-nowrap ">
       <input
         type="text"
         value={searchFields.durationHours}
         onChange={(e) => handleSearchChange(e, "durationHours")}
-        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
-        placeholder="Filter..."
+        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+        placeholder="N/A..."
+        disabled
+        readonly
       />
     </td>
 
@@ -981,7 +990,9 @@ const getLeaveStamp = (row) => {
                       </select>
                     </td>
 
-                    <td className="px-1 py-2 bg-white"></td> {/* Actions col filter placeholder */}
+                    <td className="px-1 py-2 bg-white whitespace-nowrap">
+                      <input className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
+                    </td>
 
 
   </tr>

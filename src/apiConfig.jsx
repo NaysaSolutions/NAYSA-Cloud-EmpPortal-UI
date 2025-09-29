@@ -10,9 +10,9 @@
 // const IMAGE_BASE_URL = "/images/timekeeping_images";
 
 // LOCALHOST
-// const API_BASE_URL = "http://127.0.0.1:8000/api";
-// const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
-// const IMAGE_BASE_URL  = "http://127.0.0.1:8000/images/timekeeping_images";
+const API_BASE_URL = "http://127.0.0.1:8000/api";
+const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
+const IMAGE_BASE_URL  = "http://127.0.0.1:8000/images/timekeeping_images";
 
 // CLIENT SERVER
 // const API_BASE_URL = "http://win-q1lql18rg7f:8443/api";
@@ -20,9 +20,9 @@
 // const IMAGE_BASE_URL  = "http://win-q1lql18rg7f:8443/images/timekeeping_images";
 
 // CLOUD SERVER
-const API_BASE_URL = "/api";
-const MODEL_BASE_URL = "/models";
-const IMAGE_BASE_URL  = "/images/timekeeping_images";
+// const API_BASE_URL = "/api";
+// const MODEL_BASE_URL = "/models";
+// const IMAGE_BASE_URL  = "/images/timekeeping_images";
 
 // This URL should be updated based on the environment (development, production, etc.)   
 

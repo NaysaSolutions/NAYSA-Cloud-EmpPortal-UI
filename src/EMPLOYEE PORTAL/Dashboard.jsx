@@ -373,7 +373,7 @@ const Dashboard = () => {
           className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
           onClick={() => navigate("/leave")}
         >
-          <h3 className="font-bold text-xs md:text-base">
+          <h3 className="font-bold text-[11px] md:text-base">
             Pending LV Applications
           </h3>
           <p className="text-xl md:text-2xl">{approvalsum?.LVApplicationCount ?? 0}</p>
@@ -382,7 +382,7 @@ const Dashboard = () => {
           className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
           onClick={() => navigate("/overtime")}
         >
-          <h3 className="font-bold text-xs md:text-base">
+          <h3 className="font-bold text-[11px] md:text-base">
             Pending OT Applications
           </h3>
           <p className="text-xl md:text-2xl">{approvalsum?.OTApplicationCount ?? 0}</p>
@@ -391,7 +391,7 @@ const Dashboard = () => {
           className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
           onClick={() => navigate("/Official-Business")}
         >
-          <h3 className="font-bold text-xs md:text-base">
+          <h3 className="font-bold text-[11px] md:text-base">
             Pending OB Applications
           </h3>
           <p className="text-xl md:text-2xl">{approvalsum?.OBApplicationCount ?? 0}</p>
@@ -400,7 +400,7 @@ const Dashboard = () => {
           className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
           onClick={() => navigate("/timekeepingAdj")}
         >
-          <h3 className="font-bold text-xs md:text-base">
+          <h3 className="font-bold text-[11px] md:text-base">
             Pending DTR Applications
           </h3>
           <p className="text-xl md:text-2xl">{approvalsum?.DTRApplicationCount ?? 0}</p>
@@ -414,7 +414,7 @@ const Dashboard = () => {
               className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
               onClick={() => navigate("/leaveApproval")}
             >
-              <h3 className="font-bold text-xs md:text-base">
+              <h3 className="font-bold text-[11px] md:text-base">
                 Pending LV for my Approval
               </h3>
               <p className="text-xl md:text-2xl">{approvalsum?.LVApprovalCount ?? 0}</p>
@@ -423,7 +423,7 @@ const Dashboard = () => {
               className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
               onClick={() => navigate("/overtimeApproval")}
             >
-              <h3 className="font-bold text-xs md:text-base">
+              <h3 className="font-bold text-[11px] md:text-base">
                 Pending OT for my Approval
               </h3>
               <p className="text-xl md:text-2xl">{approvalsum?.OTApprovalCount ?? 0}</p>
@@ -432,7 +432,7 @@ const Dashboard = () => {
               className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
               onClick={() => navigate("/OfficialBusinessApproval")}
             >
-              <h3 className="font-bold text-xs md:text-base">
+              <h3 className="font-bold text-[11px] md:text-base">
                 Pending OB for my Approval
               </h3>
               <p className="text-xl md:text-2xl">{approvalsum?.OBApprovalCount ?? 0}</p>
@@ -441,7 +441,7 @@ const Dashboard = () => {
               className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
               onClick={() => navigate("/timekeepingAdjApproval")}
             >
-              <h3 className="font-bold text-xs md:text-base">
+              <h3 className="font-bold text-[11px] md:text-base">
                 Pending DTR for my Approval
               </h3>
               <p className="text-xl md:text-2xl">{approvalsum?.DTRApprovalCount ?? 0}</p>

@@ -151,25 +151,25 @@ const TimekeepingAdjustmentReview = ({ dtrData, onClose, setPending, setHistory,
 
           <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">Employee</label>
-              <input className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={dtrData.empname || ""} readOnly />
+              <input className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={dtrData.empname || ""} readOnly disabled/>
             </div>
 
-          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-1 gap-2">
             
             <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">Shift Date</label>
-              <input type="date" className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={dayjs(dtrData.dtrDate).format("YYYY-MM-DD")} readOnly />
+              <input type="date" className="border rounded-md px-3 py-2 w-full bg-gray-50 text-[11px]" value={dayjs(dtrData.dtrDate).format("YYYY-MM-DD")} readOnly disabled/>
             </div>
             <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">Actual Time</label>
-              <input type="datetime-local" className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={dayjs(dtrData.dtrStart).format("YYYY-MM-DDTHH:mm")} readOnly />
+              <input type="datetime-local" className="border rounded-md px-3 py-2 w-full bg-gray-50 text-[11px]" value={dayjs(dtrData.dtrStart).format("YYYY-MM-DDTHH:mm")} readOnly disabled/>
             </div>
 
           </div>
 
           <div className="mt-2">
             <label className="block text-gray-700 text-sm mb-1 text-xs">Applicant Remarks</label>
-            <textarea className="w-full border rounded-md px-3 py-2 min-h-16 resize-y text-xs" value={dtrData.dtrRemarks || ""} disabled />
+            <textarea className="w-full border rounded-md px-3 py-2 min-h-16 resize-y text-xs" value={dtrData.dtrRemarks || ""} readOnly disabled />
           </div>
 
           <div className="mt-2">
