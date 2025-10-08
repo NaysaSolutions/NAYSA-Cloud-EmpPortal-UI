@@ -30,7 +30,6 @@ const Navbar = () => {
   // Build nav items only if user is loaded
   const navItems = user ? [
     { path: "/dashboard", label: "Inquiry" },
-    // { path: "/timekeeping", label: "Timekeeping" },
     ...(user.approver !== "1"
       ? [{ path: "/timekeeping", label: "Timekeeping" }]
       : [{

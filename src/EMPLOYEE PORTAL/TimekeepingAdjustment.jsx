@@ -58,6 +58,14 @@ const TimekeepingAdjustment = () => {
 
   useEffect(() => { if (user?.empNo) fetchHistory(); }, [user?.empNo]);
 
+  // Auto update actualDateTime when shiftDate changes
+  useEffect(() => {
+    // Keep same time if you want, otherwise set default time (e.g., 00:00)
+    const currentTime = dayjs(actualDateTime).format("HH:mm");
+    const newDateTime = dayjs(`${shiftDate}T${currentTime}`).format("YYYY-MM-DDTHH:mm");
+    setActualDateTime(newDateTime);
+  }, [shiftDate]); // runs every time shiftDate changes
+
   const handleSubmit = async () => {
     if (!shiftDate || !actualDateTime || !remarks.trim()) { await Swal.fire({ title: "Incomplete", text: "Please fill all fields.", icon: "warning" }); return; }
     const payload = { json_data: { empNo: user.empNo, detail: [{ shiftDate: dayjs(shiftDate).format("YYYY-MM-DD"), actualDatetime: dayjs(actualDateTime).format("YYYY-MM-DDTHH:mm:ss"), dtrRemarks: remarks, dtrType }] } };
@@ -171,7 +179,7 @@ const TimekeepingAdjustment = () => {
             </select>
           </div>
           <div className="min-w-0">
-            <label className="block font-semibold mb-1">Date</label>
+            <label className="block font-semibold mb-1">Shift Date</label>
               <div className="relative">
                 <input
                   type="date"

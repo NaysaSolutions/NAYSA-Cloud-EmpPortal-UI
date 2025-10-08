@@ -421,7 +421,7 @@ const handleDateChange = (field, value) => {
               </div>
             </div> */}
             <div className="min-w-0">
-              <label className="block font-semibold mb-1">Date</label>
+              <label className="block font-semibold mb-1">Shift Date</label>
               <div className="relative">
                 <input
                   type="date"

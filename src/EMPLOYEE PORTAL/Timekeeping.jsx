@@ -1206,17 +1206,17 @@ const FullTableView = ({ filteredRecords }) => {
       <table className="min-w-full table-auto border-collapse ">
         <thead>
           <tr className="border-b">
-            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Date</th>
-            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Time In</th>
+            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-semibold whitespace-nowrap">Shift Date</th>
+            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-semibold whitespace-nowrap">Time In</th>
             {isLocationRequired && (
-              <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Location</th>
+              <th className="px-1 py-2 text-left text-[7px] md:text-sm font-semibold whitespace-nowrap">Location</th>
             )}
-            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Break Time</th>
-            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Time Out</th>
+            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-semibold whitespace-nowrap">Break Time</th>
+            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-semibold whitespace-nowrap">Time Out</th>
             {isLocationRequired && (
-              <th className="px-1 py-2 text-left text-[7px] md:text-sm font-medium whitespace-nowrap">Location</th>
+              <th className="px-1 py-2 text-left text-[7px] md:text-sm font-semibold whitespace-nowrap">Location</th>
             )}
-            <th className="px-1 py-2 text-right text-[7px] md:text-sm font-medium whitespace-nowrap">Total hrs</th>
+            <th className="px-1 py-2 text-right text-[7px] md:text-sm font-semibold whitespace-nowrap">Total hrs</th>
           </tr>
         </thead>
         <tbody>
@@ -1261,6 +1261,65 @@ const FullTableView = ({ filteredRecords }) => {
   );
 };
 
+
+// Full Table View Component
+const FullSummaryView = ({ filteredRecords }) => {
+  // Function to calculate colspan based on image and location capture requirements
+  const calculateColSpan = () => {
+    let colSpan = 6; // Base number of columns (excluding Total Hours)
+    if (isImageCaptureRequired) colSpan += 1; // If image capture is required
+    if (isLocationRequired) colSpan += 1; // If location is required
+    return colSpan;
+  };
+
+  // Calculate total worked hours
+  const totalWorkedHours = filteredRecords.reduce((total, record) => {
+    // Ensure worked_hrs is a valid number, defaulting to 0 if not
+    const workedHrs = record.worked_hrs != null && !isNaN(record.worked_hrs) ? record.worked_hrs : 0;
+    return total + workedHrs;
+  }, 0);
+
+  return (
+    <div className="mt-4 p-2 bg-white rounded-lg shadow-lg overflow-x-auto">
+      <h2 className="text-base font-bold mb-4">Daily Time Record Summary</h2>
+
+      <table className="min-w-full table-auto border-collapse ">
+        <thead>
+          <tr className="border-b">
+            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-msemiboldedium whitespace-nowrap">Shift Date</th>
+            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-semibold whitespace-nowrap">Time In</th>
+            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-semibold whitespace-nowrap">Time Out</th>
+            <th className="px-1 py-2 text-right text-[7px] md:text-sm font-semibold whitespace-nowrap">Total hrs</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredRecords.length > 0 ? (
+            filteredRecords.map((record, index) => (
+              <tr key={index}>
+                <td className="px-1 py-1 text-[6px] md:text-xs">{dayjs(record.date).format("MM/DD/YYYY")}</td>
+                <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
+                  {record.time_in ? dayjs(record.time_in, "MM/DD/YYYY HH:mm").format("MM/DD/YYYY  hh:mm A") : "N/A"}
+                </td>
+                <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
+                  {record.time_out ? dayjs(record.time_out, "MM/DD/YYYY HH:mm").format("MM/DD/YYYY  hh:mm A") : "N/A"}
+                </td>
+                <td className="px-1 py-1 text-[6px] md:text-xs text-right font-medium whitespace-nowrap">
+                  {record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs"}
+                </td>
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={calculateColSpan() + 1} className="text-center py-4 text-gray-500">
+                No records found for the selected date range.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+};
 
 return (
     
@@ -1515,6 +1574,16 @@ return (
             >
                 Summary
             </button>
+            <button
+                onClick={() => setViewMode('summary')}
+                className={`flex-grow px-3 py-2 text-sm rounded-md font-medium ${
+                viewMode === 'summary'
+                    ? 'bg-blue-600 text-white border border-blue-300'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+            >
+                Table
+            </button>
             </div>
 
 
@@ -1526,6 +1595,7 @@ return (
         {viewMode === 'accordion' && <AccordionView filteredRecords={filteredRecords} />}
         {viewMode === 'table' && <CompactTableView filteredRecords={filteredRecords} />}
         {viewMode === 'tableSummary' && <FullTableView filteredRecords={filteredRecords} />}
+        {viewMode === 'summary' && <FullSummaryView filteredRecords={filteredRecords} />}
         {/* Total */}
         <div className="mt-6 bg-blue-50 p-2 rounded-lg">
             <div className="flex justify-between items-center">

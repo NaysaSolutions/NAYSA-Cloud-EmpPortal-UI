@@ -347,22 +347,29 @@ const Dashboard = () => {
                 {time || "00:00 PM"}
               </p>
             </div>
-            {/* <div>
-    <p className="text-sm font-extrabold  text-right mb-2">Break Time Count</p>
-    <p className="text-xl sm:text-2xl font-bold">
-      {formatTime(breakTime)}
-    </p>
-  </div> */}
-            <div className="w-full md:w-auto">
-              <button
-                className="bg-blue-700 border border-blue-400 text-white font-bold px-5 py-4 rounded-md text-md sm:text-lg hover:bg-blue-800 hover:text-white hover:border-blue-300 w-full sm:w-auto mx-auto"
-                onClick={() => navigate("/timekeeping")}
-              >
-                <FontAwesomeIcon icon={faClock} size="lg" className="mr-2" />
-                Timekeeping
-              </button>
-              
-            </div>
+            
+          <div className="w-full md:w-auto flex justify-center">
+            <button
+              onClick={() => navigate("/timekeeping")}
+              className="
+                bg-gradient-to-b from-blue-500 to-blue-700
+                border border-blue-800
+                text-white font-semibold tracking-wide
+                px-4 py-3.5 rounded-lg text-md sm:text-lg
+                shadow-[inset_0_2px_1px_rgba(255,255,255,0.2),_0_4px_6px_rgba(0,0,0,0.25)]
+                transition-all duration-200 ease-in-out
+                hover:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),_0_2px_4px_rgba(0,0,0,0.3)]
+                hover:translate-y-[1px]
+                active:shadow-[inset_0_3px_5px_rgba(0,0,0,0.4)]
+                active:translate-y-[2px]
+                w-full sm:w-auto
+              "
+            >
+              <FontAwesomeIcon icon={faClock} size="lg" className="mr-2" />
+              Timekeeping
+            </button>
+          </div>
+
           </div>
         </div>
       </div>
@@ -550,7 +557,7 @@ const Dashboard = () => {
           {/* <div className="items-center justify-center"> */}
           {/* Weekday Names */}
           <div className="grid grid-cols-7 text-center font-semibold text-gray-600 mb-1 ml-6 mx-auto text-[0.80rem] sm:text-[0.80rem] md:text-[0.90rem] lg:text-[15px]">
-            {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+            {["Sun","Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
               (day, idx) => (
                 <div
                   key={idx}

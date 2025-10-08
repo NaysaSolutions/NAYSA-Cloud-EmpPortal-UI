@@ -278,7 +278,7 @@ const cancelApplication = async (entry) => {
         <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-lg text-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="min-w-0">
-              <label className="block font-semibold mb-1">Date</label>
+              <label className="block font-semibold mb-1">Filing Date</label>
               <div className="relative">
                 <input
                   type="date"

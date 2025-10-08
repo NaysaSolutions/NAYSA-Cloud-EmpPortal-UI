@@ -567,7 +567,7 @@ const getLeaveStamp = (row) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
 
             <div className="min-w-0">
-              <label className="block font-semibold mb-1">Date</label>
+              <label className="block font-semibold mb-1">Filing Date</label>
               <div className="relative">
                 <input
                   type="date"
@@ -579,7 +579,7 @@ const getLeaveStamp = (row) => {
             </div>
 
             <div className="min-w-0">
-              <label className="block font-semibold mb-1">Start Date</label>
+              <label className="block font-semibold mb-1">Leave Start Date</label>
               <div className="relative">
                 <input
                   type="date"
@@ -591,7 +591,7 @@ const getLeaveStamp = (row) => {
             </div>
 
             <div className="min-w-0">
-              <label className="block font-semibold mb-1">End Date</label>
+              <label className="block font-semibold mb-1">Leave End Date</label>
               <div className="relative">
                 <input
                   type="date"
