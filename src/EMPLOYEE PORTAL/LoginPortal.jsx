@@ -76,7 +76,7 @@ function LoginPortal() {
             <div className="bg-[linear-gradient(to_bottom,#84a1ba,#becdda)] relative px-6 sm:px-10 py-10 rounded-3xl shadow-2xl w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-md xl:max-w-md">
                 <div className="flex flex-col items-center justify-center mb-6">
                     <img src="/naysa_logo.png" alt="NAYSA Logo" className="w-[100px] h-[70px] mb-4" />
-                    <h2 className="text-xl font-semibold text-blue-900 tracking-tight">NAYSA Employee Portal</h2>
+                    <h2 className="text-xl font-semibold text-blue-900 tracking-tight">Employee Portal</h2>
                 </div>
 
                 <form onSubmit={handleSubmit}>
