@@ -205,6 +205,40 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 
 
+
+
+/* Smaller modal size */
+.swal-sm-popup {
+  width: 380px !important;
+  padding: 1rem !important;
+  border-radius: 12px !important;
+}
+
+/* Slightly smaller title for better mobile fit */
+.swal-sm-title {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  margin-bottom: 0.3rem !important;
+}
+
+/* Smaller confirm button */
+.swal-sm-confirm {
+  font-size: 14px !important;
+  padding: 6px 18px !important;
+}
+
+/* Extra responsiveness for very small screens */
+@media (max-width: 420px) {
+  .swal-sm-popup {
+    width: 95% !important;
+    padding: 0.25rem !important;
+  }
+  .swal-sm-title {
+    font-size: 14px !important;
+  }
+}
+
+
     
   }
   

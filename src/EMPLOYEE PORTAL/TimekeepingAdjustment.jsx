@@ -66,17 +66,172 @@ const TimekeepingAdjustment = () => {
     setActualDateTime(newDateTime);
   }, [shiftDate]); // runs every time shiftDate changes
 
+  // const handleSubmit = async () => {
+  //   if (!shiftDate || !actualDateTime || !remarks.trim()) { await Swal.fire({ title: "Incomplete", text: "Please fill all fields.", icon: "warning" }); return; }
+  //   const payload = { json_data: { empNo: user.empNo, detail: [{ shiftDate: dayjs(shiftDate).format("YYYY-MM-DD"), actualDatetime: dayjs(actualDateTime).format("YYYY-MM-DDTHH:mm:ss"), dtrRemarks: remarks, dtrType }] } };
+  //   try {
+  //     const res = await fetch(API_ENDPOINTS.upsertDTR, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  //     const ok = res.ok; let j = null; try { j = await res.json(); } catch {}
+  //     if (!ok) throw new Error(j?.message || "Request failed");
+  //     await Swal.fire({ title: "Submitted", text: "DTR adjustment submitted.", icon: "success" });
+  //     setRemarks(""); setActualDateTime(dayjs().format("YYYY-MM-DDTHH:mm")); setDtrType("timeIn"); fetchHistory();
+  //   } catch (e) { await Swal.fire({ title: "Error", text: e.message, icon: "error" }); }
+  // };
+
+  
   const handleSubmit = async () => {
-    if (!shiftDate || !actualDateTime || !remarks.trim()) { await Swal.fire({ title: "Incomplete", text: "Please fill all fields.", icon: "warning" }); return; }
-    const payload = { json_data: { empNo: user.empNo, detail: [{ shiftDate: dayjs(shiftDate).format("YYYY-MM-DD"), actualDatetime: dayjs(actualDateTime).format("YYYY-MM-DDTHH:mm:ss"), dtrRemarks: remarks, dtrType }] } };
-    try {
-      const res = await fetch(API_ENDPOINTS.upsertDTR, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const ok = res.ok; let j = null; try { j = await res.json(); } catch {}
-      if (!ok) throw new Error(j?.message || "Request failed");
-      await Swal.fire({ title: "Submitted", text: "DTR adjustment submitted.", icon: "success" });
-      setRemarks(""); setActualDateTime(dayjs().format("YYYY-MM-DDTHH:mm")); setDtrType("timeIn"); fetchHistory();
-    } catch (e) { await Swal.fire({ title: "Error", text: e.message, icon: "error" }); }
+  if (!shiftDate || !actualDateTime || !remarks.trim()) {
+    const missing = [
+      !shiftDate ? "Shift Date" : null,
+      !actualDateTime ? "Actual Datetime" : null,
+      !remarks.trim() ? "Remarks" : null,
+    ].filter(Boolean).join(", ");
+
+    await Swal.fire({
+      icon: "warning",
+      title: "Incomplete",
+      html: `Please fill all required fields.<br><small>Missing: <b>${missing}</b></small>`
+    });
+    return;
+  }
+
+  const payload = {
+    json_data: {
+      empNo: user.empNo,
+      detail: [{
+        shiftDate: dayjs(shiftDate).format("YYYY-MM-DD"),
+        actualDatetime: dayjs(actualDateTime).format("YYYY-MM-DDTHH:mm:ss"),
+        dtrRemarks: remarks.trim(),
+        dtrType
+      }]
+    }
   };
+
+  // HTML-safe escape function (no Lodash required)
+  const escapeHTML = (str = "") =>
+    str.replace(/[&<>'"]/g, tag =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;"
+      }[tag] || tag)
+    );
+
+  const display = {
+  // Format: weekday name
+  shiftDay: dayjs(shiftDate).format("dddd"),
+
+  // Format: weekday name + MM/dd/yyyy
+  shiftDate: dayjs(shiftDate).format("MM/DD/YYYY"),
+
+  // Format: MM/dd/yyyy hh:mm AM/PM
+  actualDatetime: dayjs(actualDateTime).format("MM/DD/YYYY hh:mm A"),
+
+  // Converts e.g. "timeIn" → "Time In"
+  dtrTypeText: (dtrType || "").replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()),
+};
+
+
+  const typeColor = (() => {
+    const t = (dtrType || "").toLowerCase();
+    if (t.includes("in")) return "#16a34a";   // green
+    if (t.includes("out")) return "#dc2626";  // red
+    return "#334155";                         // default slate
+  })();
+
+  try {
+    const res = await fetch(API_ENDPOINTS.upsertDTR, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    let body;
+    try { body = await res.json(); } catch {
+      try { body = { message: await res.text() }; } catch { body = null; }
+    }
+
+    if (!res.ok) throw new Error(body?.message || "Request failed");
+await Swal.fire({
+  icon: "success",
+  title: '<span style="font-size:18px; font-weight:600;">DTR Adjustment Submitted</span>',
+  html: `
+    <div style="text-align:left;">
+      <table style="width:100%; font-size:14px;">
+      <tr>
+          <td><b>DTR Type:</b></td>
+          <td>
+            <span style="
+              display:inline-block; padding:2px 8px; border-radius:9999px;
+              font-size:12px; font-weight:600; color:#fff; background:${typeColor};
+            ">
+              ${display.dtrTypeText}
+              
+            </span>
+          </td>
+        </tr>
+        <tr>
+          <td style="width:120px;"><b>Shift Day:</b></td>
+          <td>${display.shiftDay}</td>
+        </tr>
+        <tr>
+          <td style="width:120px;"><b>Shift Date:</b></td>
+          <td>${display.shiftDate}</td>
+        </tr>
+
+        <tr>
+          <td><b>Adjustment:</b></td>
+          <td>${display.actualDatetime}</td>
+        </tr>
+        
+        <tr>
+          <td><b>Remarks:</b></td>
+          <td>${escapeHTML(remarks.trim())}</td>
+        </tr>
+      </table>
+    </div>
+  `,
+  confirmButtonText: "Close",
+  confirmButtonColor: "#3085d6",
+  customClass: {
+    popup: "swal-sm-popup", // make modal smaller
+    title: "swal-sm-title",
+    confirmButton: "swal-sm-confirm",
+  },
+});
+
+
+
+    // Reset + refresh
+    setRemarks("");
+    setActualDateTime(dayjs().format("YYYY-MM-DDTHH:mm"));
+    setDtrType("timeIn");
+    fetchHistory();
+
+  } catch (e) {
+    await Swal.fire({
+      icon: "error",
+      title: "Error",
+      html: `
+        <div style="text-align:left;">
+          <p style="margin:0 0 6px;">${escapeHTML(e.message || "Something went wrong.")}</p>
+          <details style="font-size:12px; opacity:.8;">
+            <summary>Request Details</summary>
+            <pre style="white-space:pre-wrap; margin-top:6px;">
+shiftDate: ${payload.json_data.detail[0].shiftDate}
+actualDatetime: ${payload.json_data.detail[0].actualDatetime}
+dtrType: ${dtrType}
+            </pre>
+          </details>
+        </div>
+      `
+    });
+  }
+};
+
+
 
   // CANCEL
 
@@ -245,8 +400,8 @@ const TimekeepingAdjustment = () => {
       </div>
 
       {/* HISTORY */}
-      <div className="mt-4 bg-white p-6 shadow-md rounded-lg">
-        <div className="flex items-center justify-between gap-2">
+       <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <h2 className="text-base font-semibold">Timekeeping Application History</h2>
           <div className="inline-flex rounded-lg border overflow-hidden">
             <button className={`px-8 py-2 text-sm ${viewMode === "card" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("card")}>Card</button>
