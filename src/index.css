@@ -209,22 +209,30 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 /* Smaller modal size */
 .swal-sm-popup {
-  width: 380px !important;
-  padding: 1rem !important;
-  border-radius: 12px !important;
+  width: 400px !important;
+  /* height: 500px !important; */
+  padding: 0.5rem !important;
+  border-radius: 16px !important;
 }
 
 /* Slightly smaller title for better mobile fit */
 .swal-sm-title {
   font-size: 16px !important;
   font-weight: 600 !important;
-  margin-bottom: 0.3rem !important;
+  margin-top: -0.6rem !important;
+  margin-bottom: 0.2rem !important;
 }
 
 /* Smaller confirm button */
 .swal-sm-confirm {
   font-size: 14px !important;
-  padding: 6px 18px !important;
+  padding: 6px 26px !important;
+}
+
+/* Smaller cancel button */
+.swal-sm-cancel {
+  font-size: 14px !important;
+  padding: 6px 26px !important;
 }
 
 /* Extra responsiveness for very small screens */

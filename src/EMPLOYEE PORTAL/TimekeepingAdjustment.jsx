@@ -1,13 +1,17 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 
+
 const TimekeepingAdjustment = () => {
   const { user } = useAuth();
+  const { state } = useLocation();
+  const record = state?.record || null;
 
   const [data, setData] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -59,12 +63,17 @@ const TimekeepingAdjustment = () => {
   useEffect(() => { if (user?.empNo) fetchHistory(); }, [user?.empNo]);
 
   // Auto update actualDateTime when shiftDate changes
+  // useEffect(() => {
+  //   const currentTime = dayjs(actualDateTime).format("HH:mm");
+  //   const newDateTime = dayjs(`${shiftDate}T${currentTime}`).format("YYYY-MM-DDTHH:mm");
+  //   setActualDateTime(newDateTime);
+  // }, [shiftDate]); // runs every time shiftDate changes
+
   useEffect(() => {
-    // Keep same time if you want, otherwise set default time (e.g., 00:00)
+    if (!shiftDate || !actualDateTime) return;
     const currentTime = dayjs(actualDateTime).format("HH:mm");
-    const newDateTime = dayjs(`${shiftDate}T${currentTime}`).format("YYYY-MM-DDTHH:mm");
-    setActualDateTime(newDateTime);
-  }, [shiftDate]); // runs every time shiftDate changes
+    setActualDateTime(dayjs(`${shiftDate}T${currentTime}`).format("YYYY-MM-DDTHH:mm"));
+  }, [shiftDate]);
 
   // const handleSubmit = async () => {
   //   if (!shiftDate || !actualDateTime || !remarks.trim()) { await Swal.fire({ title: "Incomplete", text: "Please fill all fields.", icon: "warning" }); return; }
@@ -107,7 +116,7 @@ const TimekeepingAdjustment = () => {
     }
   };
 
-  // HTML-safe escape function (no Lodash required)
+  // Safe HTML escape
   const escapeHTML = (str = "") =>
     str.replace(/[&<>'"]/g, tag =>
       ({
@@ -120,19 +129,13 @@ const TimekeepingAdjustment = () => {
     );
 
   const display = {
-  // Format: weekday name
-  shiftDay: dayjs(shiftDate).format("dddd"),
-
-  // Format: weekday name + MM/dd/yyyy
-  shiftDate: dayjs(shiftDate).format("MM/DD/YYYY"),
-
-  // Format: MM/dd/yyyy hh:mm AM/PM
-  actualDatetime: dayjs(actualDateTime).format("MM/DD/YYYY hh:mm A"),
-
-  // Converts e.g. "timeIn" → "Time In"
-  dtrTypeText: (dtrType || "").replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase()),
-};
-
+    shiftDay: dayjs(shiftDate).format("dddd"),
+    shiftDate: dayjs(shiftDate).format("MM/DD/YYYY"),
+    actualDatetime: dayjs(actualDateTime).format("MM/DD/YYYY hh:mm A"),
+    dtrTypeText: (dtrType || "")
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, c => c.toUpperCase()),
+  };
 
   const typeColor = (() => {
     const t = (dtrType || "").toLowerCase();
@@ -141,6 +144,59 @@ const TimekeepingAdjustment = () => {
     return "#334155";                         // default slate
   })();
 
+  // --- Step 1: Confirmation Swal ---
+  const confirm = await Swal.fire({
+    icon: "question",
+    title: "Confirm DTR Adjustment",
+    html: `
+      <div style="text-align:left;">
+        <table style="width:100%; font-size:14px;">
+          <tr>
+            <td><b>DTR Type:</b></td>
+            <td>
+              <span style="
+                display:inline-block; padding:2px 8px; border-radius:9999px;
+                font-size:12px; font-weight:600; color:#fff; background:${typeColor};
+              ">
+                ${display.dtrTypeText}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td style="width:120px;"><b>Shift Day:</b></td>
+            <td>${display.shiftDay}</td>
+          </tr>
+          <tr>
+            <td><b>Shift Date:</b></td>
+            <td>${display.shiftDate}</td>
+          </tr>
+          <tr>
+            <td><b>Adjustment:</b></td>
+            <td>${display.actualDatetime}</td>
+          </tr>
+          <tr>
+            <td><b>Remarks:</b></td>
+            <td>${escapeHTML(remarks.trim())}</td>
+          </tr>
+        </table>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: "Yes",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#2563eb",
+    cancelButtonColor: "#6b7280",
+    customClass: {
+      popup: "swal-sm-popup",
+      title: "swal-sm-title",
+      confirmButton: "swal-sm-confirm",
+      cancelButton: "swal-sm-cancel",
+    },
+  });
+
+  if (!confirm.isConfirmed) return; // ❌ Stop if cancelled
+
+  // --- Step 2: Proceed with Save ---
   try {
     const res = await fetch(API_ENDPOINTS.upsertDTR, {
       method: "POST",
@@ -154,57 +210,54 @@ const TimekeepingAdjustment = () => {
     }
 
     if (!res.ok) throw new Error(body?.message || "Request failed");
-await Swal.fire({
-  icon: "success",
-  title: '<span style="font-size:18px; font-weight:600;">DTR Adjustment Submitted</span>',
-  html: `
-    <div style="text-align:left;">
-      <table style="width:100%; font-size:14px;">
-      <tr>
-          <td><b>DTR Type:</b></td>
-          <td>
-            <span style="
-              display:inline-block; padding:2px 8px; border-radius:9999px;
-              font-size:12px; font-weight:600; color:#fff; background:${typeColor};
-            ">
-              ${display.dtrTypeText}
-              
-            </span>
-          </td>
-        </tr>
-        <tr>
-          <td style="width:120px;"><b>Shift Day:</b></td>
-          <td>${display.shiftDay}</td>
-        </tr>
-        <tr>
-          <td style="width:120px;"><b>Shift Date:</b></td>
-          <td>${display.shiftDate}</td>
-        </tr>
 
-        <tr>
-          <td><b>Adjustment:</b></td>
-          <td>${display.actualDatetime}</td>
-        </tr>
-        
-        <tr>
-          <td><b>Remarks:</b></td>
-          <td>${escapeHTML(remarks.trim())}</td>
-        </tr>
-      </table>
-    </div>
-  `,
-  confirmButtonText: "Close",
-  confirmButtonColor: "#3085d6",
-  customClass: {
-    popup: "swal-sm-popup", // make modal smaller
-    title: "swal-sm-title",
-    confirmButton: "swal-sm-confirm",
-  },
-});
+    // --- Step 3: Success Swal with Details ---
+    await Swal.fire({
+      icon: "success",
+      title: '<span style="font-size:18px; font-weight:600;">DTR Adjustment Submitted</span>',
+      html: `
+        <div style="text-align:left;">
+          <table style="width:100%; font-size:14px;">
+            <tr>
+              <td><b>DTR Type:</b></td>
+              <td>
+                <span style="
+                  display:inline-block; padding:2px 8px; border-radius:9999px;
+                  font-size:12px; font-weight:600; color:#fff; background:${typeColor};
+                ">
+                  ${display.dtrTypeText}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td style="width:120px;"><b>Shift Day:</b></td>
+              <td>${display.shiftDay}</td>
+            </tr>
+            <tr>
+              <td><b>Shift Date:</b></td>
+              <td>${display.shiftDate}</td>
+            </tr>
+            <tr>
+              <td><b>Adjustment:</b></td>
+              <td>${display.actualDatetime}</td>
+            </tr>
+            <tr>
+              <td><b>Remarks:</b></td>
+              <td>${escapeHTML(remarks.trim())}</td>
+            </tr>
+          </table>
+        </div>
+      `,
+      confirmButtonText: "Close",
+      confirmButtonColor: "#3085d6",
+      customClass: {
+        popup: "swal-sm-popup",
+        title: "swal-sm-title",
+        confirmButton: "swal-sm-confirm",
+      },
+    });
 
-
-
-    // Reset + refresh
+    // --- Step 4: Reset and Refresh ---
     setRemarks("");
     setActualDateTime(dayjs().format("YYYY-MM-DDTHH:mm"));
     setDtrType("timeIn");
@@ -233,6 +286,7 @@ dtrType: ${dtrType}
 
 
 
+
   // CANCEL
 
   // Stamp helper for precise cancellation payload
@@ -258,7 +312,14 @@ dtrType: ${dtrType}
       text: "This will mark your pending DTR adjustment as cancelled.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes, cancel it",
+      confirmButtonText: "Yes",
+      cancelButtonText: "No",
+      customClass: {
+        popup: "swal-sm-popup",
+        title: "swal-sm-title",
+        confirmButton: "swal-sm-confirm",
+        cancelButton: "swal-sm-cancel",
+      },
     });
     if (!conf.isConfirmed) return;
 
@@ -318,6 +379,46 @@ dtrType: ${dtrType}
   const indexOfLast = currentPage * recordsPerPage;
   const indexOfFirst = indexOfLast - recordsPerPage;
   const current = filtered.slice(indexOfFirst, indexOfLast);
+
+  // helper: compose YYYY-MM-DDTHH:mm from date + HH:mm:ss
+  const composeLocal = (dateStr, timeStr) =>
+    dayjs(`${dateStr} ${timeStr}`, "YYYY-MM-DD HH:mm:ss").format("YYYY-MM-DDTHH:mm");
+
+  // Prefill when navigating from a row (missing IN/OUT)
+  useEffect(() => {
+    if (!record) return;
+
+    // Shift date from record.date / r.dtrDate if present
+    const sourceDate = record.date || record.dtrDate;
+    if (sourceDate) {
+      const sd = dayjs(sourceDate).format("YYYY-MM-DD");
+      setShiftDate(sd);
+
+      const missingIn = !record.time_in && !record.dtrTimeIn;   // support alt field names
+      const missingOut = !record.time_out && !record.dtrTimeOut;
+
+      // Prefer scheduled times if available
+      const schedIn = record.sched_in || record.schedIn || "08:00:00";
+      const schedOut = record.sched_out || record.schedOut || "17:00:00";
+
+      if (missingIn && !missingOut) {
+        setDtrType("timeIn");
+        setActualDateTime(composeLocal(sd, schedIn));
+      } else if (!missingIn && missingOut) {
+        setDtrType("timeOut");
+        setActualDateTime(composeLocal(sd, schedOut));
+      } else if (missingIn && missingOut) {
+        setDtrType("timeIn");
+        setActualDateTime(composeLocal(sd, schedIn));
+      } else {
+        // If both exist (manual navigation), default to timeIn using recorded time if present
+        const actualIn = record.time_in || record.dtrTimeIn || schedIn;
+        setDtrType("timeIn");
+        setActualDateTime(composeLocal(sd, actualIn));
+      }
+    }
+  }, [record]);
+
 
   return (
     <div className="ml-0 lg:ml-[200px] mt-[80px] p-4 bg-gray-100 min-h-screen">

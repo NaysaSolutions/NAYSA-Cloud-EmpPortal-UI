@@ -861,87 +861,163 @@ const handleExport = () => {
 
 
 // Card View Component
-const CardView = ({ filteredRecords }) => {
-  const navigate = useNavigate();
-
-  const handleAdjustClick = (record) => {
-    // Optional: pass data to the next page (e.g., selected date)
-    navigate("/timekeepingadjustment", { state: { record } });
-  };
-
-  return (
-    <div className="space-y-2">
-      {filteredRecords.map((record, index) => {
-        const isIncomplete = !record.time_in || !record.time_out;
-
-        return (
-          <div
-            key={index}
-            className="bg-white rounded-lg shadow-md border border-gray-200"
-          >
-            {/* Card Header */}
-            <div className="flex justify-between items-center p-4 border-b border-gray-100">
-              <div>
-                <h3 className="font-semibold text-gray-900">
-                  {formatDate(record.date)}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {record.worked_hrs != null
-                    ? `${Number(record.worked_hrs).toFixed(2)} hrs`
-                    : "0.00 hrs"}
-                </p>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-gray-500">IN • OUT</div>
-                <div className="font-mono text-xs sm:text-sm">
-                  {record.time_in
-                    ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A")
-                    : "N/A"}{" "}
-                  •{" "}
-                  {record.time_out
-                    ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A")
-                    : "N/A"}
-                </div>
-              </div>
-            </div>
-
-            {/* Card Content */}
-            <div className="p-4 space-y-3">
-              {/* Break Times */}
-              <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
-                <span className="text-sm text-gray-600">Break</span>
-                <span className="font-mono text-xs sm:text-sm">
-                  {record.break_in
-                    ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A")
-                    : "N/A"}{" "}
-                  •{" "}
-                  {record.break_out
-                    ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A")
-                    : "N/A"}
-                </span>
-              </div>
-
-              {/* ✅ Adjust Button (only when incomplete) */}
-              {isIncomplete && (
-                <div className="flex justify-end pt-2">
-                  <button
-                    onClick={() => handleAdjustClick(record)}
-                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg shadow-sm transition-all"
-                  >
-                    Adjust Time
-                  </button>
-                </div>
-              )}
-
-              {/* Existing Image / Location Sections */}
-              {/* ... your existing code remains unchanged ... */}
+const CardView = ({ filteredRecords }) => (
+  <div className="space-y-2">
+    {filteredRecords.map((record, index) => (
+      <div key={index} className="bg-white rounded-lg shadow-md border border-gray-200">
+        {/* Card Header */}
+        <div className="flex justify-between items-center p-4 border-b border-gray-100">
+          <div>
+            <h3 className="font-semibold text-gray-900">{formatDate(record.date)}</h3>
+            <p className="text-sm text-gray-600">{record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs"}</p>
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-gray-500">IN • OUT</div>
+            <div className="font-mono text-xs sm:text-sm">
+              {record.time_in ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A") : "N/A"} • {record.time_out ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}
             </div>
           </div>
-        );
-      })}
-    </div>
-  );
-};
+        </div>
+
+        {/* Card Content */}
+        <div className="p-4 space-y-3">
+          {/* Break Times */}
+          <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
+            <span className="text-sm text-gray-600">Break</span>
+            <span className="font-mono text-xs sm:text-sm">
+              {record.break_in ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A") : "N/A"} • {record.break_out ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}
+            </span>
+          </div>
+
+          {/* Images and Locations */}
+          {isImageCaptureRequired && (
+            <div className="flex gap-3 flex-wrap">
+              {/* Time In Image and Location */}
+              <div className="flex-1">
+                <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                  <Camera size={12} />
+                  Time In
+                </div>
+
+                {record.time_in_image_id ? (
+                <div className="relative">
+                    <img
+                    src={`${IMAGE_BASE_URL}/${record.time_in_image_id}.jpeg`}
+                    alt="Time In"
+                    className="rounded-lg w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] object-cover"
+                    />
+                </div>
+                ) : (
+                <div className="flex items-center justify-center w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] bg-gray-100 rounded-lg border border-dashed">
+                    <ImageIcon size={32} className="text-gray-400" />
+                </div>
+                )}
+
+                {isLocationRequired && (
+                  <>
+                    {record.time_in_address && (
+                    <div className="flex-1 block items-start gap-2 mt-2 md:hidden">
+                        <div className="flex items-center gap-2">
+                            <MapPin size={12} className="text-green-500 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                                <div className="text-xs text-gray-500">Time In Location</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                            <div className="text-[11px] text-gray-700">{record.time_in_address || 'N/A'}</div>
+                        </div>
+                    </div>
+                    )}
+                  </>
+                )}
+                
+              </div>
+
+               <div className="hidden flex-1 md:block">
+                {isLocationRequired && (
+                  <>
+                    {record.time_in_address && (
+                      <div className="flex gap-2">
+                        <MapPin size={14} className="text-green-500" />
+                        <div className="flex-1">
+                            <div className="text-xs text-gray-500">Time In Location</div>
+                            <div className="text-sm text-gray-700">{record.time_in_address || 'N/A'}</div>
+                        </div>
+                    </div>
+                    )}
+                  </>
+                )}               
+              </div>
+
+
+              {/* Time Out Image and Location */}
+              <div className="flex-1">
+
+                <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                <Camera size={12} />
+                Time Out
+                </div>
+
+                {record.time_out_image_id ? (
+                <div className="relative">
+                    <img
+                    src={`${IMAGE_BASE_URL}/${record.time_out_image_id}.jpeg`}
+                    alt="Time Out"
+                    className="rounded-lg w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] object-cover"
+                    />
+                </div>
+                ) : (
+                <div className="flex items-center justify-center w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] bg-gray-100 rounded-lg border border-dashed">
+                    <ImageIcon size={32} className="text-gray-400" />
+                </div>
+                )}
+
+
+
+                {isLocationRequired && (
+                  <>
+                    {record.time_out_address && (
+                    <div className="flex-1 block items-start gap-2 mt-2 md:hidden">
+                        <div className="flex items-center gap-2">
+                            <MapPin size={12} className="text-red-500 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                                <div className="text-xs text-gray-500">Time Out Location</div>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                            <div className="text-[11px] text-gray-700">{record.time_out_address || 'N/A'}</div>
+                        </div>
+                    </div>
+                    )}
+                  </>
+                )}
+
+              </div>
+
+               <div className="hidden flex-1 md:block">
+                {isLocationRequired && (
+                  <>
+                    {record.time_out_address && (
+                      <div className="flex gap-2 mt-2">
+                        <MapPin size={14} className="text-red-500" />
+                        <div className="flex-1">
+                            <div className="text-xs text-gray-500">Time Out Location</div>
+                            <div className="text-sm text-gray-700">{record.time_out_address || 'N/A'}</div>
+                        </div>
+                    </div>
+                    )}
+                  </>
+                )}               
+              </div>
+
+            </div>
+          )}
+          
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 
   // Accordion View Component
@@ -1053,37 +1129,81 @@ const AccordionView = ({ filteredRecords }) => (
 );
 
 
-// Compact Table View with date range filtering
 const CompactTableView = ({ filteredRecords }) => {
+  const navigate = useNavigate();
+
+  const handleAdjustClick = (record) => {
+    // navigate to TimekeepingAdjustment page and pass the selected record
+    navigate("/timekeepingAdj", { state: { record } });
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full">
           <thead className="bg-gray-50">
             {filteredRecords.length > 0 ? (
-              filteredRecords.map((record, index) => (
-                <tr key={index} className="border-b hover:bg-gray-50">
-                  <td className="px-2 py-3">
-                    <div className="text-[12px] sm:text-sm font-medium text-gray-900">
-                      {dayjs(record.date).format("MM/DD/YYYY")}
-                    </div>
-                  </td>
-                  <td className="px-2 py-3">
-                    <div className="text-[11px] sm:text-xs text-gray-600 space-y-1">
-                      <div>In: {dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A")}</div>
-                      <div>Out: {dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A")}</div>
-                      <div className="text-[11px] sm:text-xs text-gray-400">
-                        Break: {dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A")} - {dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A")}
+              filteredRecords.map((record, index) => {
+                const isIncomplete = !record.time_in || !record.time_out;
+
+                return (
+                  <tr key={index} className="border-b hover:bg-gray-50">
+                    {/* Date */}
+                    <td className="px-2 py-3">
+                      <div className="text-[12px] sm:text-sm font-medium text-gray-900">
+                        {dayjs(record.date).format("MM/DD/YYYY")}
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-2 py-3 text-right">
-                    <div className="text-[11px] sm:text-sm font-semibold text-blue-600">
-                      {record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs"}
-                    </div>
-                  </td>
-                </tr>
-              ))
+                    </td>
+
+                    {/* Time In / Out / Break */}
+                    <td className="px-2 py-3">
+                      <div className="text-[11px] sm:text-xs text-gray-600 space-y-1">
+                        <div>
+                          In:&nbsp;
+                          {record.time_in
+                            ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A")
+                            : <span className="text-red-500 font-semibold">Missing</span>}
+                        </div>
+                        <div>
+                          Out:&nbsp;
+                          {record.time_out
+                            ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A")
+                            : <span className="text-red-500 font-semibold">Missing</span>}
+                        </div>
+                        <div className="text-[11px] sm:text-xs text-gray-400">
+                          Break:&nbsp;
+                          {record.break_in
+                            ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A")
+                            : "N/A"}{" "}
+                          -{" "}
+                          {record.break_out
+                            ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A")
+                            : "N/A"}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* Worked Hours + Button */}
+                    <td className="px-2 py-3 text-right">
+                      <div className="text-[11px] sm:text-sm font-semibold text-blue-600">
+                        {record.worked_hrs != null
+                          ? `${Number(record.worked_hrs).toFixed(2)} hrs`
+                          : "0.00 hrs"}
+                      </div>
+
+                      {/* ✅ Only show button if incomplete */}
+                      {isIncomplete && (
+                        <button
+                          onClick={() => handleAdjustClick(record)}
+                          className="mt-1 inline-block px-2 py-1 text-[11px] sm:text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-sm transition-all"
+                        >
+                          Adjust Time
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan={3} className="px-2 py-3 text-center text-gray-500">
@@ -1092,8 +1212,9 @@ const CompactTableView = ({ filteredRecords }) => {
               </tr>
             )}
           </thead>
+
           <tbody className="divide-y divide-gray-200">
-            {records.length === 0 && (
+            {filteredRecords.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-2 py-3 text-center text-gray-500">
                   No records found for the selected date range.
@@ -1187,19 +1308,26 @@ const FullTableView = ({ filteredRecords }) => {
 };
 
 
-// Full Table View Component
-const FullSummaryView = ({ filteredRecords }) => {
+
+const FullSummaryView = ({ filteredRecords, isImageCaptureRequired, isLocationRequired }) => {
+  const navigate = useNavigate();
+
+  const isBlank = (v) => v == null || String(v).trim() === "";
+
+  const handleAdjustClick = (record) => {
+    navigate("/timekeepingAdj", { state: { record } });
+  };
+
   // Function to calculate colspan based on image and location capture requirements
   const calculateColSpan = () => {
     let colSpan = 6; // Base number of columns (excluding Total Hours)
-    if (isImageCaptureRequired) colSpan += 1; // If image capture is required
-    if (isLocationRequired) colSpan += 1; // If location is required
+    if (isImageCaptureRequired) colSpan += 1;
+    if (isLocationRequired) colSpan += 1;
     return colSpan;
   };
 
   // Calculate total worked hours
   const totalWorkedHours = filteredRecords.reduce((total, record) => {
-    // Ensure worked_hrs is a valid number, defaulting to 0 if not
     const workedHrs = record.worked_hrs != null && !isNaN(record.worked_hrs) ? record.worked_hrs : 0;
     return total + workedHrs;
   }, 0);
@@ -1208,31 +1336,71 @@ const FullSummaryView = ({ filteredRecords }) => {
     <div className="mt-4 p-2 bg-white rounded-lg shadow-lg overflow-x-auto">
       <h2 className="text-base font-bold mb-4">Daily Time Record Summary</h2>
 
-      <table className="min-w-full table-auto border-collapse ">
+      <table className="min-w-full table-auto border-collapse">
         <thead>
           <tr className="border-b">
-            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-msemiboldedium whitespace-nowrap">Shift Date</th>
-            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-semibold whitespace-nowrap">Time In</th>
-            <th className="px-1 py-2 text-left text-[7px] md:text-sm font-semibold whitespace-nowrap">Time Out</th>
-            <th className="px-1 py-2 text-right text-[7px] md:text-sm font-semibold whitespace-nowrap">Total hrs</th>
+            <th className="px-1 py-2 text-left text-[10px] md:text-sm font-semibold whitespace-nowrap">Shift Date</th>
+            <th className="px-1 py-2 text-left text-[10px] md:text-sm font-semibold whitespace-nowrap">Time In</th>
+            <th className="px-1 py-2 text-left text-[10px] md:text-sm font-semibold whitespace-nowrap">Time Out</th>
+            <th className="px-1 py-2 text-right text-[10px] md:text-sm font-semibold whitespace-nowrap">Total hrs</th>
           </tr>
         </thead>
         <tbody>
           {filteredRecords.length > 0 ? (
-            filteredRecords.map((record, index) => (
-              <tr key={index}>
-                <td className="px-1 py-1 text-[6px] md:text-xs">{dayjs(record.date).format("MM/DD/YYYY")}</td>
-                <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
-                  {record.time_in ? dayjs(record.time_in, "MM/DD/YYYY HH:mm").format("MM/DD/YYYY  hh:mm A") : "N/A"}
-                </td>
-                <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
-                  {record.time_out ? dayjs(record.time_out, "MM/DD/YYYY HH:mm").format("MM/DD/YYYY  hh:mm A") : "N/A"}
-                </td>
-                <td className="px-1 py-1 text-[6px] md:text-xs text-right font-medium whitespace-nowrap">
-                  {record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs"}
-                </td>
-              </tr>
-            ))
+            filteredRecords.map((record, index) => {
+              const showAdjIn = isBlank(record.time_in);
+              const showAdjOut = isBlank(record.time_out);
+
+              return (
+                <tr key={index} className="border-b">
+                  {/* Shift Date */}
+                  <td className="px-1 py-1 text-[8px] md:text-xs">
+                    {dayjs(record.date).format("MM/DD/YYYY")}
+                  </td>
+
+                  {/* Time In */}
+                  <td className="px-1 py-1 text-[8px] md:text-xs whitespace-nowrap">
+                    {!showAdjIn ? (
+                      dayjs(record.time_in, "MM/DD/YYYY HH:mm").format("MM/DD/YYYY  hh:mm A")
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        {/* <span className="text-red-500 font-semibold">Missing</span> */}
+                        <button
+                          onClick={() => handleAdjustClick(record)}
+                          className="inline-block px-2 py-1 text-[10px] md:text-[11px] bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-sm transition-all"
+                          title="Adjust Time In"
+                        >
+                          Adjust Time
+                        </button>
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Time Out */}
+                  <td className="px-1 py-1 text-[8px] md:text-xs whitespace-nowrap">
+                    {!showAdjOut ? (
+                      dayjs(record.time_out, "MM/DD/YYYY HH:mm").format("MM/DD/YYYY  hh:mm A")
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        {/* <span className="text-red-500 font-semibold">Missing</span> */}
+                        <button
+                          onClick={() => handleAdjustClick(record)}
+                          className="inline-block px-2 py-1 text-[10px] md:text-[11px] bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-sm transition-all"
+                          title="Adjust Time Out"
+                        >
+                          Adjust Time
+                        </button>
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Total Hours */}
+                  <td className="px-1 py-1 text-[8px] md:text-xs text-right font-medium whitespace-nowrap">
+                    {record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs"}
+                  </td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
               <td colSpan={calculateColSpan() + 1} className="text-center py-4 text-gray-500">
@@ -1241,10 +1409,26 @@ const FullSummaryView = ({ filteredRecords }) => {
             </tr>
           )}
         </tbody>
+
+        {/* (Optional) Grand total row */}
+        {/* {filteredRecords.length > 0 && (
+          <tfoot>
+            <tr className="border-t">
+              <td className="px-1 py-2 text-[10px] md:text-xs font-semibold" colSpan={3}>
+                Total Worked Hours
+              </td>
+              <td className="px-1 py-2 text-[10px] md:text-xs text-right font-semibold">
+                {Number(totalWorkedHours).toFixed(2)} hrs
+              </td>
+            </tr>
+          </tfoot>
+        )} */}
       </table>
     </div>
   );
 };
+
+
 
 return (
     
@@ -1469,7 +1653,7 @@ return (
             >
                 Cards
             </button>
-            <button
+            {/* <button
                 onClick={() => setViewMode('accordion')}
                 className={`flex-grow px-3 py-2 text-sm rounded-md font-medium ${
                 viewMode === 'accordion'
@@ -1478,7 +1662,7 @@ return (
                 }`}
             >
                 Accordion
-            </button>
+            </button> */}
             <button
                 onClick={() => setViewMode('table')}
                 className={`flex-grow px-3 py-2 text-sm rounded-md font-medium ${

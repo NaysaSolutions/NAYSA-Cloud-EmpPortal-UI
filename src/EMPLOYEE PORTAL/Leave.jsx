@@ -301,20 +301,50 @@ const handleHoursChange = (e) => {
   setLeaveDays(d2);
 };
 
-  const handleStartDateChange = (value) => {
-    setSelectedStartDate(value);
-    if (!selectedEndDate || dayjs(value).isAfter(selectedEndDate)) {
+const FMT = "YYYY-MM-DD";
+
+// treat input as a raw string while typing
+const isCompleteISO = (v) => typeof v === "string" && v.length === 10;
+
+const handleStartDateChange = (value) => {
+  setSelectedStartDate(value);
+
+  // If end date is complete and now earlier, align on the fly
+  if (isCompleteISO(value) && isCompleteISO(selectedEndDate)) {
+    const start = dayjs(value, FMT, true);
+    const end   = dayjs(selectedEndDate, FMT, true);
+    if (start.isValid() && end.isValid() && end.isBefore(start, "day")) {
       setSelectedEndDate(value);
     }
-  };
+  }
+};
 
-  const handleEndDateChange = (value) => {
-    if (selectedStartDate && dayjs(value).isBefore(selectedStartDate)) {
-      Swal.fire({ icon: "warning", title: "Invalid End Date", text: "End date cannot be earlier than start date." });
-      return;
-    }
-    setSelectedEndDate(value);
-  };
+// onChange: don't block typing; only set and optionally soft-sync
+const handleEndDateChange = (value) => {
+  setSelectedEndDate(value);
+};
+
+// onBlur (or on Enter): enforce final validation
+const validateEndDate = () => {
+  const start = dayjs(selectedStartDate, FMT, true);
+  const end   = dayjs(selectedEndDate, FMT, true);
+
+  // if incomplete or invalid, don't nag while typing; just snap if start exists
+  if (!isCompleteISO(selectedEndDate) || !end.isValid()) {
+    if (start.isValid()) setSelectedEndDate(selectedStartDate);
+    return;
+  }
+
+  if (start.isValid() && end.isBefore(start, "day")) {
+    Swal.fire({
+      icon: "warning",
+      title: "Invalid End Date",
+      text: "End date cannot be earlier than start date.",
+    });
+    setSelectedEndDate(selectedStartDate);
+  }
+};
+
 
   // call this when the select changes
 const handleLeaveTypeChange = (e) => {
@@ -335,14 +365,14 @@ const handleLeaveTypeChange = (e) => {
     setLeaveBalHours(hours);
 
     // (optional) reset request counts on change
-    setLeaveDays(0);
-    setLeaveHours(0);
+    setLeaveDays(1);
+    setLeaveHours(8);
     setBalanceError("");
   } else {
-    setLeaveBalDays(0);
-    setLeaveBalHours(0);
-    setLeaveDays(0);
-    setLeaveHours(0);
+    setLeaveBalDays(1);
+    setLeaveBalHours(8);
+    setLeaveDays(1);
+    setLeaveHours(8);
     setBalanceError("");
   }
 };
@@ -386,80 +416,191 @@ const clampRequestToBalance = (days, hours) => {
 
 
   const handleSubmit = async () => {
-    if (!selectedStartDate || !selectedEndDate || !leaveType || !remarks.trim()) {
-      Swal.fire({ title: "Incomplete Form", text: "Please fill in all required fields before submitting.", icon: "warning" });
+  // --- Required field validation ---
+  const missing = [
+    !selectedStartDate ? "Leave Start Date" : null,
+    !selectedEndDate ? "Leave End Date" : null,
+    !leaveType ? "Leave Type" : null,
+    !remarks.trim() ? "Remarks" : null,
+  ].filter(Boolean);
+
+  if (missing.length) {
+    await Swal.fire({
+      icon: "warning",
+      title: "Incomplete Form",
+      html: `Please fill all required fields.<br><small>Missing: <b>${missing.join(", ")}</b></small>`
+    });
+    return;
+  }
+
+  // --- Date validation ---
+  const FMT = "YYYY-MM-DD";
+  const start = dayjs(selectedStartDate, FMT, true);
+  const end   = dayjs(selectedEndDate, FMT, true);
+
+  if (end.isBefore(start, "day")) {
+    await Swal.fire({
+      icon: "warning",
+      title: "Invalid End Date",
+      text: "End date cannot be earlier than start date."
+    });
+    return;
+  }
+
+  // --- Build payload ---
+  const payload = {
+    json_data: {
+      empNo: user.empNo,
+      detail: [{
+        leaveStart: selectedStartDate,
+        leaveEnd: selectedEndDate,
+        leaveCode: leaveType,
+        leaveRemarks: remarks.trim(),
+        leaveHours: leaveHours ? parseFloat(leaveHours) : 0,
+        leaveDays: leaveDays ? parseFloat(leaveDays) : 0,
+      }],
+    },
+  };
+
+  const escapeHTML = (str = "") =>
+    str.replace(/[&<>'"]/g, (tag) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[tag] || tag)
+    );
+
+  const display = {
+    startDay: start.format("dddd"),
+    startDate: start.format("MM/DD/YYYY"),
+    endDay: end.format("dddd"),
+    endDate: end.format("MM/DD/YYYY"),
+    typeText: leaveType,
+    days: (leaveDays && !isNaN(leaveDays))
+      ? Number(leaveDays).toFixed(2)
+      : (end.diff(start, "day") + 1).toFixed(2),
+    hours: (leaveHours && !isNaN(leaveHours))
+      ? Number(leaveHours).toFixed(2)
+      : "",
+  };
+
+  // --- Step 1: Confirmation before save ---
+  const confirm = await Swal.fire({
+    icon: "question",
+    title: "Confirm Leave Application",
+    html: `
+      <div style="text-align:left;">
+        <table style="width:100%; font-size:14px;">
+          <tr><td style="width:140px;"><b>Leave Type:</b></td><td>${escapeHTML(display.typeText)}</td></tr>
+          <tr><td><b>Start:</b></td><td>${display.startDay}, ${display.startDate}</td></tr>
+          <tr><td><b>End:</b></td><td>${display.endDay}, ${display.endDate}</td></tr>
+          <tr><td><b>Total Days:</b></td><td>${display.days}</td></tr>
+          ${display.hours ? `<tr><td><b>Total Hours:</b></td><td>${display.hours}</td></tr>` : ""}
+          <tr><td><b>Remarks:</b></td><td>${escapeHTML(remarks.trim())}</td></tr>
+        </table>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: "Yes",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#2563eb",
+    cancelButtonColor: "#6b7280",
+    customClass: {
+      popup: "swal-sm-popup",
+      title: "swal-sm-title",
+      confirmButton: "swal-sm-confirm",
+      cancelButton: "swal-sm-cancel",
+    },
+  });
+
+  if (!confirm.isConfirmed) return; // ✅ Stop if cancelled
+
+  // --- Step 2: Proceed with Save ---
+  try {
+    const res = await fetch(API_ENDPOINTS.saveLeaveApplication, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await res.json();
+
+    if (!res.ok || result?.status !== "success") {
+      await Swal.fire({
+        icon: "error",
+        title: "Failed!",
+        text: "Failed to submit leave. Please try again.",
+      });
       return;
     }
 
-    const payload = {
-      json_data: {
-        empNo: user.empNo,
-        detail: [
-          {
-            leaveStart: selectedStartDate,
-            leaveEnd: selectedEndDate,
-            leaveCode: leaveType,
-            leaveRemarks: remarks,
-            leaveHours: leaveHours ? parseFloat(leaveHours) : 0,
-            leaveDays: leaveDays ? parseFloat(leaveDays) : 0,
-          },
-        ],
+    // --- Step 3: Success with details ---
+    await Swal.fire({
+      icon: "success",
+      title: '<span style="font-size:18px; font-weight:600;">Leave Application Submitted</span>',
+      html: `
+        <div style="text-align:left;">
+          <table style="width:100%; font-size:14px;">
+            <tr><td style="width:140px;"><b>Leave Type:</b></td><td>${escapeHTML(display.typeText)}</td></tr>
+            <tr><td><b>Start:</b></td><td>${display.startDay}, ${display.startDate}</td></tr>
+            <tr><td><b>End:</b></td><td>${display.endDay}, ${display.endDate}</td></tr>
+            <tr><td><b>Total Days:</b></td><td>${display.days}</td></tr>
+            ${display.hours ? `<tr><td><b>Total Hours:</b></td><td>${display.hours}</td></tr>` : ""}
+            <tr><td><b>Remarks:</b></td><td>${escapeHTML(remarks.trim())}</td></tr>
+          </table>
+        </div>
+      `,
+      confirmButtonText: "Close",
+      confirmButtonColor: "#3085d6",
+      customClass: {
+        popup: "swal-sm-popup",
+        title: "swal-sm-title",
+        confirmButton: "swal-sm-confirm",
       },
-    };
+    });
+
+    // --- Reset form + refresh listing ---
+    const today = dayjs().format("YYYY-MM-DD");
+    setApplicationDate(today);
+    setSelectedStartDate(today);
+    setSelectedEndDate(today);
+    setLeaveType("");
+    setRemarks("");
+    setLeaveHours("");
+    setLeaveDays("");
 
     try {
-      const res = await fetch(API_ENDPOINTS.saveLeaveApplication, {
+      const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
+      const response = await fetch(API_ENDPOINTS.fetchLeaveApplications, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          EMP_NO: user.empNo,
+          START_DATE: startDate,
+          END_DATE: "2030-01-01",
+        }),
       });
-
-      if (!res.ok) {
-        const t = await res.text();
-        console.error("API Error Response:", t);
-        Swal.fire({ title: "Error!", text: "An error occurred with the API. Please try again later.", icon: "error" });
-        return;
+      const refresh = await response.json();
+      if (refresh?.success && refresh?.data?.length > 0) {
+        const parsed = JSON.parse(refresh.data[0].result) || [];
+        setLeaveApplications(parsed);
+        setFilteredApplications(parsed);
       }
-
-      const result = await res.json();
-      if (result?.status === "success") {
-        Swal.fire({ title: "Success!", text: "Leave application submitted successfully.", icon: "success" }).then(async () => {
-          // reset
-          const today = dayjs().format("YYYY-MM-DD");
-          setApplicationDate(today);
-          setSelectedStartDate(today);
-          setSelectedEndDate(today);
-          setLeaveType("");
-          setRemarks("");
-          setLeaveHours("");
-          setLeaveDays("");
-
-          // refresh listing
-          try {
-            const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
-            const response = await fetch(API_ENDPOINTS.fetchLeaveApplications, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: startDate, END_DATE: "2030-01-01" }),
-            });
-            const refresh = await response.json();
-            if (refresh?.success && refresh?.data?.length > 0) {
-              const parsed = JSON.parse(refresh.data[0].result) || [];
-              setLeaveApplications(parsed);
-              setFilteredApplications(parsed);
-            }
-          } catch (e) {
-            console.error("Error refreshing leave list:", e);
-          }
-        });
-      } else {
-        Swal.fire({ title: "Failed!", text: "Failed to submit leave. Please try again.", icon: "error" });
-      }
-    } catch (err) {
-      console.error("Error submitting leave:", err);
-      Swal.fire({ title: "Error!", text: "An error occurred while submitting. Please check your connection and try again.", icon: "error" });
+    } catch (e) {
+      console.error("Error refreshing leave list:", e);
     }
-  };
+  } catch (err) {
+    console.error("Error submitting leave:", err);
+    await Swal.fire({
+      icon: "error",
+      title: "Error!",
+      text: "An error occurred while submitting. Please check your connection and try again.",
+    });
+  }
+};
+
+
+
+
+
+  
 
   // Put below your fetchLeaveApplications() effect or with other helpers
 
@@ -506,52 +647,128 @@ const getLeaveStamp = (row) => {
 
 
   const cancelLeaveApplication = async (entry) => {
-    if ((entry?.leaveStatus || "") !== "Pending") return;
+  if ((entry?.leaveStatus || entry?.status || "") !== "Pending") return;
 
-    const lvStamp = getLeaveStamp(entry);
-    if (!lvStamp) {
-      await Swal.fire({
-        title: "Missing identifier",
-        text: "Cannot cancel: leave stamp (lvStamp) not found in this row.",
-        icon: "error",
-      });
-      return;
-    }
-
-    const conf = await Swal.fire({
-      title: "Cancel this application?",
-      text: "This will mark your pending leave request as Cancelled.",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Yes, cancel it",
+  const lvStamp = getLeaveStamp(entry);
+  if (!lvStamp) {
+    await Swal.fire({
+      icon: "error",
+      title: "Missing Identifier",
+      text: "Cannot cancel: leave stamp (lvStamp) not found in this row.",
     });
-    if (!conf.isConfirmed) return;
+    return;
+  }
 
-    try {
-      // Mirror your OT payload shape: { json_data: { empNo, lvStamp } }
-      const payload = { json_data: { empNo: user.empNo, lvStamp } };
+  // ---- Helpers ----
+  const escapeHTML = (str = "") =>
+    String(str).replace(/[&<>'"]/g, (t) =>
+      ({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[t] || t)
+    );
 
-      const res = await fetch(API_ENDPOINTS.cancelLeaveApplication, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+  // Try to be flexible with backend field names
+  const startRaw = entry.leaveStart || entry.startDate || entry.dateFrom || entry.leave_start;
+  const endRaw   = entry.leaveEnd   || entry.endDate   || entry.dateTo   || entry.leave_end;
+  const typeRaw  = entry.leaveCode  || entry.leaveType || entry.type     || entry.leave_code;
+  const daysRaw  = entry.leaveDays  || entry.days;
+  const hoursRaw = entry.leaveHours || entry.hours;
+  const remarks  = entry.leaveRemarks || entry.remarks || "";
 
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || j?.status !== "success") {
-        throw new Error(j?.message || "Cancel failed");
-      }
+  const start = dayjs(startRaw);
+  const end   = dayjs(endRaw);
 
-      await Swal.fire({
-        title: "Cancelled",
-        text: "Your leave application was cancelled.",
-        icon: "success",
-      });
-      await refreshLeaveList();
-    } catch (e) {
-      await Swal.fire({ title: "Error", text: e.message, icon: "error" });
-    }
+  const display = {
+    type: typeRaw ? String(typeRaw) : "—",
+    startDay: start.isValid() ? start.format("dddd") : "—",
+    startDate: start.isValid() ? start.format("MM/DD/YYYY") : escapeHTML(startRaw ?? "—"),
+    endDay: end.isValid() ? end.format("dddd") : "—",
+    endDate: end.isValid() ? end.format("MM/DD/YYYY") : escapeHTML(endRaw ?? "—"),
+    days: (daysRaw !== undefined && daysRaw !== null && !Number.isNaN(Number(daysRaw)))
+      ? Number(daysRaw).toFixed(2)
+      : (start.isValid() && end.isValid() ? (end.diff(start, "day") + 1).toFixed(2) : "—"),
+    hours: (hoursRaw !== undefined && hoursRaw !== null && !Number.isNaN(Number(hoursRaw)))
+      ? Number(hoursRaw).toFixed(2)
+      : "",
+    remarks: remarks ? escapeHTML(String(remarks)) : "—",
+    stamp: escapeHTML(String(lvStamp)),
   };
+
+  // ---- Confirmation with details ----
+  const conf = await Swal.fire({
+    icon: "warning",
+    title: "Cancel this application?",
+    html: `
+      <div style="text-align:left;">
+        <p style="margin:0 0 8px; font-size:13px;">This will mark your pending leave request as <b>Cancelled</b>.</p>
+        <table style="width:100%; font-size:14px;">
+          <tr><td style="width:160px;"><b>Leave Type:</b></td><td>${escapeHTML(display.type)}</td></tr>
+          <tr><td><b>Start:</b></td><td>${display.startDay}, ${display.startDate}</td></tr>
+          <tr><td><b>End:</b></td><td>${display.endDay}, ${display.endDate}</td></tr>
+          <tr><td><b>Total Days:</b></td><td>${display.days}</td></tr>
+          ${display.hours ? `<tr><td><b>Total Hours:</b></td><td>${display.hours}</td></tr>` : ""}
+          <tr><td><b>Remarks:</b></td><td>${display.remarks}</td></tr>
+        </table>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: "Yes",
+    cancelButtonText: "No",
+    confirmButtonColor: "#dc2626",
+    cancelButtonColor: "#6b7280",
+    customClass: {
+      popup: "swal-sm-popup",
+      title: "swal-sm-title",
+      confirmButton: "swal-sm-confirm",
+      cancelButton: "swal-sm-cancel",
+    },
+  });
+  if (!conf.isConfirmed) return;
+
+  // ---- Proceed with cancel ----
+  try {
+    const payload = { json_data: { empNo: user.empNo, lvStamp } };
+
+    const res = await fetch(API_ENDPOINTS.cancelLeaveApplication, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok || j?.status !== "success") {
+      throw new Error(j?.message || "Cancel failed");
+    }
+
+    // ---- Success with details ----
+    await Swal.fire({
+      icon: "success",
+      title: '<span style="font-size:18px; font-weight:600;">Leave Application Cancelled</span>',
+      html: `
+        <div style="text-align:left;">
+          <table style="width:100%; font-size:14px;">
+            <tr><td style="width:160px;"><b>Leave Type:</b></td><td>${escapeHTML(display.type)}</td></tr>
+            <tr><td><b>Start:</b></td><td>${display.startDay}, ${display.startDate}</td></tr>
+            <tr><td><b>End:</b></td><td>${display.endDay}, ${display.endDate}</td></tr>
+            <tr><td><b>Total Days:</b></td><td>${display.days}</td></tr>
+            ${display.hours ? `<tr><td><b>Total Hours:</b></td><td>${display.hours}</td></tr>` : ""}
+            <tr><td><b>Remarks:</b></td><td>${display.remarks}</td></tr>
+          </table>
+        </div>
+      `,
+      confirmButtonText: "Close",
+      confirmButtonColor: "#3085d6",
+      customClass: {
+        popup: "swal-sm-popup",
+        title: "swal-sm-title",
+        confirmButton: "swal-sm-confirm",
+      },
+    });
+
+    await refreshLeaveList();
+  } catch (e) {
+    await Swal.fire({ icon: "error", title: "Error", text: e.message || "Failed to cancel leave." });
+  }
+};
+
 
 
   return (
@@ -578,32 +795,6 @@ const getLeaveStamp = (row) => {
               </div>
             </div>
 
-            <div className="min-w-0">
-              <label className="block font-semibold mb-1">Leave Start Date</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={selectedStartDate}
-                  onChange={(e) => handleStartDateChange(e.target.value)}
-                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
-                />
-              </div>
-            </div>
-
-            <div className="min-w-0">
-              <label className="block font-semibold mb-1">Leave End Date</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={selectedEndDate}
-                  min={selectedStartDate}
-                  onChange={(e) => handleEndDateChange(e.target.value)}
-                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
-                />
-              </div>
-            </div>
-
-
             {/* Leave Type */}
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Leave Type</span>
@@ -621,6 +812,36 @@ const getLeaveStamp = (row) => {
                 ))}
               </select>
             </div>
+
+            <div className="min-w-0">
+              <label className="block font-semibold mb-1">Leave Start Date</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={selectedStartDate}
+                  onChange={(e) => handleStartDateChange(e.target.value)}
+                  onBlur={(e) => handleStartDateChange(e.target.value)}  // optional: re-check on blur
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                />
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              <label className="block font-semibold mb-1">Leave End Date</label>
+              <div className="relative">
+                <input
+                  type="date"
+                  value={selectedEndDate}
+                  min={selectedStartDate || undefined}
+                  onChange={(e) => handleEndDateChange(e.target.value)}  // allow free typing
+                  onBlur={validateEndDate}                               // validate when done
+                  onKeyDown={(e) => { if (e.key === "Enter") validateEndDate(); }}
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                />
+              </div>
+            </div>
+
+
           </div>
 
         {/* Balances */}
@@ -726,6 +947,7 @@ const getLeaveStamp = (row) => {
               </option>
             ))}
           </select>
+
           {/* Status */}
           <select
             value={searchFields.leaveStatus}

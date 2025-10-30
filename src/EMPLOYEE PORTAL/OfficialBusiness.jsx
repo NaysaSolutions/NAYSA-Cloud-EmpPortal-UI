@@ -309,58 +309,169 @@ const handleDateChange = (field, value) => {
 
   // ---------- Submit ----------
   const handleSubmit = async () => {
-    if (!selectedStartDate || !selectedEndDate || !remarks.trim()) {
-      Swal.fire({ title: "Incomplete Form", text: "Please fill all required fields", icon: "warning" });
-      return;
-    }
+  // --- Required fields ---
+  const missing = [
+    !selectedStartDate ? "OB Start" : null,
+    !selectedEndDate ? "OB End" : null,
+    !remarks.trim() ? "Remarks" : null,
+  ].filter(Boolean);
 
-    const payload = {
-      json_data: {
-        empNo: user.empNo,
-        detail: [
-          {
-            obDate: applicationDate,
-            obStart: toYmdHm(selectedStartDate),
-            obEnd: toYmdHm(selectedEndDate),
-            obRemarks: remarks,
-            obHrs: parseFloat(obHrs) || 0,
-          },
-        ],
-      },
-    };
+  if (missing.length) {
+    await Swal.fire({
+      icon: "warning",
+      title: "Incomplete Form",
+      html: `Please fill all required fields.<br><small>Missing: <b>${missing.join(", ")}</b></small>`
+    });
+    return;
+  }
 
-    try {
-      const response = await fetch(API_ENDPOINTS.saveOfficialBusinessApplication, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+  // --- Validate date range (by exact moment) ---
+  const start = dayjs(selectedStartDate);
+  const end   = dayjs(selectedEndDate);
+  if (!start.isValid() || !end.isValid()) {
+    await Swal.fire({ icon: "warning", title: "Invalid Date/Time", text: "Please enter valid start and end date/time." });
+    return;
+  }
+  if (end.isBefore(start)) {
+    await Swal.fire({ icon: "warning", title: "Invalid Range", text: "End time cannot be earlier than start time." });
+    return;
+  }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API Error: ${response.status} - ${errorText}`);
-      }
+  // --- Hours: use entered obHrs or derive from range (2 decimals) ---
+  const derivedHours = Number((end.diff(start, "minute") / 60).toFixed(2));
+  const hoursNum = obHrs !== undefined && obHrs !== "" && !isNaN(obHrs)
+    ? Number(obHrs)
+    : derivedHours;
 
-      const contentLength = response.headers.get("content-length");
-      const result = contentLength && Number(contentLength) > 0 ? await response.json() : { status: "success" };
+  if (hoursNum <= 0) {
+    await Swal.fire({ icon: "warning", title: "Invalid Hours", text: "Total hours must be greater than 0." });
+    return;
+  }
 
-      if (result.status === "success") {
-        Swal.fire({ title: "Success!", text: "OB application submitted successfully.", icon: "success" }).then(() => {
-          const now = new Date();
-          setSelectedStartDate(now);
-          setSelectedEndDate(now);
-          setRemarks("");
-          setOBHrs("0");
-          fetchOBApplications();
-        });
-      } else {
-        throw new Error(result.message || "Unknown error");
-      }
-    } catch (err) {
-      console.error("Error submitting OB application:", err);
-      Swal.fire({ title: "Error!", text: err.message || "Failed to submit OB application", icon: "error" });
-    }
+  // --- Display helpers ---
+  const escapeHTML = (str = "") =>
+    str.replace(/[&<>'"]/g, (tag) =>
+      ({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[tag] || tag)
+    );
+
+  const display = {
+    obDate: dayjs(applicationDate).format("MM/DD/YYYY"),
+    startDay: start.format("dddd"),
+    startStr: start.format("MM/DD/YYYY hh:mm A"),
+    endDay: end.format("dddd"),
+    endStr: end.format("MM/DD/YYYY hh:mm A"),
+    hours: hoursNum.toFixed(2),
+    remarks: remarks.trim(),
   };
+
+  // --- Step 1: Confirmation before save ---
+  const confirm = await Swal.fire({
+    icon: "question",
+    title: "Confirm Official Business",
+    html: `
+      <div style="text-align:left;">
+        <table style="width:100%; font-size:14px;">
+          <tr><td style="width:160px;"><b>OB Date:</b></td><td>${display.obDate}</td></tr>
+          <tr><td><b>Start Datetime:</b></td><td>${display.startDay}, ${display.startStr}</td></tr>
+          <tr><td><b>End Datetime:</b></td><td>${display.endDay}, ${display.endStr}</td></tr>
+          <tr><td><b>Total Hours:</b></td><td>${display.hours}</td></tr>
+          <tr><td><b>Remarks:</b></td><td>${escapeHTML(display.remarks)}</td></tr>
+        </table>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: "Yes",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#2563eb",
+    cancelButtonColor: "#6b7280",
+    customClass: {
+      popup: "swal-sm-popup",
+      title: "swal-sm-title",
+      confirmButton: "swal-sm-confirm",
+      cancelButton: "swal-sm-cancel",
+    },
+  });
+
+  if (!confirm.isConfirmed) return;
+
+  // --- Build payload (keep your toYmdHm helper) ---
+  const payload = {
+    json_data: {
+      empNo: user.empNo,
+      detail: [{
+        obDate: applicationDate,
+        obStart: toYmdHm(selectedStartDate),
+        obEnd: toYmdHm(selectedEndDate),
+        obRemarks: display.remarks,
+        obHrs: hoursNum,
+      }],
+    },
+  };
+
+  try {
+    const response = await fetch(API_ENDPOINTS.saveOfficialBusinessApplication, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error: ${response.status} - ${errorText}`);
+    }
+
+    // Some endpoints may return empty body; handle safely
+    const contentLength = response.headers.get("content-length");
+    const result = contentLength && Number(contentLength) > 0
+      ? await response.json()
+      : { status: "success" };
+
+    if (result.status !== "success") {
+      throw new Error(result.message || "Failed to submit OB application.");
+    }
+
+    // --- Success Swal (compact, with details) ---
+    await Swal.fire({
+      icon: "success",
+      title: '<span style="font-size:18px; font-weight:600;">OB Application Submitted</span>',
+      html: `
+        <div style="text-align:left;">
+          <table style="width:100%; font-size:14px;">
+            <tr><td style="width:160px;"><b>OB Date:</b></td><td>${display.obDate}</td></tr>
+            <tr><td><b>Start:</b></td><td>${display.startDay}, ${display.startStr}</td></tr>
+            <tr><td><b>End:</b></td><td>${display.endDay}, ${display.endStr}</td></tr>
+            <tr><td><b>Total Hours:</b></td><td>${display.hours}</td></tr>
+            <tr><td><b>Remarks:</b></td><td>${escapeHTML(display.remarks)}</td></tr>
+          </table>
+        </div>
+      `,
+      confirmButtonText: "Close",
+      confirmButtonColor: "#3085d6",
+      customClass: {
+        popup: "swal-sm-popup",
+        title: "swal-sm-title",
+        confirmButton: "swal-sm-confirm",
+      },
+    });
+
+    // --- Reset + refresh (keep your behavior) ---
+    const now = new Date();
+    setSelectedStartDate(now);
+    setSelectedEndDate(now);
+    setRemarks("");
+    setOBHrs("0");
+
+    fetchOBApplications();
+  } catch (err) {
+    console.error("Error submitting OB application:", err);
+    await Swal.fire({
+      icon: "error",
+      title: "Error!",
+      text: err.message || "Failed to submit OB application",
+    });
+  }
+};
+
 
   // ---------- Cancel (Pending only) ----------
   const cancelOB = async (row) => {
@@ -377,7 +488,14 @@ const handleDateChange = (field, value) => {
       text: "This will mark your pending OB request as cancelled.",
       icon: "warning",
       showCancelButton: true,
-      confirmButtonText: "Yes, cancel it",
+      confirmButtonText: "Yes",
+      cancelButtonText: "No",
+      customClass: {
+        popup: "swal-sm-popup",
+        title: "swal-sm-title",
+        confirmButton: "swal-sm-confirm",
+        cancelButton: "swal-sm-cancel",
+      },
     });
     if (!conf.isConfirmed) return;
 

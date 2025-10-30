@@ -176,38 +176,179 @@ const OvertimeApplication = () => {
   };
   const getSortIndicator = (uiKey) => { const key = FIELD_MAP[uiKey] || uiKey; return sortConfig.key === key ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""; };
 
-  // submit
-  const handleSubmit = async () => {
-    if (!otDate || !otDay || !otType || !remarks.trim()) {
-      await Swal.fire({ title: "Incomplete Form", text: "Please fill in all required fields before submitting.", icon: "warning" });
+ // --- Overtime Submit with Confirmation + Detailed Swals ---
+const handleSubmit = async () => {
+  // --- Required field validation ---
+  const missing = [
+    !otDate ? "OT Date" : null,
+    !otType ? "OT Type" : null,
+    !remarks.trim() ? "Remarks" : null,
+    (overtimeHours === "" || isNaN(overtimeHours)) ? "OT Hours" : null,
+  ].filter(Boolean);
+
+  if (missing.length) {
+    await Swal.fire({
+      icon: "warning",
+      title: "Incomplete Form",
+      html: `Please fill all required fields.<br><small>Missing: <b>${missing.join(", ")}</b></small>`
+    });
+    return;
+  }
+
+  const hoursNum = Number(overtimeHours);
+  if (hoursNum <= 0) {
+    await Swal.fire({
+      icon: "warning",
+      title: "Invalid Hours",
+      text: "Overtime hours must be greater than 0."
+    });
+    return;
+  }
+
+  // --- Normalize/derive fields ---
+  const FMT = "YYYY-MM-DD";
+  const d = dayjs(otDate, FMT, true);
+  if (!d.isValid()) {
+    await Swal.fire({ icon: "warning", title: "Invalid Date", text: "Please enter a valid OT date (YYYY-MM-DD)." });
+    return;
+  }
+
+  // derive otDay if empty or mismatched
+  const derivedDay = d.format("dddd");
+  const finalOtDay = otDay && otDay.trim() ? otDay : derivedDay;
+
+  // --- Payload ---
+  const payload = {
+    json_data: {
+      empNo: user.empNo,
+      detail: [{
+        otDate,
+        otDay: finalOtDay,
+        otType,
+        otRemarks: remarks.trim(),
+        otHrs: hoursNum
+      }],
+    },
+  };
+
+  // --- Helpers for display ---
+  const escapeHTML = (str = "") =>
+    str.replace(/[&<>'"]/g, (tag) =>
+      ({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[tag] || tag)
+    );
+
+  // If you have a mapping (e.g., REG -> Regular OT, ND -> Night Diff), replace here.
+  const display = {
+    dateDay: d.format("dddd"),
+    dateStr: d.format("MM/DD/YYYY"),
+    typeText: otType,
+    hours: hoursNum.toFixed(2),
+  };
+
+  // --- Step 1: Confirmation before save ---
+  const confirm = await Swal.fire({
+    icon: "question",
+    title: "Confirm Overtime Application",
+    html: `
+      <div style="text-align:left;">
+        <table style="width:100%; font-size:14px;">
+          <tr><td style="width:140px;"><b>OT Type:</b></td><td>${escapeHTML(display.typeText)}</td></tr>
+          <tr><td><b>Date:</b></td><td>${display.dateDay}, ${display.dateStr}</td></tr>
+          <tr><td><b>Hours:</b></td><td>${display.hours}</td></tr>
+          <tr><td><b>Remarks:</b></td><td>${escapeHTML(remarks.trim())}</td></tr>
+        </table>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: "Yes",
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#2563eb",
+    cancelButtonColor: "#6b7280",
+    customClass: {
+      popup: "swal-sm-popup",
+      title: "swal-sm-title",
+      confirmButton: "swal-sm-confirm",
+      cancelButton: "swal-sm-cancel",
+    },
+  });
+
+  if (!confirm.isConfirmed) return;
+
+  // --- Step 2: Save ---
+  try {
+    const res = await fetch(API_ENDPOINTS.saveOvertimeApplication, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    let j;
+    try { j = await res.json(); } catch { /* ignore */ }
+
+    if (!res.ok || j?.status !== "success") {
+      await Swal.fire({
+        icon: "error",
+        title: "Failed!",
+        text: (j && j.message) || "Failed to submit overtime. Please try again."
+      });
       return;
     }
-    const payload = {
-      json_data: {
-        empNo: user.empNo,
-        detail: [{ otDate, otDay, otType, otRemarks: remarks, otHrs: overtimeHours ? parseFloat(overtimeHours) : 0 }],
+
+    // --- Step 3: Success details ---
+    await Swal.fire({
+      icon: "success",
+      title: '<span style="font-size:18px; font-weight:600;">Overtime Application Submitted</span>',
+      html: `
+        <div style="text-align:left;">
+          <table style="width:100%; font-size:14px;">
+            <tr><td style="width:140px;"><b>OT Type:</b></td><td>${escapeHTML(display.typeText)}</td></tr>
+            <tr><td><b>Date:</b></td><td>${display.dateDay}, ${display.dateStr}</td></tr>
+            <tr><td><b>Hours:</b></td><td>${display.hours}</td></tr>
+            <tr><td><b>Remarks:</b></td><td>${escapeHTML(remarks.trim())}</td></tr>
+          </table>
+        </div>
+      `,
+      confirmButtonText: "Close",
+      confirmButtonColor: "#3085d6",
+      customClass: {
+        popup: "swal-sm-popup",
+        title: "swal-sm-title",
+        confirmButton: "swal-sm-confirm",
       },
-    };
-    try {
-      const res = await fetch(API_ENDPOINTS.saveOvertimeApplication, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const j = await res.json();
-      if (j?.status === "success") {
-        await Swal.fire({ title: "Success!", text: "Overtime application submitted successfully.", icon: "success" });
-        setOTDate(""); setOtDay(""); setOvertimeHours(""); setRemarks(""); setOtType("REG");
-        // refresh
-        const r = await fetch(API_ENDPOINTS.fetchOvertimeApplications, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"), END_DATE: "2099-12-31" }) });
-        const jj = await r.json();
-        const rows = jj?.success && jj.data?.length ? JSON.parse(jj.data[0].result || "[]") : [];
-        setOvertimeApplications(rows);
-        setFilteredApplications(rows);
-      } else {
-        await Swal.fire({ title: "Failed!", text: j?.message || "Failed to submit overtime.", icon: "error" });
-      }
-    } catch (e) {
-      console.error(e);
-      await Swal.fire({ title: "Error!", text: e.message || "An error occurred while submitting.", icon: "error" });
-    }
-  };
+    });
+
+    // --- Reset + Refresh (same as your current logic) ---
+    setOTDate("");
+    setOtDay("");
+    setOvertimeHours("");
+    setRemarks("");
+    setOtType("REG");
+
+    const r = await fetch(API_ENDPOINTS.fetchOvertimeApplications, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        EMP_NO: user.empNo,
+        START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"),
+        END_DATE: "2099-12-31"
+      })
+    });
+
+    const jj = await r.json();
+    const rows = jj?.success && jj.data?.length ? JSON.parse(jj.data[0].result || "[]") : [];
+    setOvertimeApplications(rows);
+    setFilteredApplications(rows);
+
+  } catch (e) {
+    console.error(e);
+    await Swal.fire({
+      icon: "error",
+      title: "Error!",
+      text: e.message || "An error occurred while submitting."
+    });
+  }
+};
+
 
 const getStamp = (r) =>
   r?.otStamp || r?.OT_STAMP || r?.stamp || r?.Stamp || r?.guid || r?.OT_STAMP_ID || null;
@@ -230,7 +371,14 @@ const cancelApplication = async (entry) => {
     text: "This will mark your pending request as cancelled.",
     icon: "warning",
     showCancelButton: true,
-    confirmButtonText: "Yes, cancel it",
+    confirmButtonText: "Yes",
+    cancelButtonText: "No",
+    customClass: {
+      popup: "swal-sm-popup",
+      title: "swal-sm-title",
+      confirmButton: "swal-sm-confirm",
+      cancelButton: "swal-sm-cancel",
+    },
   });
   if (!conf.isConfirmed) return;
 
