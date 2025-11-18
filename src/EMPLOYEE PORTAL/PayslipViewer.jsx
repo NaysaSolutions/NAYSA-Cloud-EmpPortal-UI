@@ -63,7 +63,6 @@ const fetchAllPayslipsInRange = async () => {
 }, [user, cutoffFrom, cutoffTo]);
 
 
-
   useEffect(() => {
   if (!user?.empNo) return;
 

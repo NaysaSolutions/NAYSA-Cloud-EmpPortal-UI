@@ -73,13 +73,15 @@ const Navbar = () => {
     ),
   ] : [];
 
+  
   return (
     <>
       {/* Top Blue Bar */}
       <div className="flex justify-center items-center bg-blue-900 text-white p-3 fixed top-0 left-0 w-full h-[30px] z-30 cursor-pointer select-none">
-        {/* <span className="font-bold text-lg">NEW NEMAR DEVELOPMENT CORPORATION</span> */}
+        {/* <span className="font-bold text-sm md:text-lg">NEW NEMAR DEVELOPMENT CORPORATION</span> */}
         {/* <span className="font-bold text-lg">STT (PHILIPPINES), INC.</span> */}
         <span className="font-bold text-lg">NAYSA-SOLUTIONS INC.</span>
+        {/* {employee.COMP_NAME} */}
       </div>
 
       {/* Main Navbar */}

@@ -71,6 +71,7 @@ const Leave = () => {
   // optional: simple validation message
   const [balanceError, setBalanceError] = useState("");
 
+
 useEffect(() => {
   let alive = true;
 

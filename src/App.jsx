@@ -144,10 +144,13 @@ import OfficialBusinessApproval from "./EMPLOYEE PORTAL/OfficialBusinessApproval
 import OfficialBusinessReview from "./EMPLOYEE PORTAL/OBReview";
 import Register from "./NAYSA Cloud/Register"; // correct path
 
+import ScrollToTop from "./components/ScrollToTop";
+
 const App = () => {
   return (
     <AuthProvider>
       <Router>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<LoginPortal />} />
           <Route path="/register" element={<Register />} />

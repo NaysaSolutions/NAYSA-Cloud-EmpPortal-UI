@@ -737,7 +737,6 @@ Swal.fire({
         fetchDTRRecords();
     }, [fetchDTRRecords]);
 
-    
     const filteredRecords = useMemo(() => {
         return records.filter(record => {
             const recordDate = dayjs(record.date);
@@ -859,165 +858,255 @@ const handleExport = () => {
     });
   };
 
+  
+  const handleDtrConfirmation = async () => {
+  if (!user?.empNo) {
+    Swal.fire("Error", "Employee number not available. Please log in.", "error");
+    return;
+  }
+
+  if (!startDate || !endDate) {
+    Swal.fire("Error", "Please select Start Date and End Date.", "error");
+    return;
+  }
+
+  const confirm = await Swal.fire({
+    icon: "warning",
+    title: "Confirm DTR",
+    text: `This will mark your DTR as FINAL from ${dayjs(startDate).format(
+      "MMM DD, YYYY"
+    )} to ${dayjs(endDate).format("MMM DD, YYYY")}. You may no longer edit these entries.`,
+    showCancelButton: true,
+    confirmButtonText: "Yes, confirm",
+    cancelButtonText: "No, cancel",
+  });
+
+  if (!confirm.isConfirmed) return;
+
+  try {
+    const payload = {
+      empNo: user.empNo,
+      startDate,
+      endDate,
+    };
+
+    const response = await axios.post(API_ENDPOINTS.confirmDTR, payload);
+
+    if (response.data.success) {
+      Swal.fire({
+        icon: "success",
+        title: "DTR Confirmed",
+        text: response.data.message || "Your DTR has been confirmed.",
+        toast: true,
+        position: "top",
+        timer: 4000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        customClass: {
+          popup: "w-auto max-w-sm sm:max-w-md p-3 text-md mt-[150px]",
+          title: "text-base font-semibold",
+        },
+      });
+
+      // Refresh records so UI reflects any changes (if you later filter by STAT)
+      fetchDTRRecords();
+    } else {
+      Swal.fire(
+        "Error",
+        response.data.message || "Unable to confirm DTR.",
+        "error"
+      );
+    }
+  } catch (err) {
+    Swal.fire(
+      "Error",
+      err.response?.data?.message || err.message || "Unable to confirm DTR.",
+      "error"
+    );
+  }
+};
+
 
 // Card View Component
-const CardView = ({ filteredRecords }) => (
-  <div className="space-y-2">
-    {filteredRecords.map((record, index) => (
-      <div key={index} className="bg-white rounded-lg shadow-md border border-gray-200">
-        {/* Card Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-100">
-          <div>
-            <h3 className="font-semibold text-gray-900">{formatDate(record.date)}</h3>
-            <p className="text-sm text-gray-600">{record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs"}</p>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-gray-500">IN • OUT</div>
-            <div className="font-mono text-xs sm:text-sm">
-              {record.time_in ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A") : "N/A"} • {record.time_out ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}
+// Card View Component
+const CardView = ({ filteredRecords }) => {
+  const navigate = useNavigate();
+
+  const isBlank = (v) => v == null || String(v).trim() === "";
+
+  const handleAdjustClick = (record) => {
+    navigate("/timekeepingAdj", { state: { record } });
+  };
+
+  return (
+    <div className="space-y-2">
+      {filteredRecords.map((record, index) => {
+        const isFinal = record.stat === "F";
+        const canAdjust =
+          !isFinal && (isBlank(record.time_in) || isBlank(record.time_out));
+
+        return (
+          <div
+            key={index}
+            className="bg-white rounded-lg shadow-md border border-gray-200"
+          >
+            {/* Card Header */}
+            <div className="flex justify-between items-center p-4 border-b border-gray-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-gray-900">
+                    {formatDate(record.date)}
+                  </h3>
+                  {isFinal && (
+                    <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-600 border border-green-200">
+                      FINAL
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600">
+                  {record.worked_hrs != null
+                    ? `${Number(record.worked_hrs).toFixed(2)} hrs`
+                    : "0.00 hrs"}
+                </p>
+              </div>
+
+              <div className="text-right">
+                <div className="text-xs text-gray-500">IN • OUT</div>
+                <div className="font-mono text-xs sm:text-sm">
+                  {record.time_in
+                    ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A")
+                    : "N/A"}{" "}
+                  •{" "}
+                  {record.time_out
+                    ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A")
+                    : "N/A"}
+                </div>
+
+                {/* Adjust Time button (only when allowed) */}
+                {canAdjust && (
+                  <button
+                    onClick={() => handleAdjustClick(record)}
+                    className="mt-2 inline-block px-3 py-1 text-[10px] sm:text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-sm transition-all"
+                  >
+                    Adjust Time
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Card Content */}
+            <div className="p-4 space-y-3">
+              {/* Break Times */}
+              <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
+                <span className="text-sm text-gray-600">Break</span>
+                <span className="font-mono text-xs sm:text-sm">
+                  {record.break_in
+                    ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A")
+                    : "N/A"}{" "}
+                  •{" "}
+                  {record.break_out
+                    ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A")
+                    : "N/A"}
+                </span>
+              </div>
+
+              {/* Images and Locations */}
+              {isImageCaptureRequired && (
+                <div className="flex flex-col md:flex-row gap-4">
+                  {/* Time In Block */}
+                  <div className="flex-1">
+                    <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                      <Camera size={12} />
+                      Time In
+                    </div>
+
+                    <div className="flex flex-col md:flex-row gap-3">
+                      {/* Image */}
+                      <div>
+                        {record.time_in_image_id ? (
+                          <div className="relative">
+                            <img
+                              src={`${IMAGE_BASE_URL}/${record.time_in_image_id}.jpeg`}
+                              alt="Time In"
+                              className="rounded-lg w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] bg-gray-100 rounded-lg border border-dashed">
+                            <ImageIcon size={32} className="text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Location – beside on desktop, below on mobile */}
+                      {isLocationRequired && (
+                        <div className="flex-1">
+                          <div className="flex items-start gap-2">
+                            <MapPin size={14} className="text-green-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <div className="text-xs text-gray-500">Time In Location</div>
+                              <div className="text-sm text-gray-700 break-words">
+                                {record.time_in_address || "N/A"}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Time Out Block */}
+                  <div className="flex-1">
+                    <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                      <Camera size={12} />
+                      Time Out
+                    </div>
+
+                    <div className="flex flex-col md:flex-row gap-3">
+                      {/* Image */}
+                      <div>
+                        {record.time_out_image_id ? (
+                          <div className="relative">
+                            <img
+                              src={`${IMAGE_BASE_URL}/${record.time_out_image_id}.jpeg`}
+                              alt="Time Out"
+                              className="rounded-lg w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] bg-gray-100 rounded-lg border border-dashed">
+                            <ImageIcon size={32} className="text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Location – beside on desktop, below on mobile */}
+                      {isLocationRequired && (
+                        <div className="flex-1">
+                          <div className="flex items-start gap-2">
+                            <MapPin size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <div className="text-xs text-gray-500">Time Out Location</div>
+                              <div className="text-sm text-gray-700 break-words">
+                                {record.time_out_address || "N/A"}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
-        </div>
+        );
+      })}
+    </div>
+  );
+};
 
-        {/* Card Content */}
-        <div className="p-4 space-y-3">
-          {/* Break Times */}
-          <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded">
-            <span className="text-sm text-gray-600">Break</span>
-            <span className="font-mono text-xs sm:text-sm">
-              {record.break_in ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A") : "N/A"} • {record.break_out ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}
-            </span>
-          </div>
-
-          {/* Images and Locations */}
-          {isImageCaptureRequired && (
-            <div className="flex gap-3 flex-wrap">
-              {/* Time In Image and Location */}
-              <div className="flex-1">
-                <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                  <Camera size={12} />
-                  Time In
-                </div>
-
-                {record.time_in_image_id ? (
-                <div className="relative">
-                    <img
-                    src={`${IMAGE_BASE_URL}/${record.time_in_image_id}.jpeg`}
-                    alt="Time In"
-                    className="rounded-lg w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] object-cover"
-                    />
-                </div>
-                ) : (
-                <div className="flex items-center justify-center w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] bg-gray-100 rounded-lg border border-dashed">
-                    <ImageIcon size={32} className="text-gray-400" />
-                </div>
-                )}
-
-                {isLocationRequired && (
-                  <>
-                    {record.time_in_address && (
-                    <div className="flex-1 block items-start gap-2 mt-2 md:hidden">
-                        <div className="flex items-center gap-2">
-                            <MapPin size={12} className="text-green-500 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                                <div className="text-xs text-gray-500">Time In Location</div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                            <div className="text-[11px] text-gray-700">{record.time_in_address || 'N/A'}</div>
-                        </div>
-                    </div>
-                    )}
-                  </>
-                )}
-                
-              </div>
-
-               <div className="hidden flex-1 md:block">
-                {isLocationRequired && (
-                  <>
-                    {record.time_in_address && (
-                      <div className="flex gap-2">
-                        <MapPin size={14} className="text-green-500" />
-                        <div className="flex-1">
-                            <div className="text-xs text-gray-500">Time In Location</div>
-                            <div className="text-sm text-gray-700">{record.time_in_address || 'N/A'}</div>
-                        </div>
-                    </div>
-                    )}
-                  </>
-                )}               
-              </div>
-
-
-              {/* Time Out Image and Location */}
-              <div className="flex-1">
-
-                <div className="text-xs text-gray-500 mb-1 flex items-center gap-1">
-                <Camera size={12} />
-                Time Out
-                </div>
-
-                {record.time_out_image_id ? (
-                <div className="relative">
-                    <img
-                    src={`${IMAGE_BASE_URL}/${record.time_out_image_id}.jpeg`}
-                    alt="Time Out"
-                    className="rounded-lg w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] object-cover"
-                    />
-                </div>
-                ) : (
-                <div className="flex items-center justify-center w-[140px] h-[120px] sm:w-[190px] sm:h-[180px] bg-gray-100 rounded-lg border border-dashed">
-                    <ImageIcon size={32} className="text-gray-400" />
-                </div>
-                )}
-
-
-
-                {isLocationRequired && (
-                  <>
-                    {record.time_out_address && (
-                    <div className="flex-1 block items-start gap-2 mt-2 md:hidden">
-                        <div className="flex items-center gap-2">
-                            <MapPin size={12} className="text-red-500 mt-0.5 flex-shrink-0" />
-                            <div className="flex-1">
-                                <div className="text-xs text-gray-500">Time Out Location</div>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 mt-2">
-                            <div className="text-[11px] text-gray-700">{record.time_out_address || 'N/A'}</div>
-                        </div>
-                    </div>
-                    )}
-                  </>
-                )}
-
-              </div>
-
-               <div className="hidden flex-1 md:block">
-                {isLocationRequired && (
-                  <>
-                    {record.time_out_address && (
-                      <div className="flex gap-2 mt-2">
-                        <MapPin size={14} className="text-red-500" />
-                        <div className="flex-1">
-                            <div className="text-xs text-gray-500">Time Out Location</div>
-                            <div className="text-sm text-gray-700">{record.time_out_address || 'N/A'}</div>
-                        </div>
-                    </div>
-                    )}
-                  </>
-                )}               
-              </div>
-
-            </div>
-          )}
-          
-        </div>
-      </div>
-    ))}
-  </div>
-);
 
 
   // Accordion View Component
@@ -1032,7 +1121,14 @@ const AccordionView = ({ filteredRecords }) => (
         >
           <div className="flex justify-between items-center">
             <div>
-              <div className="font-semibold text-gray-900">{formatDate(record.date)}</div>
+              <div className="flex items-center gap-2">
+                <div className="font-semibold text-gray-900">{formatDate(record.date)}</div>
+                {record.stat === "F" && (
+                  <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-600 border border-green-200">
+                    FINAL
+                  </span>
+                )}
+              </div>
               <div className="text-sm text-gray-600">
                 {record.time_in ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A") : "N/A"} - {record.time_out ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}          
               </div>
@@ -1137,6 +1233,8 @@ const CompactTableView = ({ filteredRecords }) => {
     navigate("/timekeepingAdj", { state: { record } });
   };
 
+
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
       <div className="overflow-x-auto">
@@ -1145,13 +1243,28 @@ const CompactTableView = ({ filteredRecords }) => {
             {filteredRecords.length > 0 ? (
               filteredRecords.map((record, index) => {
                 const isIncomplete = !record.time_in || !record.time_out;
+                const isFinal = record.stat === "F";   // ✅ Final flag
 
                 return (
                   <tr key={index} className="border-b hover:bg-gray-50">
                     {/* Date */}
-                    <td className="px-2 py-3">
+                    {/* <td className="px-2 py-3">
                       <div className="text-[12px] sm:text-sm font-medium text-gray-900">
                         {dayjs(record.date).format("MM/DD/YYYY")}
+                      </div>
+                    </td> */}
+
+                     {/* Date + Final badge */}
+                    <td className="px-2 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="text-[12px] sm:text-sm font-medium text-gray-900">
+                          {dayjs(record.date).format("MM/DD/YYYY")}
+                        </div>
+                        {isFinal && (
+                          <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-600 border border-green-200">
+                            FINAL
+                          </span>
+                        )}
                       </div>
                     </td>
 
@@ -1192,7 +1305,7 @@ const CompactTableView = ({ filteredRecords }) => {
                       </div>
 
                       {/* ✅ Only show button if incomplete */}
-                      {isIncomplete && (
+                      {isIncomplete && !isFinal && (
                         <button
                           onClick={() => handleAdjustClick(record)}
                           className="mt-1 inline-block px-2 py-1 text-[11px] sm:text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-sm transition-all"
@@ -1201,6 +1314,10 @@ const CompactTableView = ({ filteredRecords }) => {
                         </button>
                       )}
                     </td>
+
+                    
+                   
+
                   </tr>
                 );
               })
@@ -1212,16 +1329,17 @@ const CompactTableView = ({ filteredRecords }) => {
               </tr>
             )}
           </thead>
-
-          <tbody className="divide-y divide-gray-200">
+{/* 
+          <tbody>
             {filteredRecords.length === 0 && (
               <tr>
                 <td colSpan={3} className="px-2 py-3 text-center text-gray-500">
-                  No records found for the selected date range.
+                  No records found for the selected date range2.
                 </td>
               </tr>
             )}
-          </tbody>
+          </tbody> */}
+
         </table>
       </div>
     </div>
@@ -1229,7 +1347,10 @@ const CompactTableView = ({ filteredRecords }) => {
 };
 
 // Full Table View Component
-const FullTableView = ({ filteredRecords }) => {
+// Full Table View Component
+const FullTableView = ({ filteredRecords, isImageCaptureRequired, isLocationRequired, handleAdjustClick }) => {
+  const isBlank = (v) => v == null || String(v).trim() === "";
+
   // Function to calculate colspan based on image and location capture requirements
   const calculateColSpan = () => {
     let colSpan = 6; // Base number of columns (excluding Total Hours)
@@ -1267,33 +1388,83 @@ const FullTableView = ({ filteredRecords }) => {
         </thead>
         <tbody>
           {filteredRecords.length > 0 ? (
-            filteredRecords.map((record, index) => (
-              <tr key={index}>
-                <td className="px-1 py-1 text-[6px] md:text-xs">{dayjs(record.date).format("MM/DD/YYYY")}</td>
-                <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
-                  {record.time_in ? dayjs(record.time_in, "HH:mm").format("hh:mm A") : "N/A"}
-                </td>
-                {isLocationRequired && (
-                  <td className="px-1 py-1 text-[6px] md:text-xs max-w-[200px] break-words">
-                    {record.time_in_address || "N/A"}
+            filteredRecords.map((record, index) => {
+              const isFinal = record.stat === "F";
+              const showAdjIn = isBlank(record.time_in);
+              const showAdjOut = isBlank(record.time_out);
+
+              return (
+                <tr key={index}>
+                  {/* Shift Date */}
+                  <td className="px-1 py-1 text-[6px] md:text-xs">
+                    <div className="flex items-center gap-1">
+                      <span>{dayjs(record.date).format("MM/DD/YYYY")}</span>
+                      {isFinal && (
+                        <span className="inline-flex items-center rounded-full bg-green-50 px-1.5 py-0.5 text-[8px] font-semibold text-green-600 border border-green-200">
+                          FINAL
+                        </span>
+                      )}
+                    </div>
                   </td>
-                )}
-                <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
-                  {record.break_in ? dayjs(record.break_in, "HH:mm").format("hh:mm A") : "N/A"} - {record.break_out ? dayjs(record.break_out, "HH:mm").format("hh:mm A") : "N/A"}
-                </td>
-                <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
-                  {record.time_out ? dayjs(record.time_out, "HH:mm").format("hh:mm A") : "N/A"}
-                </td>
-                {isLocationRequired && (
-                  <td className="px-1 py-1 text-[6px] md:text-xs max-w-[200px] break-words">
-                    {record.time_out_address || "N/A"}
+
+                  {/* Time In */}
+                  <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
+                    {isFinal || !showAdjIn ? (
+                      record.time_in
+                        ? dayjs(record.time_in, "HH:mm").format("hh:mm A")
+                        : ""
+                    ) : (
+                      <button
+                        onClick={() => handleAdjustClick(record)}
+                        className="mt-1 inline-block px-2 py-1 text-[11px] sm:text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-sm transition-all"
+                      >
+                        Adjust Time
+                      </button>
+                    )}
                   </td>
-                )}
-                <td className="px-1 py-1 text-[6px] md:text-xs text-right font-medium whitespace-nowrap">
-                  {record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs"}
-                </td>
-              </tr>
-            ))
+
+                  {isLocationRequired && (
+                    <td className="px-1 py-1 text-[6px] md:text-xs max-w-[200px] break-words">
+                      {record.time_in_address || "N/A"}
+                    </td>
+                  )}
+
+                  {/* Break Time */}
+                  <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
+                    {record.break_in ? dayjs(record.break_in, "HH:mm").format("hh:mm A") : "N/A"}{" "}
+                    -{" "}
+                    {record.break_out ? dayjs(record.break_out, "HH:mm").format("hh:mm A") : "N/A"}
+                  </td>
+
+                  {/* Time Out */}
+                  <td className="px-1 py-1 text-[6px] md:text-xs whitespace-nowrap">
+                    {isFinal || !showAdjOut ? (
+                      record.time_out
+                        ? dayjs(record.time_out, "HH:mm").format("hh:mm A")
+                        : ""
+                    ) : (
+                      <button
+                        onClick={() => handleAdjustClick(record)}
+                        className="mt-1 inline-block px-2 py-1 text-[11px] sm:text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-sm transition-all"
+                      >
+                        Adjust Time
+                      </button>
+                    )}
+                  </td>
+
+                  {isLocationRequired && (
+                    <td className="px-1 py-1 text-[6px] md:text-xs max-w-[200px] break-words">
+                      {record.time_out_address || "N/A"}
+                    </td>
+                  )}
+
+                  {/* Total Hours */}
+                  <td className="px-1 py-1 text-[6px] md:text-xs text-right font-medium whitespace-nowrap">
+                    {record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs"}
+                  </td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
               <td colSpan={calculateColSpan() + 1} className="text-center py-4 text-gray-500">
@@ -1306,6 +1477,7 @@ const FullTableView = ({ filteredRecords }) => {
     </div>
   );
 };
+
 
 
 
@@ -1350,21 +1522,30 @@ const FullSummaryView = ({ filteredRecords, isImageCaptureRequired, isLocationRe
             filteredRecords.map((record, index) => {
               const showAdjIn = isBlank(record.time_in);
               const showAdjOut = isBlank(record.time_out);
+              const isFinal = record.stat === "F";   // ✅ Final flag
 
               return (
                 <tr key={index} className="border-b">
                   {/* Shift Date */}
-                  <td className="px-1 py-1 text-[8px] md:text-xs">
-                    {dayjs(record.date).format("MM/DD/YYYY")}
+                  <td className="px-1 py-1 text-[6px] md:text-xs">
+                    <div className="flex items-center gap-1">
+                      <span>{dayjs(record.date).format("MM/DD/YYYY")}</span>
+                      {record.stat === "F" && (
+                        <span className="inline-flex items-center rounded-full bg-green-50 px-1.5 py-0.5 text-[8px] font-semibold text-green-600 border border-green-200">
+                          FINAL
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   {/* Time In */}
                   <td className="px-1 py-1 text-[8px] md:text-xs whitespace-nowrap">
-                    {!showAdjIn ? (
-                      dayjs(record.time_in, "MM/DD/YYYY HH:mm").format("MM/DD/YYYY  hh:mm A")
+                    {isFinal || !showAdjIn ? (
+                      record.time_in
+                        ? dayjs(record.time_in, "MM/DD/YYYY HH:mm").format("MM/DD/YYYY  hh:mm A")
+                        : ""
                     ) : (
                       <div className="flex items-center gap-1">
-                        {/* <span className="text-red-500 font-semibold">Missing</span> */}
                         <button
                           onClick={() => handleAdjustClick(record)}
                           className="inline-block px-2 py-1 text-[10px] md:text-[11px] bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-sm transition-all"
@@ -1376,13 +1557,15 @@ const FullSummaryView = ({ filteredRecords, isImageCaptureRequired, isLocationRe
                     )}
                   </td>
 
+
                   {/* Time Out */}
                   <td className="px-1 py-1 text-[8px] md:text-xs whitespace-nowrap">
-                    {!showAdjOut ? (
-                      dayjs(record.time_out, "MM/DD/YYYY HH:mm").format("MM/DD/YYYY  hh:mm A")
+                    {isFinal || !showAdjOut ? (
+                      record.time_out
+                        ? dayjs(record.time_out, "MM/DD/YYYY HH:mm").format("MM/DD/YYYY  hh:mm A")
+                        : ""
                     ) : (
                       <div className="flex items-center gap-1">
-                        {/* <span className="text-red-500 font-semibold">Missing</span> */}
                         <button
                           onClick={() => handleAdjustClick(record)}
                           className="inline-block px-2 py-1 text-[10px] md:text-[11px] bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-sm transition-all"
@@ -1394,10 +1577,12 @@ const FullSummaryView = ({ filteredRecords, isImageCaptureRequired, isLocationRe
                     )}
                   </td>
 
+
                   {/* Total Hours */}
                   <td className="px-1 py-1 text-[8px] md:text-xs text-right font-medium whitespace-nowrap">
                     {record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs"}
                   </td>
+
                 </tr>
               );
             })
@@ -1410,19 +1595,6 @@ const FullSummaryView = ({ filteredRecords, isImageCaptureRequired, isLocationRe
           )}
         </tbody>
 
-        {/* (Optional) Grand total row */}
-        {/* {filteredRecords.length > 0 && (
-          <tfoot>
-            <tr className="border-t">
-              <td className="px-1 py-2 text-[10px] md:text-xs font-semibold" colSpan={3}>
-                Total Worked Hours
-              </td>
-              <td className="px-1 py-2 text-[10px] md:text-xs text-right font-semibold">
-                {Number(totalWorkedHours).toFixed(2)} hrs
-              </td>
-            </tr>
-          </tfoot>
-        )} */}
       </table>
     </div>
   );
@@ -1589,36 +1761,43 @@ return (
           <h1 className="text-base font-bold mb-4">Daily Time Record</h1>
       
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        {/* Start Date */}
-        <div className="">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-          <div className="relative">
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full min-w-0 text-[16px] h-10 px-3 pr-10 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
-            />
-            {/* calendar icon space handled by pr-10; indicator sits right via CSS below */}
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        {/* Left: Date filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:max-w-xl w-full">
+          {/* Start Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Start Date
+            </label>
+            <div className="relative">
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="w-full min-w-0 text-[16px] h-10 px-3 pr-10 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              />
+            </div>
+          </div>
+
+          {/* End Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              End Date
+            </label>
+            <div className="relative">
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="w-full min-w-0 text-[16px] h-10 px-3 pr-10 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              />
+            </div>
           </div>
         </div>
 
-        {/* End Date */}
-        <div className="">
-          <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-          <div className="relative">
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full min-w-0 text-[16px] h-10 px-3 pr-10 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
-            />
-          </div>
-        </div>
-
-        {/* Export Button */}
-        <div className="sm:self-end">
+        {/* Right: Actions */}
+        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto md:justify-end">
+          {/* Export Button */}
           <button
             onClick={handleExport}
             className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center gap-2"
@@ -1626,18 +1805,25 @@ return (
             <Download size={16} />
             Export
           </button>
-        </div>
 
-        {/* Filing Button (will wrap to new row on lg if needed) */}
-        <div className="sm:self-end sm:justify-self-end">
+          {/* DTR Adjustment */}
           <button
             onClick={() => navigate('/timekeepingAdj')}
             className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             DTR Adjustment
           </button>
+
+          {/* DTR Confirmation */}
+          <button
+            onClick={handleDtrConfirmation}
+            className="w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            DTR Confirmation
+          </button>
         </div>
       </div>
+
 
 
 

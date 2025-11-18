@@ -108,6 +108,7 @@ const LeaveApproval = () => {
     }
   };
 
+
   useEffect(() => {
     if (user?.empNo) fetchLeaveApprovals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
