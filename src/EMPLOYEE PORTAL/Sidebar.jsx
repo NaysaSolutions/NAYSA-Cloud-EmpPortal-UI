@@ -81,14 +81,14 @@ if (result.success && Array.isArray(result.data) && result.data.length > 0) {
         {/* Profile Section */}
         <div className="flex flex-col items-center text-center">
           <img
-            src={user?.empNo ? `/${user.empNo}.jpg` : "/Default.jpg"}
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = "/public/Default.jpg";
-            }}
+              src={user?.empNo ? `/${user.empNo}.jpg` : "/Default.jpg"}
+              alt="Profile"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = "/Default.jpg";
+              }}
             className="w-[100px] h-[100px] rounded-full object-cover mb-4"
-            alt="Profile"
-          />
+            />
 
           <h2 className="text-[14px] font-semibold text-[#1c394e] break-words">
             Welcome Back,<br /> {employeeInfo?.empName || "Employee"}!

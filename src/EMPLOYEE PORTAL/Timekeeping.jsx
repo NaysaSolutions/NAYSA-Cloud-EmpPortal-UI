@@ -4,6 +4,11 @@ import axios from 'axios';
 import dayjs from "dayjs";
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
@@ -310,10 +315,29 @@ const getLocation = async () => {
                     console.warn(`No face detected in reference image for ${empNo}.`);
                     Swal.fire("Warning", "No registered face found for your profile. Please contact HR/Admin.", "warning");
                 }
+            // } catch (err) {
+            //     console.error(`⚠️ No face model found, disabling face verification for ${empNo}:`, err);
+            //     Swal.fire("Error", `Failed to load your face reference data. ${err.message}`, "error");
+            //     setIsImageCaptureRequired(false);
+            //     return; // skip, but DO NOT block other flows
+            // }
             } catch (err) {
-                console.error(`Error loading reference image for ${empNo}:`, err);
-                Swal.fire("Error", `Failed to load your face reference data. ${err.message}`, "error");
+                console.warn("Face model not found:", err.message);
+
+                Swal.fire({
+                    icon: "warning",
+                    title: "Face Model Not Found",
+                    text: "You can still time-in/out but photo capture will be skipped.",
+                    toast: true,
+                    timer: 3000,
+                    position: "top",
+                    showConfirmButton: false,
+                });
+
+                setIsImageCaptureRequired(false);   // Auto-disable face capture
+                setCurrentUserFaceDescriptor(null); // Prevent blocking buttons
             }
+
         };
 
         if (faceDetectionModelLoaded) {
@@ -325,8 +349,10 @@ const getLocation = async () => {
     // --- Real-time Clock Update ---
     useEffect(() => {
         const interval = setInterval(() => {
-            setTime(dayjs().format("hh:mm:ss A"));
-            setCurrentDate(dayjs());
+            // setTime(dayjs().format("hh:mm:ss A"));
+            // setCurrentDate(dayjs());
+            setTime(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
+            setCurrentDate(dayjs().tz("Asia/Manila"));  
         }, 1000);
         return () => clearInterval(interval);
     }, []);
@@ -613,27 +639,31 @@ Swal.fire({
 
     if (isImageCaptureRequired && capturedImageInfo) {
       if (type === "TIME IN") {
-        setTimeIn(dayjs().format("hh:mm:ss A"));
+        // setTimeIn(dayjs().format("hh:mm:ss A"));
+        setTimeIn(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
         timeInImageIdToSend = capturedImageInfo.id;
         timeInImagePath = capturedImageInfo.path;
       } else if (type === "TIME OUT") {
-        setTimeOut(dayjs().format("hh:mm:ss A"));
+        // setTimeOut(dayjs().format("hh:mm:ss A"));
+        setTimeOut(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
         timeOutImageIdToSend = capturedImageInfo.id;
         timeOutImagePath = capturedImageInfo.path;
       } else if (type === "BREAK IN") {
-        setBreakIn(dayjs().format("hh:mm:ss A"));
+        // setBreakIn(dayjs().format("hh:mm:ss A"));
+        setBreakIn(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
         breakInImageIdToSend = capturedImageInfo.id;
         breakInImagePath = capturedImageInfo.path;
       } else if (type === "BREAK OUT") {
-        setBreakOut(dayjs().format("hh:mm:ss A"));
+        // setBreakOut(dayjs().format("hh:mm:ss A"));
+        setBreakOut(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
         breakOutImageIdToSend = capturedImageInfo.id;
         breakOutImagePath = capturedImageInfo.path;
       }
     } else {
-      if (type === "TIME IN") setTimeIn(dayjs().format("hh:mm:ss A"));
-      if (type === "TIME OUT") setTimeOut(dayjs().format("hh:mm:ss A"));
-      if (type === "BREAK IN") setBreakIn(dayjs().format("hh:mm:ss A"));
-      if (type === "BREAK OUT") setBreakOut(dayjs().format("hh:mm:ss A"));
+      if (type === "TIME IN") setTimeIn(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
+      if (type === "TIME OUT") setTimeOut(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
+      if (type === "BREAK IN") setBreakIn(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
+      if (type === "BREAK OUT") setBreakOut(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
     }
 
     const eventData = [
