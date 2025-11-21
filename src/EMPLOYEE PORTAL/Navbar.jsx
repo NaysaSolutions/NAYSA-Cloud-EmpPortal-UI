@@ -82,8 +82,9 @@ const Navbar = () => {
         {/* <span className="font-bold text-sm md:text-lg">NEW NEMAR DEVELOPMENT CORPORATION</span> */}
         {/* <span className="font-bold text-lg">STT (PHILIPPINES), INC.</span> */}
         {/* <span className="font-bold text-lg">TEST SOLUTION SERVICES INC.</span> */}
+        <span className="font-bold text-lg">FAMA CONSTRUCTION CORPORATION</span>
 
-        <span className="font-bold text-lg">NAYSA-SOLUTIONS INC.</span>
+        {/* <span className="font-bold text-lg">NAYSA-SOLUTIONS INC.</span> */}
         
       </div>
 
