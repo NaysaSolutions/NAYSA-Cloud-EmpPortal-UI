@@ -1,5 +1,5 @@
 // api.js or similar
-const API_BASE_URL = 'https://api.nemarph.com:81/api';
+const API_BASE_URL = '/api';
 
 export const getNewImageId = async () => {
   try {

@@ -1,24 +1,61 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-// Create the Auth Context
-// The context will hold and share authentication-related data (like the current user) across the app.
-const AuthContext = createContext();
+const AuthContext = createContext(null);
 
-// AuthProvider Component
-// This is the provider component that will wrap parts of the application needing access to the authentication state.
+const STORAGE_KEY = "naysa_auth_user"; // change name if you want
+
 export const AuthProvider = ({ children }) => {
-  // `user` state holds the current authenticated user's data. Initially, it is `null` (meaning no user is logged in).
-  const [user, setUser] = useState(null);
+  const [user, setUserState] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
-  // The `AuthContext.Provider` will allow any component inside it (i.e., `children`) to access `user` and `setUser`.
-  return (
-    <AuthContext.Provider value={{ user, setUser }}>
-      {children}  {/* All components that are wrapped inside `AuthProvider` will have access to `user` and `setUser` */}
-    </AuthContext.Provider>
+  // Always use this to update user so it syncs to storage
+  const setUser = (nextUser) => {
+    setUserState(nextUser);
+
+    try {
+      if (nextUser) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (e) {
+      // storage may fail in private mode / policy — still keep app working
+      console.warn("Auth storage warning:", e);
+    }
+  };
+
+  // Restore user on refresh (rehydrate)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        setUserState(JSON.parse(raw));
+      }
+    } catch (e) {
+      console.warn("Auth restore warning:", e);
+      localStorage.removeItem(STORAGE_KEY);
+    } finally {
+      setAuthLoading(false);
+    }
+  }, []);
+
+  // Optional helpers (useful for login/logout calls)
+  const login = (userObj) => setUser(userObj);
+  const logout = () => setUser(null);
+
+  const value = useMemo(
+    () => ({
+      user,
+      setUser,      // keep compatibility with your existing code
+      login,        // optional
+      logout,       // optional
+      authLoading,  // IMPORTANT: use this in route guard to avoid early redirect
+      isAuthenticated: !!user,
+    }),
+    [user, authLoading]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// Custom hook for easy access
-// This custom hook allows components to access the `user` and `setUser` without directly using `useContext(AuthContext)`.
-// It's a cleaner way to access context values.
 export const useAuth = () => useContext(AuthContext);

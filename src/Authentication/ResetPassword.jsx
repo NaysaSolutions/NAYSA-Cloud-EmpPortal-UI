@@ -16,7 +16,7 @@ function ResetPassword() {
 
         try {
             // Make API call to reset the password (no token needed)
-            const response = await axios.post('http://localhost:8000/api/register', {
+            const response = await axios.post('/register', {
                 email,
                 password,
                 password_confirmation: passwordConfirm,

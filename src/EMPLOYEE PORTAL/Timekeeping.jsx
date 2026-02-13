@@ -59,6 +59,13 @@ const Timekeeping = ({ onBreakStart }) => {
     const [userLocation, setUserLocation] = useState(null);
     const geolocationOptions = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 };
     const [locationAddress, setLocationAddress] = useState("");
+    const [locationAccuracy, setLocationAccuracy] = useState(null);
+    const locationWatchIdRef = useRef(null);
+    const lastGoodLocationRef = useRef(null);
+    const revGeoCacheRef = useRef(new Map());
+    const roundCoord = (n, p = 5) => Number(n).toFixed(p); // ~1m-10m-ish depending
+
+
 
     
     const [startDate, setStartDate] = useState(dayjs().startOf('month').format('YYYY-MM-DD'));
@@ -67,23 +74,33 @@ const Timekeeping = ({ onBreakStart }) => {
     const [viewMode, setViewMode] = useState('cards'); // 'cards', 'accordion', 'table'
     const [expandedRecord, setExpandedRecord] = useState(null);
 
+    
+
     const navigate = useNavigate();
 
 const reverseGeocode = async (lat, lon) => {
-    try {
-        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
-            params: {
-                lat,
-                lon,
-                format: "json"
-            }
-        });
-        return response.data.display_name || "Unknown location";
-    } catch (err) {
-        console.error("Reverse geocoding failed:", err);
-        return "Unknown location";
-    }
+  const key = `${roundCoord(lat, 5)},${roundCoord(lon, 5)}`;
+  if (revGeoCacheRef.current.has(key)) return revGeoCacheRef.current.get(key);
+
+  try {
+    const response = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
+      params: { lat, lon, format: "json" },
+      timeout: 8000,
+      headers: {
+        // (Optional) Nominatim likes having a descriptive UA; browser may restrict some headers though.
+        // "User-Agent": "YourAppName/1.0 (timekeeping)"
+      },
+    });
+
+    const name = response.data.display_name || "Unknown location";
+    revGeoCacheRef.current.set(key, name);
+    return name;
+  } catch (err) {
+    console.error("Reverse geocoding failed:", err);
+    return "Unknown location";
+  }
 };
+
 
   const isWithinRadius = (lat1, lon1, lat2, lon2, radiusMeters) => {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -112,6 +129,65 @@ const getLocation = async () => {
         );
     });
 };
+
+const GEO_WATCH_OPTIONS = {
+  enableHighAccuracy: true,
+  timeout: 12000,
+  maximumAge: 15000, // allow a recent cached value for speed
+};
+
+// tweak this based on your needs
+const ACCEPTABLE_ACCURACY_METERS = 60;
+
+const startLocationWatch = useCallback(() => {
+  if (!navigator.geolocation) return;
+
+  // avoid multiple watches
+  if (locationWatchIdRef.current != null) return;
+
+  locationWatchIdRef.current = navigator.geolocation.watchPosition(
+    (pos) => {
+      const { latitude, longitude, accuracy } = pos.coords;
+      const payload = { latitude, longitude, accuracy, ts: Date.now() };
+
+      setUserLocation({ latitude, longitude });
+      setLocationAccuracy(accuracy);
+
+      // keep the best one (lowest accuracy meters)
+      if (
+        !lastGoodLocationRef.current ||
+        (accuracy != null && accuracy < lastGoodLocationRef.current.accuracy)
+      ) {
+        lastGoodLocationRef.current = payload;
+      }
+
+      // if it’s already good enough, you can stop watching to save battery
+      if (accuracy != null && accuracy <= ACCEPTABLE_ACCURACY_METERS) {
+        navigator.geolocation.clearWatch(locationWatchIdRef.current);
+        locationWatchIdRef.current = null;
+      }
+    },
+    (err) => {
+      console.warn("watchPosition error:", err);
+    },
+    GEO_WATCH_OPTIONS
+  );
+}, []);
+
+useEffect(() => {
+  if (!isLocationRequired) return;
+
+  startLocationWatch();
+
+  return () => {
+    if (locationWatchIdRef.current != null) {
+      navigator.geolocation.clearWatch(locationWatchIdRef.current);
+      locationWatchIdRef.current = null;
+    }
+  };
+}, [isLocationRequired, startLocationWatch]);
+
+
 
 
     // NEMAR //
@@ -532,38 +608,82 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
     return;
   }
 
+  // small helper: geolocation with timeout + better speed/accuracy balance
+  const getPosition = (opts) =>
+    new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error("Geolocation is not supported by your browser."));
+        return;
+      }
+
+      let done = false;
+      const timer = setTimeout(() => {
+        if (done) return;
+        done = true;
+        reject(new Error("Location request timed out."));
+      }, Math.max(1000, (opts?.timeout ?? 8000) + 500));
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(pos);
+        },
+        (err) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          reject(err);
+        },
+        opts
+      );
+    });
+
+  // try fast first, then retry for better accuracy if needed
+  const getBestCoords = async () => {
+    // 1) fast pull (can use a recent cached reading)
+    let pos = await getPosition({
+      enableHighAccuracy: false,
+      timeout: 4000,
+      maximumAge: 15000, // allow cached to speed up
+    });
+
+    const a1 = Number(pos?.coords?.accuracy ?? 999999);
+
+    // 2) if not accurate enough, try high accuracy (GPS)
+    if (a1 > 80) {
+      pos = await getPosition({
+        enableHighAccuracy: true,
+        timeout: 9000,
+        maximumAge: 0,
+      });
+    }
+
+    const { latitude, longitude, accuracy } = pos.coords;
+    return { latitude, longitude, accuracy: Number(accuracy ?? 0) };
+  };
+
   try {
     let userCoords = null;
     let address = "N/A";
+
     let capturedImageInfo = null;
 
-    // --- Location ---
+    // =========================
+    // 1) LOCATION (FASTER)
+    // - do NOT reverseGeocode yet (it’s slow)
+    // - geofence check first using coords only
+    // =========================
+    let reverseGeocodePromise = null;
+
     if (isLocationRequired) {
       setLoading({ show: true, message: "Getting your location..." });
 
-      const getUserLocation = () =>
-        new Promise((resolve, reject) => {
-          if (!navigator.geolocation) {
-            reject(new Error("Geolocation not supported by your browser."));
-            return;
-          }
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              const { latitude, longitude } = position.coords;
-              resolve({ latitude, longitude });
-            },
-            (err) => reject(err),
-            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-          );
-        });
+      userCoords = await getBestCoords();
 
-      userCoords = await getUserLocation();
-
-      setLoading({ show: true, message: "Verifying location..." });
-      address = await reverseGeocode(userCoords.latitude, userCoords.longitude);
-      setLocationAddress(address);
-
-      if (Number(branchLocation.geofence) === 1) {
+      // geofence check (no reverse geocode yet)
+      if (Number(branchLocation?.geofence) === 1) {
         const isAllowedLocation = isWithinRadius(
           userCoords.latitude,
           userCoords.longitude,
@@ -572,45 +692,63 @@ const saveCapturedFaceImage = useCallback(async (imageDataUrl, imageId) => {
           branchLocation.allowedRadius
         );
 
-      if (!isAllowedLocation) {
-  setLoading({ show: false, message: "" });
+        if (!isAllowedLocation) {
+          // only now get readable address for the error message
+          try {
+            address = await reverseGeocode(userCoords.latitude, userCoords.longitude);
+          } catch {
+            address = "Unable to resolve address";
+          }
+          setLocationAddress(address);
+          setLoading({ show: false, message: "" });
 
-  const isMobile = window.matchMedia("(max-width: 640px)").matches; // Tailwind sm breakpoint
+          const isMobile = window.matchMedia("(max-width: 640px)").matches;
 
-Swal.fire({
-  icon: "error",
-  title: "Location Error",
-  html: `
-    <div class="text-left text-sm leading-snug">
-      <p><strong>📍 Current:</strong> ${address}</p>
-      <p><strong>🏢 Assigned:</strong> ${branchLocation.address}</p>
-    </div>
-  `,
-  toast: true,
-  position: "top",                     // center horizontally
-  width: isMobile ? "92vw" : "34rem",  // compact on mobile, wider on desktop
-  timer: 5000,
-  timerProgressBar: true,
-  showConfirmButton: false,
-  customClass: {
-    // Force container centering in case something else set it to end/right
-    container: "!justify-center !items-start", // Tailwind utilities -> center horizontally
-    popup: "mt-20 p-3 sm:p-4 rounded-xl shadow-lg", // push down from the very top
-    title: "text-base font-semibold",
-    icon: "text-red-500",
-  },
-});
+          Swal.fire({
+            icon: "error",
+            title: "Location Error",
+            html: `
+              <div class="text-left text-sm leading-snug">
+                <p><strong>📍 Current:</strong> ${address}</p>
+                <p><strong>🏢 Assigned:</strong> ${branchLocation?.address ?? "N/A"}</p>
+                <p class="mt-1 text-xs opacity-80"><strong>Accuracy:</strong> ${Math.round(
+                  userCoords.accuracy || 0
+                )}m</p>
+              </div>
+            `,
+            toast: true,
+            position: "top",
+            width: isMobile ? "92vw" : "34rem",
+            timer: 5000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            customClass: {
+              container: "!justify-center !items-start",
+              popup: "mt-20 p-3 sm:p-4 rounded-xl shadow-lg",
+              title: "text-base font-semibold",
+              icon: "text-red-500",
+            },
+          });
 
-
-
-  return;
-}
+          return;
+        }
       }
 
-      setLoading({ show: false, message: "" });
+      // start reverse geocode in parallel (don’t block UI)
+      setLoading({ show: true, message: "Resolving address..." });
+      reverseGeocodePromise = (async () => {
+        try {
+          const addr = await reverseGeocode(userCoords.latitude, userCoords.longitude);
+          return addr || "N/A";
+        } catch {
+          return "N/A";
+        }
+      })();
     }
 
-    // --- Capture & verify image ---
+    // =========================
+    // 2) IMAGE CAPTURE (RUNS WHILE ADDRESS IS RESOLVING)
+    // =========================
     if (isImageCaptureRequired) {
       setLoading({ show: true, message: `Preparing camera for ${type}...` });
       capturedImageInfo = await captureImageProcess(type);
@@ -620,10 +758,19 @@ Swal.fire({
         Swal.fire("Failed", "Image capture or face verification failed.", "error");
         return;
       }
-      setLoading({ show: false, message: "" });
     }
 
-    // --- Proceed with saving record ---
+    // finish reverse geocode if required
+    if (isLocationRequired) {
+      address = (await reverseGeocodePromise) || "N/A";
+      setLocationAddress(address);
+    }
+
+    setLoading({ show: false, message: "" });
+
+    // =========================
+    // 3) BUILD PAYLOAD + SAVE
+    // =========================
     const currentTime = dayjs().format("HH:mm:ss");
     const currentDateStr = dayjs().format("YYYY-MM-DD");
 
@@ -639,22 +786,18 @@ Swal.fire({
 
     if (isImageCaptureRequired && capturedImageInfo) {
       if (type === "TIME IN") {
-        // setTimeIn(dayjs().format("hh:mm:ss A"));
         setTimeIn(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
         timeInImageIdToSend = capturedImageInfo.id;
         timeInImagePath = capturedImageInfo.path;
       } else if (type === "TIME OUT") {
-        // setTimeOut(dayjs().format("hh:mm:ss A"));
         setTimeOut(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
         timeOutImageIdToSend = capturedImageInfo.id;
         timeOutImagePath = capturedImageInfo.path;
       } else if (type === "BREAK IN") {
-        // setBreakIn(dayjs().format("hh:mm:ss A"));
         setBreakIn(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
         breakInImageIdToSend = capturedImageInfo.id;
         breakInImagePath = capturedImageInfo.path;
       } else if (type === "BREAK OUT") {
-        // setBreakOut(dayjs().format("hh:mm:ss A"));
         setBreakOut(dayjs().tz("Asia/Manila").format("hh:mm:ss A"));
         breakOutImageIdToSend = capturedImageInfo.id;
         breakOutImagePath = capturedImageInfo.path;
@@ -676,74 +819,82 @@ Swal.fire({
           timeOut: type === "TIME OUT" ? currentTime : null,
           breakIn: type === "BREAK IN" ? currentTime : null,
           breakOut: type === "BREAK OUT" ? currentTime : null,
+
           timeInImageId: timeInImageIdToSend,
           timeOutImageId: timeOutImageIdToSend,
           breakInImageId: breakInImageIdToSend,
           breakOutImageId: breakOutImageIdToSend,
+
           timeInImagePath,
           timeOutImagePath,
           breakInImagePath,
           breakOutImagePath,
+
           latitude: userCoords?.latitude ?? null,
           longitude: userCoords?.longitude ?? null,
+          locationAccuracy: userCoords?.accuracy ?? null, // ✅ extra (safe even if backend ignores)
           locationAddress: address,
         },
       },
     ];
 
     console.log("Upsert Payload:", eventData);
+
+    setLoading({ show: true, message: `Saving ${type}...` });
     const response = await axios.post(API_ENDPOINTS.upsertTimeIn, eventData);
+    setLoading({ show: false, message: "" });
 
     if (response.data.status === "success") {
       Swal.fire({
-    icon: "success",
-    title: "Success",
-    text: `${type} recorded successfully!`,
-    toast: true,
-    position: "top",
-    timer: 4000,
-    timerProgressBar: true,
-    showConfirmButton: false,
-    customClass: {
-      popup: "w-auto max-w-sm sm:max-w-md p-3 text-md mt-[150px]",
-      title: "text-base font-semibold",
-    },
-  });
+        icon: "success",
+        title: "Success",
+        text: `${type} recorded successfully!`,
+        toast: true,
+        position: "top",
+        timer: 4000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        customClass: {
+          popup: "w-auto max-w-sm sm:max-w-md p-3 text-md mt-[150px]",
+          title: "text-base font-semibold",
+        },
+      });
       fetchDTRRecords();
     } else {
       Swal.fire({
-    icon: "error",
-    title: "Error",
-    text: response.data.message || `Failed to record ${type}.`,
-    toast: true,
-    position: "top",
-    timer: 4000,
-    timerProgressBar: true,
-    showConfirmButton: false,
-    customClass: {
-      popup: "w-auto max-w-sm sm:max-w-md p-3 text-md mt-[150px]",
-      title: "text-base font-semibold",
-    },
-  });
+        icon: "error",
+        title: "Error",
+        text: response.data.message || `Failed to record ${type}.`,
+        toast: true,
+        position: "top",
+        timer: 4000,
+        timerProgressBar: true,
+        showConfirmButton: false,
+        customClass: {
+          popup: "w-auto max-w-sm sm:max-w-md p-3 text-md mt-[150px]",
+          title: "text-base font-semibold",
+        },
+      });
     }
   } catch (err) {
     setLoading({ show: false, message: "" });
     Swal.fire({
-    icon: "error",
-    title: "Error",
-    text: err.message || "An unexpected error occurred.",
-    toast: true,
-    position: "top",
-    timer: 4000,
-    timerProgressBar: true,
-    showConfirmButton: false,
-    customClass: {
-      popup: "w-auto max-w-sm sm:max-w-md p-3 text-md mt-[150px]",
-      title: "text-base font-semibold",
-    },
-  });
+      icon: "error",
+      title: "Error",
+      text: err?.message || "An unexpected error occurred.",
+      toast: true,
+      position: "top",
+      timer: 4000,
+      timerProgressBar: true,
+      showConfirmButton: false,
+      customClass: {
+        popup: "w-auto max-w-sm sm:max-w-md p-3 text-md mt-[150px]",
+        title: "text-base font-semibold",
+      },
+    });
   }
 };
+
 
 
     const fetchDTRRecords = useCallback(async () => {

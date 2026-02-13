@@ -123,6 +123,7 @@
 
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+
 import { AuthProvider, useAuth } from "./EMPLOYEE PORTAL/AuthContext";
 import Sidebar from "./EMPLOYEE PORTAL/Sidebar";
 import Navbar from "./EMPLOYEE PORTAL/Navbar";
@@ -142,7 +143,7 @@ import OvertimeReview from "./EMPLOYEE PORTAL/OvertimeReview";
 import OfficialBusiness from "./EMPLOYEE PORTAL/OfficialBusiness";
 import OfficialBusinessApproval from "./EMPLOYEE PORTAL/OfficialBusinessApproval";
 import OfficialBusinessReview from "./EMPLOYEE PORTAL/OBReview";
-import Register from "./NAYSA Cloud/Register"; // correct path
+import Register from "./NAYSA Cloud/Register";
 
 import ScrollToTop from "./components/ScrollToTop";
 
@@ -152,24 +153,178 @@ const App = () => {
       <Router>
         <ScrollToTop />
         <Routes>
+          {/* PUBLIC ROUTES */}
           <Route path="/" element={<LoginPortal />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/register" element={<ProtectedRoute><Layout><Register /></Layout></ProtectedRoute>} />
-          <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
-          <Route path="/timekeeping" element={<ProtectedRoute><Layout><Timekeeping /></Layout></ProtectedRoute>} />  
-          <Route path="/timekeepingAdj" element={<ProtectedRoute><Layout><TimekeepingAdjustment /></Layout></ProtectedRoute>} />    
-          <Route path="/timekeepingAdjApproval" element={<ProtectedRoute><Layout><TimekeepingAdjustmentApproval /></Layout></ProtectedRoute>} />    
-          <Route path="/timekeepingAdjReview" element={<ProtectedRoute><Layout><TimekeepingAdjustmentReview /></Layout></ProtectedRoute>} />    
-          <Route path="/payslipviewer" element={<ProtectedRoute><Layout><PayslipViewer /></Layout></ProtectedRoute>} />
-          <Route path="/leave" element={<ProtectedRoute><Layout><Leave /></Layout></ProtectedRoute>} />
-          <Route path="/overtime" element={<ProtectedRoute><Layout><Overtime /></Layout></ProtectedRoute>} />
-          <Route path="/overtimeApproval" element={<ProtectedRoute><Layout><OvertimeApproval /></Layout></ProtectedRoute>} />
-          <Route path="/overtime-review" element={<ProtectedRoute><Layout><OvertimeReview /></Layout></ProtectedRoute>} />
-          <Route path="/leaveApproval" element={<ProtectedRoute><Layout><LeaveApproval /></Layout></ProtectedRoute>} />
-          <Route path="/leave-review" element={<ProtectedRoute><Layout><LeaveReview /></Layout></ProtectedRoute>} />
-          <Route path="/official-business" element={<ProtectedRoute><Layout><OfficialBusiness /></Layout></ProtectedRoute>} />
-          <Route path="/OfficialBusinessApproval" element={<ProtectedRoute><Layout><OfficialBusinessApproval /></Layout></ProtectedRoute>} />
-          <Route path="/OfficialBusinessReview" element={<ProtectedRoute><Layout><OfficialBusinessReview /></Layout></ProtectedRoute>} />
+
+          {/* PROTECTED ROUTES */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Dashboard />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/timekeeping"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Timekeeping />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/timekeepingAdj"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <TimekeepingAdjustment />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/timekeepingAdjApproval"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <TimekeepingAdjustmentApproval />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/timekeepingAdjReview"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <TimekeepingAdjustmentReview />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/payslipviewer"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <PayslipViewer />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/leave"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Leave />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/leaveApproval"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <LeaveApproval />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/leave-review"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <LeaveReview />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/overtime"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <Overtime />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/overtimeApproval"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <OvertimeApproval />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/overtime-review"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <OvertimeReview />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/official-business"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <OfficialBusiness />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/OfficialBusinessApproval"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <OfficialBusinessApproval />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/OfficialBusinessReview"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <OfficialBusinessReview />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
+
+          {/* OPTIONAL: catch-all */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </AuthProvider>
@@ -187,13 +342,17 @@ const Layout = ({ children }) => (
   </div>
 );
 
-// ProtectedRoute to prevent unauthorized access
+// ✅ FIXED ProtectedRoute: wait for auth restore before redirecting
 const ProtectedRoute = ({ children }) => {
-  const { user } = useAuth();
-  return user ? children : <Navigate to="/" />;
+  const { user, authLoading } = useAuth();
+
+  if (authLoading) return null;
+  return user ? children : <Navigate to="/" replace />;
 };
 
+
 export default App;
+
 
 
 

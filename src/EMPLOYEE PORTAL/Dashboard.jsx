@@ -34,7 +34,7 @@ const Dashboard = () => {
   const [time, setTime] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [error, setError] = useState(null); // Error state
-  const { user, setUser } = useAuth();
+  const { user, setUser, authLoading } = useAuth();
   const navigate = useNavigate();
   const [showBackToTop, setShowBackToTop] = useState(false);
 
@@ -62,10 +62,11 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (user?.empNo) {
-      fetchDashboardData(user.empNo); // Pass empNo explicitly
-    }
-  }, [user?.empNo]); // Run effect when empNo changes
+  if (!authLoading && user?.empNo) {
+    fetchDashboardData();
+  }
+}, [authLoading, user?.empNo]);
+
 
   const startBreakCountdown = () => {
     setBreakTime(3600); // reset to 1 hour or your desired countdown
@@ -93,9 +94,9 @@ const Dashboard = () => {
     return () => clearInterval(interval); // Cleanup on unmount
   }, []);
   // If no user is logged in, return an empty container
-  if (!user) {
-    return <div className="p-6">Loading...</div>;
-  }
+  if (authLoading) {
+  return <div className="p-6">Loading...</div>;
+}
 
   const fetchDashboardData = async () => {
     if (!user || !user.empNo) return;
