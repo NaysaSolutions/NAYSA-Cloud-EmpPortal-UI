@@ -1,0 +1,351 @@
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { AiOutlineClose } from "react-icons/ai";
+import Swal from "sweetalert2";
+import { useAuth } from "./AuthContext";
+import API_ENDPOINTS from "@/apiConfig.jsx";
+
+const OffsetReview = ({ offsetData, onClose, refreshData }) => {
+  if (!offsetData) return null;
+
+  const { user } = useAuth();
+
+  const formatDate = (date) => {
+    if (!date) return "";
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const originalHrs = useMemo(() => {
+    const n = parseFloat(offsetData?.offsetHrs);
+    return Number.isFinite(n) ? n : 0;
+  }, [offsetData?.offsetHrs]);
+
+  const [formData, setFormData] = useState({
+    empNo: offsetData.empNo || "",
+    empName: offsetData.empName || "",
+    sourceDate: formatDate(offsetData.sourceDate),
+    offsetDate: formatDate(offsetData.offsetDate),
+    offsetHrs: offsetData.offsetHrs || "",
+    offsetType: offsetData.offsetType || "",
+    offsetRemarks: offsetData.offsetRemarks || "",
+    offsetStamp: offsetData.offsetStamp || "",
+    approverRemarks: offsetData.approverRemarks || "",
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const firstFieldRef = useRef(null);
+  const modalRef = useRef(null);
+  const lastFocusableRef = useRef(null);
+
+  // Lock background scroll while open
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  // Focus close button on mount
+  useEffect(() => {
+    firstFieldRef.current?.focus();
+  }, []);
+
+  // Close on ESC + simple focus trap
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose?.();
+      if (e.key === "Tab") {
+        const focusable = modalRef.current?.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        if (!focusable || focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget) onClose?.();
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((p) => ({ ...p, [name]: value }));
+  };
+
+  const sendDecision = useCallback(
+    async ({ appStat }) => {
+      try {
+        if (!formData.offsetStamp) {
+          await Swal.fire({
+            title: "Error",
+            text: "Offset Stamp is missing. Please try again.",
+            icon: "error",
+            customClass: { popup: "z-[10050]" },
+            confirmButtonText: "OK",
+          });
+          return;
+        }
+
+        // (Optional) basic validation for offset hours if approving
+        if (appStat === 1) {
+          const h = parseFloat(formData.offsetHrs);
+          if (!Number.isFinite(h) || h <= 0) {
+            await Swal.fire({
+              title: "Invalid Hours",
+              text: "Offset hours must be greater than 0.",
+              icon: "warning",
+              customClass: { popup: "z-[10050]" },
+            });
+            return;
+          }
+          // If you want to enforce no changes: keep as read-only. (We keep it read-only below.)
+          if (Number.isFinite(h) && h !== originalHrs) {
+            // Only relevant if you allow editing later
+          }
+        }
+
+        setIsSubmitting(true);
+
+        const payloadInner = {
+          empNo: formData.empNo, // applicant
+          offsetStamp: formData.offsetStamp,
+          appStat, // 1 = Approved, 0 = Disapproved
+          appUser: user.empNo, // approver
+          appRemarks: (formData.approverRemarks || "").trim(),
+        };
+
+        const payload = {
+          json_data: JSON.stringify({ json_data: payloadInner }),
+          userid: user.empNo, // optional, safe to pass (your offset controller uses it)
+        };
+
+        const response = await fetch(API_ENDPOINTS.ApprovalOffset, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const result = await response.json().catch(() => ({}));
+
+        if (response.ok) {
+          onClose?.();
+          await Swal.fire({
+            title: "Success",
+            text:
+              appStat === 1
+                ? "Offset approval successful!"
+                : "Offset disapproved successfully!",
+            icon: "success",
+            customClass: { popup: "z-[10050]" },
+          });
+          refreshData?.();
+        } else {
+          await Swal.fire({
+            title: "Error",
+            text: result?.message || "Something went wrong.",
+            icon: "error",
+            customClass: { popup: "z-[10050]" },
+          });
+        }
+      } catch (error) {
+        console.error("Submit failed:", error);
+        await Swal.fire({
+          title: "Error",
+          text: "Request failed. Please try again.",
+          icon: "error",
+          customClass: { popup: "z-[10050]" },
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [formData, onClose, refreshData, user.empNo, originalHrs]
+  );
+
+  const handleApprove = () => sendDecision({ appStat: 1 });
+  const handleDisapprove = () => sendDecision({ appStat: 0 });
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-[1px] p-0 sm:p-6 animate-[fadeIn_150ms_ease-out]"
+      onMouseDown={handleBackdropClick}
+      aria-modal="true"
+      role="dialog"
+      aria-labelledby="ot-modal-title"
+    >
+      <div
+        ref={modalRef}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="
+  w-[92vw] sm:w-[640px] lg:w-[680px]
+  bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl
+  max-h-[95vh] sm:max-h-[90vh]
+  flex flex-col overflow-hidden
+  animate-[scaleIn_150ms_ease-out]
+"
+      >
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b px-4 sm:px-4 py-3 flex items-center justify-between">
+          <h2 id="ot-modal-title" className="text-base sm:text-lg font-semibold">
+            Offset Details
+          </h2>
+          <button
+            onClick={onClose}
+            className="rounded-lg hover:bg-gray-100 active:scale-[.98] transition"
+            aria-label="Close"
+            ref={firstFieldRef}
+          >
+            <AiOutlineClose className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="px-4 sm:px-4 py-2 overflow-y-auto">
+          {/* Meta badges */}
+          <div className="mb-3 flex flex-wrap gap-2 text-xs">
+            {formData.offsetType ? (
+              <span className="inline-flex items-center rounded-full border px-2 py-1">
+                Type: <span className="ml-1 font-medium">{formData.offsetType}</span>
+              </span>
+            ) : null}
+            {formData.offsetHrs ? (
+              <span className="inline-flex items-center rounded-full border px-2 py-1">
+                Hours: <span className="ml-1 font-medium">{formData.offsetHrs}</span>
+              </span>
+            ) : null}
+          </div>
+
+          <div>
+            <label className="block text-gray-700 text-sm mb-1 text-xs">
+              Employee Name
+            </label>
+            <input
+              className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs"
+              value={formData.empName || ""}
+              readOnly
+              disabled
+            />
+          </div>
+
+          <div className="mt-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-2">
+            <div>
+              <label className="block text-gray-700 text-sm mb-1 text-xs">
+                Source Date
+              </label>
+              <input
+                type="date"
+                className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs"
+                value={formData.sourceDate || ""}
+                readOnly
+                disabled
+              />
+            </div>
+
+            <div>
+              <label className="block text-gray-700 text-sm mb-1 text-xs">
+                Offset Date
+              </label>
+              <input
+                type="date"
+                className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs"
+                value={formData.offsetDate || ""}
+                readOnly
+                disabled
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-gray-700 text-sm mb-1 text-xs">
+                Hours
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                name="offsetHrs"
+                className="border rounded-md px-3 py-2 w-full text-xs"
+                value={formData.offsetHrs}
+                inputMode="decimal"
+                disabled
+              />
+            </div>
+          </div>
+
+          {/* Employee Remarks */}
+          <div className="mt-2">
+            <label className="block text-gray-700 text-sm mb-1 text-xs">
+              Remarks
+            </label>
+            <textarea
+              name="offsetRemarks"
+              value={formData.offsetRemarks}
+              className="w-full border rounded-md px-3 py-2 min-h-16 resize-y text-xs"
+              disabled
+            />
+          </div>
+
+          {/* Approver Remarks */}
+          <div className="mt-2">
+            <label className="block text-gray-700 text-sm mb-1 text-xs">
+              Approver’s Remarks
+            </label>
+            <textarea
+              name="approverRemarks"
+              value={formData.approverRemarks}
+              onChange={handleChange}
+              className="w-full border rounded-md px-3 py-2 min-h-16 resize-y text-xs"
+              placeholder="Optional notes…"
+            />
+          </div>
+        </div>
+
+        {/* Sticky Footer */}
+        <div className="sticky bottom-0 bg-white/95 backdrop-blur border-t px-4 sm:px-6 py-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-end text-sm">
+            <button
+              type="button"
+              className="w-full sm:w-auto px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 active:scale-[.99] transition disabled:opacity-60"
+              onClick={handleDisapprove}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Processing…" : "Disapprove"}
+            </button>
+
+            <button
+              type="button"
+              ref={lastFocusableRef}
+              className="w-full sm:w-auto px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 active:scale-[.99] transition disabled:opacity-60"
+              onClick={handleApprove}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Processing…" : "Approve"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes scaleIn { from { transform: translateY(8px) scale(.98); opacity: .98 } to { transform: translateY(0) scale(1); opacity: 1 } }
+      `}</style>
+    </div>
+  );
+};
+
+export default OffsetReview;

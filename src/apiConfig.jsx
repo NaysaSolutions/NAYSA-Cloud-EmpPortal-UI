@@ -71,7 +71,15 @@ const API_ENDPOINTS = {
     payslipMain:             `${API_BASE_URL}/reports/payslip`,
     payslipLV:               `${API_BASE_URL}/reports/payslipLV`,
     payslipLN:               `${API_BASE_URL}/reports/payslipLN`,
-    payslipYTD:              `${API_BASE_URL}/reports/payslipYTD`,
+    
+
+    upsertOffset:            `${API_BASE_URL}/upsertOffset`,
+    cancelOffset:            `${API_BASE_URL}/cancelOffset`,
+    getOffsetAppHistory:     `${API_BASE_URL}/getOffsetAppHistory`,
+    getDTROffset:            `${API_BASE_URL}/getDTROffset`,
+    getOffsetApprInq:        `${API_BASE_URL}/getOffsetApprInq`,
+    getOffsetApprHistory:    `${API_BASE_URL}/getOffsetApprHistory`,
+    ApprovalOffset:          `${API_BASE_URL}/approvalOffset`,
 
 };
 

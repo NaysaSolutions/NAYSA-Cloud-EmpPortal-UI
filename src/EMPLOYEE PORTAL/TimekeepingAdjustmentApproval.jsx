@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import dayjs from "dayjs";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import { useAuth } from "./AuthContext.jsx";
 import TimekeepingAdjustmentReview from "./TimekeepingAdjustmentReview.jsx";
+import Swal from "sweetalert2";
 
 // ---- Shared UI helpers (same look/feel as OT/Leave/OB) ----------------------
 const badgeClass = (status) => {
@@ -43,6 +44,9 @@ const TimekeepingAdjustmentApproval = () => {
   const [history, setHistory] = useState([]);
   const [selected, setSelected] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [selectedRows, setSelectedRows] = useState([]);
+
+  const selectAllRef = useRef(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -103,11 +107,102 @@ const TimekeepingAdjustmentApproval = () => {
     setShowModal(true);
   };
 
+  const toggleRow = (index) => {
+    setSelectedRows((prev) => {
+      if (prev.includes(index)) {
+        return prev.filter((i) => i !== index);
+      } else {
+        return [...prev, index];
+      }
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRows.length === pending.length) {
+      setSelectedRows([]);
+    } else {
+      setSelectedRows(pending.map((_, index) => index));
+    }
+  };
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate =
+        selectedRows.length > 0 && selectedRows.length < pending.length;
+    }
+  }, [selectedRows, pending]);
+
+const sendBulkDecision = async (appStat) => {
+  if (selectedRows.length === 0) return;
+
+  const confirm = await Swal.fire({
+    title: appStat === 1 ? "Approve Selected?" : "Disapprove Selected?",
+    text: `You are about to ${
+      appStat === 1 ? "approve" : "disapprove"
+    } ${selectedRows.length} DTR request(s).`,
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonColor: appStat === 1 ? "#2563eb" : "#dc2626",
+  });
+
+  if (!confirm.isConfirmed) return;
+
+  try {
+    for (let index of selectedRows) {
+      const row = pending[index];
+
+      const payload = {
+        json_data: JSON.stringify({
+          json_data: {
+            empNo: row.empno,
+            appRemarks: "",
+            dtrStamp: row.dtrStamp,
+            appStat,
+            appUser: user.empNo,
+            appDatetime: row.actualTime,
+          },
+        }),
+      };
+
+      await fetch(API_ENDPOINTS.approvalDTR, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    }
+
+    await Swal.fire({
+      title: appStat === 1
+        ? "Approval Successful"
+        : "Disapproval Successful",
+      text: appStat === 1
+        ? "Selected DTR request(s) have been approved."
+        : "Selected DTR request(s) have been disapproved.",
+      icon: "success",
+    });
+
+    setSelectedRows([]);
+    fetchAll();
+
+  } catch (err) {
+    await Swal.fire({
+      title: "Error",
+      text: appStat === 1
+        ? "Approval failed."
+        : "Disapproval failed.",
+      icon: "error",
+    });
+  }
+};
+
+
   return (
     <div className="ml-0 lg:ml-[200px] mt-[80px] p-4 bg-gray-100 min-h-screen">
       <div className="mx-auto">
         <div className="global-div-header-ui">
-          <h1 className="global-div-headertext-ui">Timekeeping Adjustment Approval</h1>
+          <h1 className="global-div-headertext-ui">
+            Timekeeping Adjustment Approval
+          </h1>
         </div>
 
         {/* PENDING */}
@@ -115,7 +210,9 @@ const TimekeepingAdjustmentApproval = () => {
           <h2 className="text-lg font-bold mb-4">Pending DTR Adjustments</h2>
           {error && <p className="text-red-500 text-center">{error}</p>}
           {loading && (
-            <div className="py-6 text-center text-slate-500 text-sm">Loading…</div>
+            <div className="py-6 text-center text-slate-500 text-sm">
+              Loading…
+            </div>
           )}
 
           {/* Mobile: Cards / Accordion */}
@@ -132,12 +229,15 @@ const TimekeepingAdjustmentApproval = () => {
                         {r.empname}
                       </span>
                       <span className="text-xs text-slate-500">
-                        {r.dtrType || "Adjustment"} • {dayjs(r.dtrDate).format("MM/DD/YYYY")}
+                        {r.dtrType || "Adjustment"} •{" "}
+                        {dayjs(r.dtrDate).format("MM/DD/YYYY")}
                       </span>
                     </div>
 
                     <div className="mt-3 flex flex-col items-end text-xs gap-2">
-                      <span className={badgeClass(r.dtrStatus)}>{r.dtrStatus || "Pending"}</span>
+                      <span className={badgeClass(r.dtrStatus)}>
+                        {r.dtrStatus || "Pending"}
+                      </span>
                       <button
                         className="text-[12px] bg-blue-500 text-white px-5 py-1 rounded-lg hover:bg-blue-600 transition"
                         onClick={() => openReview(r)}
@@ -151,12 +251,16 @@ const TimekeepingAdjustmentApproval = () => {
                     <Labeled label="Actual Time">
                       {dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm A")}
                     </Labeled>
-                    <Labeled label="Applicant Remarks">{r.dtrRemarks || "N/A"}</Labeled>
+                    <Labeled label="Applicant Remarks">
+                      {r.dtrRemarks || "N/A"}
+                    </Labeled>
                   </div>
                 </details>
               ))
             ) : !loading ? (
-              <div className="py-4 text-center text-gray-500">No pending requests.</div>
+              <div className="py-4 text-center text-gray-500">
+                No pending requests.
+              </div>
             ) : null}
           </div>
 
@@ -165,18 +269,50 @@ const TimekeepingAdjustmentApproval = () => {
             <table className="min-w-full text-center text-sm lg:text-base border">
               <thead className="global-thead-approval sticky top-0 z-10">
                 <tr className="border-b">
-                  <th className="global-th text-left whitespace-nowrap">Employee</th>
-                  <th className="global-th text-left whitespace-nowrap">Type</th>
-                  <th className="global-th text-left whitespace-nowrap">Shift Date</th>
-                  <th className="global-th text-left whitespace-nowrap">Actual Time</th>
-                  <th className="global-th text-left whitespace-nowrap">Remarks</th>
-                  <th className="global-th text-center whitespace-nowrap">Action</th>
+                  <th className="global-th text-center whitespace-nowrap">
+                    <input
+                      ref={selectAllRef}
+                      type="checkbox"
+                      checked={
+                        pending.length > 0 &&
+                        selectedRows.length === pending.length
+                      }
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                  <th className="global-th text-left whitespace-nowrap">
+                    Employee
+                  </th>
+                  <th className="global-th text-left whitespace-nowrap">
+                    Type
+                  </th>
+                  <th className="global-th text-left whitespace-nowrap">
+                    Shift Date
+                  </th>
+                  <th className="global-th text-left whitespace-nowrap">
+                    Actual Time
+                  </th>
+                  <th className="global-th text-left whitespace-nowrap">
+                    Remarks
+                  </th>
+                  <th className="global-th text-center whitespace-nowrap">
+                    Action
+                  </th>
                 </tr>
               </thead>
+
               <tbody className="global-tbody">
                 {pending.length > 0 ? (
                   pending.map((r, i) => (
                     <tr key={`p-desktop-${i}`} className="global-tr">
+                      <td className="global-td-approval text-center whitespace-nowrap">
+                        <input
+                          type="checkbox"
+                          checked={selectedRows.includes(i)}
+                          onChange={() => toggleRow(i)}
+                        />
+                      </td>
+
                       <td className="global-td-approval text-left whitespace-nowrap">
                         {r.empname}
                       </td>
@@ -204,13 +340,30 @@ const TimekeepingAdjustmentApproval = () => {
                   ))
                 ) : !loading ? (
                   <tr>
-                    <td colSpan="6" className="p-2 text-center text-gray-500">
+                    <td colSpan="7" className="p-2 text-center text-gray-500">
                       No pending requests.
                     </td>
                   </tr>
                 ) : null}
               </tbody>
             </table>
+            {selectedRows.length > 0 && (
+              <div className="flex justify-end gap-2 mb-1 mt-8">
+                <button
+                  className="px-3 py-1 text-sm rounded-md bg-red-500 text-white hover:bg-red-600 transition"
+                  onClick={() => sendBulkDecision(0)}
+                >
+                  Disapprove
+                </button>
+
+                <button
+                  className="px-3 py-1 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 transition"
+                  onClick={() => sendBulkDecision(1)}
+                >
+                  Approve
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -232,18 +385,25 @@ const TimekeepingAdjustmentApproval = () => {
                         {r.empname}
                       </span>
                       <span className="text-xs text-slate-500">
-                        {r.dtrType || "Adjustment"} • {dayjs(r.dtrDate).format("MM/DD/YYYY")}
+                        {r.dtrType || "Adjustment"} •{" "}
+                        {dayjs(r.dtrDate).format("MM/DD/YYYY")}
                       </span>
                     </div>
-                    <span className={badgeClass(r.dtrStatus)}>{r.dtrStatus}</span>
+                    <span className={badgeClass(r.dtrStatus)}>
+                      {r.dtrStatus}
+                    </span>
                   </summary>
 
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Labeled label="Actual Time">
                       {dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm A")}
                     </Labeled>
-                    <Labeled label="Applicant Remarks">{r.dtrRemarks || "N/A"}</Labeled>
-                    <Labeled label="Approver Remarks">{r.appRemarks || "N/A"}</Labeled>
+                    <Labeled label="Applicant Remarks">
+                      {r.dtrRemarks || "N/A"}
+                    </Labeled>
+                    <Labeled label="Approver Remarks">
+                      {r.appRemarks || "N/A"}
+                    </Labeled>
                   </div>
                 </details>
               ))
@@ -257,13 +417,27 @@ const TimekeepingAdjustmentApproval = () => {
             <table className="min-w-full text-center text-sm lg:text-base border">
               <thead className="global-thead-approval sticky top-0 z-10">
                 <tr className="border-b">
-                  <th className="global-th text-left whitespace-nowrap">Employee</th>
-                  <th className="global-th text-left whitespace-nowrap">Type</th>
-                  <th className="global-th text-left whitespace-nowrap">Shift Date</th>
-                  <th className="global-th text-left whitespace-nowrap">Actual Time</th>
-                  <th className="global-th text-left whitespace-nowrap">Applicant Remarks</th>
-                  <th className="global-th text-left whitespace-nowrap">Approver Remarks</th>
-                  <th className="global-th text-center whitespace-nowrap">Status</th>
+                  <th className="global-th text-left whitespace-nowrap">
+                    Employee
+                  </th>
+                  <th className="global-th text-left whitespace-nowrap">
+                    Type
+                  </th>
+                  <th className="global-th text-left whitespace-nowrap">
+                    Shift Date
+                  </th>
+                  <th className="global-th text-left whitespace-nowrap">
+                    Actual Time
+                  </th>
+                  <th className="global-th text-left whitespace-nowrap">
+                    Applicant Remarks
+                  </th>
+                  <th className="global-th text-left whitespace-nowrap">
+                    Approver Remarks
+                  </th>
+                  <th className="global-th text-center whitespace-nowrap">
+                    Status
+                  </th>
                 </tr>
               </thead>
               <tbody className="global-tbody">
@@ -289,7 +463,9 @@ const TimekeepingAdjustmentApproval = () => {
                         {r.appRemarks || "N/A"}
                       </td>
                       <td className="global-td-approval text-center whitespace-nowrap">
-                        <span className={badgeClass(r.dtrStatus)}>{r.dtrStatus}</span>
+                        <span className={badgeClass(r.dtrStatus)}>
+                          {r.dtrStatus}
+                        </span>
                       </td>
                     </tr>
                   ))

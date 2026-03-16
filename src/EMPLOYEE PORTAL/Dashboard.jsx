@@ -51,7 +51,6 @@ const Dashboard = () => {
 
   const [approvalsum, setApprovalsum] = useState(DEFAULT_SUM);
 
-
   useEffect(() => {
     const handleScroll = () => {
       setShowBackToTop(window.scrollY > 300);
@@ -62,11 +61,10 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-  if (!authLoading && user?.empNo) {
-    fetchDashboardData();
-  }
-}, [authLoading, user?.empNo]);
-
+    if (!authLoading && user?.empNo) {
+      fetchDashboardData();
+    }
+  }, [authLoading, user?.empNo]);
 
   const startBreakCountdown = () => {
     setBreakTime(3600); // reset to 1 hour or your desired countdown
@@ -95,8 +93,8 @@ const Dashboard = () => {
   }, []);
   // If no user is logged in, return an empty container
   if (authLoading) {
-  return <div className="p-6">Loading...</div>;
-}
+    return <div className="p-6">Loading...</div>;
+  }
 
   const fetchDashboardData = async () => {
     if (!user || !user.empNo) return;
@@ -141,19 +139,20 @@ const Dashboard = () => {
         setOfficialBusinessApplication(employee.obApplication || []);
 
         const raw = employee.approvalsum;
-        const one = Array.isArray(raw) ? (raw[0] || DEFAULT_SUM) : (raw || DEFAULT_SUM);
+        const one = Array.isArray(raw)
+          ? raw[0] || DEFAULT_SUM
+          : raw || DEFAULT_SUM;
 
         setApprovalsum({
           LVApplicationCount: Number(one.LVApplicationCount ?? 0),
-          LVApprovalCount:  Number(one.LVApprovalCount ?? 0),
+          LVApprovalCount: Number(one.LVApprovalCount ?? 0),
           OTApplicationCount: Number(one.OTApplicationCount ?? 0),
-          OTApprovalCount:  Number(one.OTApprovalCount ?? 0),
+          OTApprovalCount: Number(one.OTApprovalCount ?? 0),
           OBApplicationCount: Number(one.OBApplicationCount ?? 0),
-          OBApprovalCount:  Number(one.OBApprovalCount ?? 0),
+          OBApprovalCount: Number(one.OBApprovalCount ?? 0),
           DTRApplicationCount: Number(one.DTRApplicationCount ?? 0),
-          DTRApprovalCount:  Number(one.DTRApprovalCount ?? 0),
+          DTRApprovalCount: Number(one.DTRApprovalCount ?? 0),
         });
-
       } else {
         setError("API response format is incorrect or no data found.");
       }
@@ -322,7 +321,6 @@ const Dashboard = () => {
   //   (ob) => ob.obstatus === "Pending"
   // ).length;
 
-
   return (
     <div className="mt-[80px] p-4 bg-gray-100 min-h-screen ml-0 lg:ml-[200px]">
       {/* Header */}
@@ -348,11 +346,11 @@ const Dashboard = () => {
                 {time || "00:00 PM"}
               </p>
             </div>
-            
-          <div className="w-full md:w-auto flex justify-center">
-            <button
-              onClick={() => navigate("/timekeeping")}
-              className="
+
+            <div className="w-full md:w-auto flex justify-center">
+              <button
+                onClick={() => navigate("/timekeeping")}
+                className="
                 bg-gradient-to-b from-blue-500 to-blue-700
                 border border-blue-800
                 text-white font-semibold tracking-wide
@@ -365,12 +363,11 @@ const Dashboard = () => {
                 active:translate-y-[2px]
                 w-full sm:w-auto
               "
-            >
-              <FontAwesomeIcon icon={faClock} size="lg" className="mr-2" />
-              Timekeeping
-            </button>
-          </div>
-
+              >
+                <FontAwesomeIcon icon={faClock} size="lg" className="mr-2" />
+                Timekeeping
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -384,7 +381,9 @@ const Dashboard = () => {
           <h3 className="font-bold text-[11px] md:text-base">
             Pending LV Applications
           </h3>
-          <p className="text-xl md:text-2xl">{approvalsum?.LVApplicationCount ?? 0}</p>
+          <p className="text-xl md:text-2xl">
+            {approvalsum?.LVApplicationCount ?? 0}
+          </p>
         </div>
         <div
           className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
@@ -393,7 +392,9 @@ const Dashboard = () => {
           <h3 className="font-bold text-[11px] md:text-base">
             Pending OT Applications
           </h3>
-          <p className="text-xl md:text-2xl">{approvalsum?.OTApplicationCount ?? 0}</p>
+          <p className="text-xl md:text-2xl">
+            {approvalsum?.OTApplicationCount ?? 0}
+          </p>
         </div>
         <div
           className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
@@ -402,7 +403,9 @@ const Dashboard = () => {
           <h3 className="font-bold text-[11px] md:text-base">
             Pending OB Applications
           </h3>
-          <p className="text-xl md:text-2xl">{approvalsum?.OBApplicationCount ?? 0}</p>
+          <p className="text-xl md:text-2xl">
+            {approvalsum?.OBApplicationCount ?? 0}
+          </p>
         </div>
         <div
           className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
@@ -411,7 +414,9 @@ const Dashboard = () => {
           <h3 className="font-bold text-[11px] md:text-base">
             Pending DTR Applications
           </h3>
-          <p className="text-xl md:text-2xl">{approvalsum?.DTRApplicationCount ?? 0}</p>
+          <p className="text-xl md:text-2xl">
+            {approvalsum?.DTRApplicationCount ?? 0}
+          </p>
         </div>
       </div>
 
@@ -425,7 +430,9 @@ const Dashboard = () => {
               <h3 className="font-bold text-[11px] md:text-base">
                 Pending LV for my Approval
               </h3>
-              <p className="text-xl md:text-2xl">{approvalsum?.LVApprovalCount ?? 0}</p>
+              <p className="text-xl md:text-2xl">
+                {approvalsum?.LVApprovalCount ?? 0}
+              </p>
             </div>
             <div
               className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
@@ -434,7 +441,9 @@ const Dashboard = () => {
               <h3 className="font-bold text-[11px] md:text-base">
                 Pending OT for my Approval
               </h3>
-              <p className="text-xl md:text-2xl">{approvalsum?.OTApprovalCount ?? 0}</p>
+              <p className="text-xl md:text-2xl">
+                {approvalsum?.OTApprovalCount ?? 0}
+              </p>
             </div>
             <div
               className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
@@ -443,7 +452,9 @@ const Dashboard = () => {
               <h3 className="font-bold text-[11px] md:text-base">
                 Pending OB for my Approval
               </h3>
-              <p className="text-xl md:text-2xl">{approvalsum?.OBApprovalCount ?? 0}</p>
+              <p className="text-xl md:text-2xl">
+                {approvalsum?.OBApprovalCount ?? 0}
+              </p>
             </div>
             <div
               className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
@@ -452,7 +463,9 @@ const Dashboard = () => {
               <h3 className="font-bold text-[11px] md:text-base">
                 Pending DTR for my Approval
               </h3>
-              <p className="text-xl md:text-2xl">{approvalsum?.DTRApprovalCount ?? 0}</p>
+              <p className="text-xl md:text-2xl">
+                {approvalsum?.DTRApprovalCount ?? 0}
+              </p>
             </div>
           </div>
         </>
@@ -558,7 +571,7 @@ const Dashboard = () => {
           {/* <div className="items-center justify-center"> */}
           {/* Weekday Names */}
           <div className="grid grid-cols-7 text-center font-semibold text-gray-600 mb-1 ml-6 mx-auto text-[0.80rem] sm:text-[0.80rem] md:text-[0.90rem] lg:text-[15px]">
-            {["Sun","Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
               (day, idx) => (
                 <div
                   key={idx}
@@ -566,7 +579,7 @@ const Dashboard = () => {
                 >
                   {day}
                 </div>
-              )
+              ),
             )}
           </div>
 
@@ -587,7 +600,7 @@ const Dashboard = () => {
                 const holiday = holidays.find(
                   (h) =>
                     dayjs(h.holdate).date() === day.day &&
-                    dayjs(h.holdate).month() === currentMonth.month()
+                    dayjs(h.holdate).month() === currentMonth.month(),
                 );
                 tooltipText = holiday?.holtype || "Holiday";
               } else if (day.isApprovedLeave) {
@@ -679,7 +692,7 @@ const Dashboard = () => {
                           : "N/A"}
                       </td>
                       <td className="dashboard-td text-right">
-                        {record.reg_hrs.toLocaleString("en-US", {
+                        {(record.reg_hrs || 0).toLocaleString("en-US", {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
@@ -816,8 +829,8 @@ const Dashboard = () => {
                       ot.otstatus === "Pending"
                         ? "bg-yellow-100 text-yellow-600"
                         : ot.otstatus === "Approved"
-                        ? "bg-blue-100 text-blue-600"
-                        : "bg-red-100 text-red-600"
+                          ? "bg-blue-100 text-blue-600"
+                          : "bg-red-100 text-red-600"
                     }`}
                         >
                           {ot.otstatus}
@@ -882,8 +895,8 @@ const Dashboard = () => {
         leave.leavestatus === "Pending"
           ? "bg-yellow-100 text-yellow-700"
           : leave.leavestatus === "Approved"
-          ? "bg-blue-100 text-blue-700"
-          : "bg-red-100 text-red-700"
+            ? "bg-blue-100 text-blue-700"
+            : "bg-red-100 text-red-700"
       }`}
                         >
                           {leave.leavestatus}
@@ -960,8 +973,8 @@ const Dashboard = () => {
         ob.obstatus === "Pending"
           ? "bg-yellow-100 text-yellow-700"
           : ob.obstatus === "Approved"
-          ? "bg-blue-100 text-blue-700"
-          : "bg-red-100 text-red-700"
+            ? "bg-blue-100 text-blue-700"
+            : "bg-red-100 text-red-700"
       }`}
                         >
                           {ob.obstatus}
@@ -1040,8 +1053,8 @@ const Dashboard = () => {
                       ot.otstatus === "Pending"
                         ? "bg-yellow-100 text-yellow-600"
                         : ot.otstatus === "Approved"
-                        ? "bg-blue-100 text-blue-600"
-                        : "bg-red-100 text-red-600"
+                          ? "bg-blue-100 text-blue-600"
+                          : "bg-red-100 text-red-600"
                     }`}
                             >
                               {ot.otstatus}
@@ -1120,8 +1133,8 @@ const Dashboard = () => {
               leave.leavestatus === "Pending"
                 ? "bg-yellow-100 text-yellow-600"
                 : leave.leavestatus === "Approved"
-                ? "bg-blue-100 text-blue-600"
-                : "bg-red-100 text-red-600"
+                  ? "bg-blue-100 text-blue-600"
+                  : "bg-red-100 text-red-600"
             }`}
                             >
                               {leave.leavestatus}
@@ -1204,8 +1217,8 @@ const Dashboard = () => {
                         ob.obstatus === "Pending"
                           ? "bg-yellow-100 text-yellow-600"
                           : ob.obstatus === "Approved"
-                          ? "bg-blue-100 text-blue-600"
-                          : "bg-red-100 text-red-600"
+                            ? "bg-blue-100 text-blue-600"
+                            : "bg-red-100 text-red-600"
                       }`}
                             >
                               {ob.obstatus}
