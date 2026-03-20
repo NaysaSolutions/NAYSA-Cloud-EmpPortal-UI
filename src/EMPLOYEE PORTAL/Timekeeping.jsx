@@ -971,7 +971,7 @@ const handleExport = () => {
         ];
 
         // if (isImageCaptureRequired) {
-        //     row.push(`"${record.time_in_image_id ? `${IMAGE_BASE_URL}/${record.time_in_image_id}.jpeg` : "N/A"}"`);
+        //     row.push(`"${record.time_in_image_id ? `${IMAGE_BASE_URL}/${record.time_in_image_id}.jpg` : "N/A"}"`);
         // }
         if (isLocationRequired) {
             row.push(`"${record.time_in_address || "N/A"}"`);
@@ -984,7 +984,7 @@ const handleExport = () => {
         );
 
         // if (isImageCaptureRequired) {
-        //     row.push(`"${record.time_out_image_id ? `${IMAGE_BASE_URL}/${record.time_out_image_id}.jpeg` : "N/A"}"`);
+        //     row.push(`"${record.time_out_image_id ? `${IMAGE_BASE_URL}/${record.time_out_image_id}.jpg` : "N/A"}"`);
         // }
         if (isLocationRequired) {
             row.push(`"${record.time_out_address || "N/A"}"`);

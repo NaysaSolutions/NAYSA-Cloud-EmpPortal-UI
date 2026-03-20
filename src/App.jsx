@@ -342,11 +342,21 @@ const Layout = ({ children }) => (
   </div>
 );
 
+<<<<<<< Updated upstream
+=======
+
+>>>>>>> Stashed changes
 // ✅ FIXED ProtectedRoute: wait for auth restore before redirecting
 const ProtectedRoute = ({ children }) => {
   const { user, authLoading } = useAuth();
 
+<<<<<<< Updated upstream
   if (authLoading) return null;
+=======
+  // IMPORTANT: prevents redirect during refresh rehydrate
+  if (authLoading) return null; // or your loading component/spinner
+
+>>>>>>> Stashed changes
   return user ? children : <Navigate to="/" replace />;
 };
 
