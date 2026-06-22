@@ -1,7 +1,3 @@
-<<<<<<< Updated upstream
-=======
-
->>>>>>> Stashed changes
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -33,7 +29,6 @@ import Register from "./NAYSA Cloud/Register";
 import ForgotPassword from "./Authentication/ForgotPassword";
 import ScrollToTop from "./components/ScrollToTop";
 
-<<<<<<< Updated upstream
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -43,8 +38,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-=======
->>>>>>> Stashed changes
 
 const App = () => {
   return (
@@ -102,173 +95,11 @@ const App = () => {
             <Route path="/OfficialBusinessApproval" element={<ProtectedRoute><Layout><OfficialBusinessApproval /></Layout></ProtectedRoute>} />
             <Route path="/OfficialBusinessReview" element={<ProtectedRoute><Layout><OfficialBusinessReview /></Layout></ProtectedRoute>} />
 
-<<<<<<< Updated upstream
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Router>
       </AuthProvider>
     </QueryClientProvider>
-=======
-          <Route
-            path="/timekeepingFaceEnroll"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TimekeepingEnrollment />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/timekeepingAdj"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TimekeepingAdjustment />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/timekeepingAdjApproval"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TimekeepingAdjustmentApproval />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/timekeepingAdjReview"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <TimekeepingAdjustmentReview />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/payslipviewer"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <PayslipViewer />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/leave"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Leave />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/leaveApproval"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <LeaveApproval />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/leave-review"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <LeaveReview />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/overtime"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Overtime />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/overtimeApproval"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <OvertimeApproval />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/overtime-review"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <OvertimeReview />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/official-business"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <OfficialBusiness />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/OfficialBusinessApproval"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <OfficialBusinessApproval />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/OfficialBusinessReview"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <OfficialBusinessReview />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-
-          {/* OPTIONAL: catch-all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
-    </AuthProvider>
->>>>>>> Stashed changes
   );
 };
 
@@ -282,20 +113,9 @@ const Layout = ({ children }) => (
   </div>
 );
 
-<<<<<<< Updated upstream
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
   return user ? children : <Navigate to="/" />;
-=======
-// ✅ FIXED ProtectedRoute: wait for auth restore before redirecting
-const ProtectedRoute = ({ children }) => {
-  const { user, authLoading } = useAuth();
-
-  // IMPORTANT: prevents redirect during refresh rehydrate
-  if (authLoading) return null; // or your loading component/spinner
-
-  return user ? children : <Navigate to="/" replace />;
->>>>>>> Stashed changes
 };
 
 export default App;

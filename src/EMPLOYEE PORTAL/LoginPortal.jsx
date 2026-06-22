@@ -23,7 +23,6 @@ function LoginPortal() {
     const [showPassword, setShowPassword] = useState(false);
 
 
-<<<<<<< Updated upstream
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({
@@ -40,7 +39,6 @@ function LoginPortal() {
     empno: formData.empno.trim(),
     password: formData.password.trim(),
   };
-=======
 const handleSubmit = async (e) => {
   e.preventDefault();
   setLoading(true);
@@ -93,7 +91,6 @@ const handleSubmit = async (e) => {
     setLoading(false);
   }
 };
->>>>>>> Stashed changes
 
   const loadingToast = toast.loading("Signing in...", {
     description: "Please wait while we verify your account.",

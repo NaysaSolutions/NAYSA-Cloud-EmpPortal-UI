@@ -364,18 +364,11 @@ const Dashboard = () => {
                 active:translate-y-[2px]
                 w-full sm:w-auto
               "
-<<<<<<< Updated upstream
-              >
-                <FontAwesomeIcon icon={faClock} size="lg" className="mr-2" />
-                Timekeeping
-              </button>
-            </div>
-=======
             >
               <FontAwesomeIcon icon={faClock} size="lg" className="mr-2" />
               Timekeeping
             </button>
-            <button
+            {/* <button
   onClick={() =>
     navigate("/timekeepingFaceEnroll", {
       state: {
@@ -399,10 +392,9 @@ const Dashboard = () => {
               "
             >
   Face Enrollment
-</button>
+</button> */}
           </div>
 
->>>>>>> Stashed changes
           </div>
         </div>
       </div>

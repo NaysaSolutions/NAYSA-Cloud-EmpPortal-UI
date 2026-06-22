@@ -5,20 +5,17 @@
 // const IMAGE_BASE_URL  = "https://api.nemarph.com:81/images/timekeeping_images";
 
 // DEPLOYMENT
-const API_BASE_URL   = "/api";                // Laravel API endpoints
-const MODEL_BASE_URL = "/models";             // If you have a route/controller serving models
-const IMAGE_BASE_URL = "/images";
+// const API_BASE_URL   = "/api";                // Laravel API endpoints
+// const MODEL_BASE_URL = "/models";             // If you have a route/controller serving models
+// const IMAGE_BASE_URL = "/images";
 
 // LOCALHOST
-<<<<<<< Updated upstream
-=======
 // const API_BASE_URL = "/api";
 // const IMAGE_BASE_URL  = "/images/timekeeping_images";
 const MODEL_BASE_URL = "/models";
 const IMAGE_BASE_URL = import.meta.env.VITE_IMAGE_BASE_URL || "http://127.0.0.1:8000/images/timekeeping_images";
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
->>>>>>> Stashed changes
 // const API_BASE_URL = "http://127.0.0.1:8000/api";
 // const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
 // const IMAGE_BASE_URL  = "http://127.0.0.1:8000/images/timekeeping_images";
@@ -82,7 +79,6 @@ const API_ENDPOINTS = {
     faceioDelete:  `${API_BASE_URL}/faceio/delete`,
 
     // Payslip
-<<<<<<< Updated upstream
     payslipMain:             `${API_BASE_URL}/reports/payslip`,
     payslipLV:               `${API_BASE_URL}/reports/payslipLV`,
     payslipLN:               `${API_BASE_URL}/reports/payslipLN`,
@@ -97,12 +93,6 @@ const API_ENDPOINTS = {
     getOffsetApprInq:        `${API_BASE_URL}/getOffsetApprInq`,
     getOffsetApprHistory:    `${API_BASE_URL}/getOffsetApprHistory`,
     ApprovalOffset:          `${API_BASE_URL}/approvalOffset`,
-=======
-    payslipMain:    `${API_BASE_URL}/reports/payslip`,
-    payslipLV:      `${API_BASE_URL}/reports/payslipLV`,
-    payslipLN:      `${API_BASE_URL}/reports/payslipLN`,
-    payslipYTD:     `${API_BASE_URL}/reports/payslipYTD`,
->>>>>>> Stashed changes
 
 };
 
