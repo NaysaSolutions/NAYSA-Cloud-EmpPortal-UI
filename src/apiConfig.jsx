@@ -10,6 +10,15 @@ const MODEL_BASE_URL = "/models";             // If you have a route/controller 
 const IMAGE_BASE_URL = "/images";
 
 // LOCALHOST
+<<<<<<< Updated upstream
+=======
+// const API_BASE_URL = "/api";
+// const IMAGE_BASE_URL  = "/images/timekeeping_images";
+const MODEL_BASE_URL = "/models";
+const IMAGE_BASE_URL = import.meta.env.VITE_IMAGE_BASE_URL || "http://127.0.0.1:8000/images/timekeeping_images";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+
+>>>>>>> Stashed changes
 // const API_BASE_URL = "http://127.0.0.1:8000/api";
 // const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
 // const IMAGE_BASE_URL  = "http://127.0.0.1:8000/images/timekeeping_images";
@@ -18,56 +27,62 @@ const IMAGE_BASE_URL = "/images";
 
 const API_ENDPOINTS = {
     //AUTHENTICATION
-    login: `${API_BASE_URL}/dashBoard`,
-    regEmp: `${API_BASE_URL}/regEmp`,
-    loginEmp: `${API_BASE_URL}/loginEmp`,
-    dashBoard: `${API_BASE_URL}/dashBoard`,
+    login:      `${API_BASE_URL}/dashBoard`,
+    regEmp:     `${API_BASE_URL}/regEmp`,
+    loginEmp:   `${API_BASE_URL}/loginEmp`,
+    dashBoard:  `${API_BASE_URL}/dashBoard`,
 
     //Overtime
-    fetchOvertimeApplications: `${API_BASE_URL}/getOTAppHistory`,
-    saveOvertimeApplication: `${API_BASE_URL}/OTupsert`,
-    cancelOvertimeApplication: `${API_BASE_URL}/cancelOT`,
+    fetchOvertimeApplications:  `${API_BASE_URL}/getOTAppHistory`,
+    saveOvertimeApplication:    `${API_BASE_URL}/OTupsert`,
+    cancelOvertimeApplication:  `${API_BASE_URL}/cancelOT`,
     OvertimeHistoryApplication: `${API_BASE_URL}/getOTApprInq`,
-    approvedOvertimeHistory: `${API_BASE_URL}/getOTApprHistory`,
-    overtimeApproval: `${API_BASE_URL}/approvalOT`,
+    approvedOvertimeHistory:    `${API_BASE_URL}/getOTApprHistory`,
+    overtimeApproval:           `${API_BASE_URL}/approvalOT`,
     
     //Leave
-     fetchLeaveApplications: `${API_BASE_URL}/getLVAppHistory`,
-     leaveTypes: `${API_BASE_URL}/leaveTypes`,
-     cancelLeaveApplication: `${API_BASE_URL}/cancelLV`,
-     fetchLeaveBalance: `${API_BASE_URL}/getLVBalance`,
-     saveLeaveApplication: `${API_BASE_URL}/upsertLV`,
-     LeaveHistoryApplication: `${API_BASE_URL}/getLVApprInq`,
-     approvedLeaveHistory: `${API_BASE_URL}/getLVApprHistory`,
-     leaveApproval: `${API_BASE_URL}/approvalLV`,
+     fetchLeaveApplications:    `${API_BASE_URL}/getLVAppHistory`,
+     leaveTypes:                `${API_BASE_URL}/leaveTypes`,
+     cancelLeaveApplication:    `${API_BASE_URL}/cancelLV`,
+     fetchLeaveBalance:         `${API_BASE_URL}/getLVBalance`,
+     saveLeaveApplication:      `${API_BASE_URL}/upsertLV`,
+     LeaveHistoryApplication:   `${API_BASE_URL}/getLVApprInq`,
+     approvedLeaveHistory:      `${API_BASE_URL}/getLVApprHistory`,
+     leaveApproval:             `${API_BASE_URL}/approvalLV`,
 
      //Official Business
-     fetchOfficialBusinessApplicationsHistory: `${API_BASE_URL}/getOBAppHistory`,
-     fetchOfficialBusinessApplications: `${API_BASE_URL}/getOBAppInq`,
-     saveOfficialBusinessApplication: `${API_BASE_URL}/upsertOB`,
-     cancelOfficialBusinessApplication: `${API_BASE_URL}/cancelOB`,
-     OfficialBusinessHistoryApplication: `${API_BASE_URL}/getOBApprInq`,
-     approvedOfficialBusinessHistory: `${API_BASE_URL}/getOBApprHistory`,
-     officialBusinessApproval: `${API_BASE_URL}/approvalOB`,
+     fetchOfficialBusinessApplicationsHistory:  `${API_BASE_URL}/getOBAppHistory`,
+     fetchOfficialBusinessApplications:         `${API_BASE_URL}/getOBAppInq`,
+     saveOfficialBusinessApplication:           `${API_BASE_URL}/upsertOB`,
+     cancelOfficialBusinessApplication:         `${API_BASE_URL}/cancelOB`,
+     OfficialBusinessHistoryApplication:        `${API_BASE_URL}/getOBApprInq`,
+     approvedOfficialBusinessHistory:           `${API_BASE_URL}/getOBApprHistory`,
+     officialBusinessApproval:                  `${API_BASE_URL}/approvalOB`,
 
      
     //DTR
-    upsertTimeIn:            `${API_BASE_URL}/upsertTimeIn`,
-    saveImage:               `${API_BASE_URL}/saveImage`,
-    getNewImageId:           `${API_BASE_URL}/getNewImageId`,
-    getDTRRecords:           `${API_BASE_URL}/dtrRecords`,
-    getEmpBranchLoc:         `${API_BASE_URL}/empBranchLocation`,
+    upsertTimeIn:         `${API_BASE_URL}/upsertTimeIn`,
+    saveImage:            `${API_BASE_URL}/saveImage`,
+    getNewImageId:        `${API_BASE_URL}/getNewImageId`,
+    getDTRRecords:        `${API_BASE_URL}/dtrRecords`,
+    getEmpBranchLoc:      `${API_BASE_URL}/empBranchLocation`,
 
-    getDTRAppInq:            `${API_BASE_URL}/getDTRAppInq`,
-    getDTRAppHistory:        `${API_BASE_URL}/getDTRAppHistory`,
-    getDTRApprInq:           `${API_BASE_URL}/getDTRApprInq`,
-    getDTRApprHistory:       `${API_BASE_URL}/getDTRApprHistory`,
-    upsertDTR:               `${API_BASE_URL}/upsertDTR`,
-    approvalDTR:             `${API_BASE_URL}/approvalDTR`,
-    cancelDTR:               `${API_BASE_URL}/cancelDTR`,  
-    confirmDTR:             `${API_BASE_URL}/dtr/confirm`,
+    getDTRAppInq:         `${API_BASE_URL}/getDTRAppInq`,
+    getDTRAppHistory:     `${API_BASE_URL}/getDTRAppHistory`,
+    getDTRApprInq:        `${API_BASE_URL}/getDTRApprInq`,
+    getDTRApprHistory:    `${API_BASE_URL}/getDTRApprHistory`,
+    upsertDTR:            `${API_BASE_URL}/upsertDTR`,
+    approvalDTR:          `${API_BASE_URL}/approvalDTR`,
+    cancelDTR:            `${API_BASE_URL}/cancelDTR`,  
+    confirmDTR:           `${API_BASE_URL}/dtr/confirm`,
+
+    // FACEIO
+    faceioCheck:   `${API_BASE_URL}/faceio/check`,
+    faceioEnroll:  `${API_BASE_URL}/faceio/enroll`,
+    faceioDelete:  `${API_BASE_URL}/faceio/delete`,
 
     // Payslip
+<<<<<<< Updated upstream
     payslipMain:             `${API_BASE_URL}/reports/payslip`,
     payslipLV:               `${API_BASE_URL}/reports/payslipLV`,
     payslipLN:               `${API_BASE_URL}/reports/payslipLN`,
@@ -82,6 +97,12 @@ const API_ENDPOINTS = {
     getOffsetApprInq:        `${API_BASE_URL}/getOffsetApprInq`,
     getOffsetApprHistory:    `${API_BASE_URL}/getOffsetApprHistory`,
     ApprovalOffset:          `${API_BASE_URL}/approvalOffset`,
+=======
+    payslipMain:    `${API_BASE_URL}/reports/payslip`,
+    payslipLV:      `${API_BASE_URL}/reports/payslipLV`,
+    payslipLN:      `${API_BASE_URL}/reports/payslipLN`,
+    payslipYTD:     `${API_BASE_URL}/reports/payslipYTD`,
+>>>>>>> Stashed changes
 
 };
 
