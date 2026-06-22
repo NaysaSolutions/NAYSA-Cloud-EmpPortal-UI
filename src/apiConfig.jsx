@@ -5,14 +5,14 @@
 // const IMAGE_BASE_URL  = "https://api.nemarph.com:81/images/timekeeping_images";
 
 // DEPLOYMENT
-// const API_BASE_URL   = "/api";                // Laravel API endpoints
-// const MODEL_BASE_URL = "/models";             // If you have a route/controller serving models
-// const IMAGE_BASE_URL = "/images/timekeeping_images";
+const API_BASE_URL   = "/api";                // Laravel API endpoints
+const MODEL_BASE_URL = "/models";             // If you have a route/controller serving models
+const IMAGE_BASE_URL = "/images";
 
 // LOCALHOST
-const API_BASE_URL = "http://127.0.0.1:8000/api";
-const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
-const IMAGE_BASE_URL  = "http://127.0.0.1:8000/images/timekeeping_images";
+// const API_BASE_URL = "http://127.0.0.1:8000/api";
+// const MODEL_BASE_URL = "http://127.0.0.1:8000/models";
+// const IMAGE_BASE_URL  = "http://127.0.0.1:8000/images/timekeeping_images";
 
 // This URL should be updated based on the environment (development, production, etc.)   
 
@@ -71,6 +71,8 @@ const API_ENDPOINTS = {
     payslipMain:             `${API_BASE_URL}/reports/payslip`,
     payslipLV:               `${API_BASE_URL}/reports/payslipLV`,
     payslipLN:               `${API_BASE_URL}/reports/payslipLN`,
+    payslipCutoff:           `${API_BASE_URL}/reports/payslipCutoff`,
+    payslipYTD:              `${API_BASE_URL}/reports/payslipYTD`,
     
 
     upsertOffset:            `${API_BASE_URL}/upsertOffset`,

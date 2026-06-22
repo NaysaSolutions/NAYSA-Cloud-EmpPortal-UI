@@ -218,7 +218,7 @@ const OBReview = ({ obData, onClose, pendingOBs, setPendingOBs, setHistory, refr
           <h2 id="ob-modal-title" className="text-base sm:text-lg font-semibold">Official Business Details</h2>
           <button
             onClick={onClose}
-            className="rounded-lg hover:bg-gray-100 active:scale-[.98] transition"
+            className="rounded-xl hover:bg-gray-100 active:scale-[.98] transition"
             aria-label="Close"
             ref={firstFieldRef}
           >
@@ -244,17 +244,17 @@ const OBReview = ({ obData, onClose, pendingOBs, setPendingOBs, setHistory, refr
 
           <div>
             <label className="block text-gray-700 text-sm mb-1 text-xs">Employee Name</label>
-            <input className="border rounded-md px-3 py-2 w-full bg-gray-50 text-xs" value={formData.empname || ""} readOnly disabled/>
+            <input className="border rounded-xl px-3 py-2 w-full bg-gray-50 text-xs" value={formData.empname || ""} readOnly disabled/>
           </div>
 
           <div className="mt-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-2">
             <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">Start</label>
-              <input type="datetime-local" className="border rounded-md px-3 py-2 w-full bg-gray-50 text-[11px]" value={formData.obstart} readOnly disabled/>
+              <input type="datetime-local" className="border rounded-xl px-3 py-2 w-full bg-gray-50 text-[11px]" value={formData.obstart} readOnly disabled/>
             </div>
             <div>
               <label className="block text-gray-700 text-sm mb-1 text-xs">End</label>
-              <input type="datetime-local" className="border rounded-md px-3 py-2 w-full bg-gray-50 text-[11px]" value={formData.obend} readOnly disabled/>
+              <input type="datetime-local" className="border rounded-xl px-3 py-2 w-full bg-gray-50 text-[11px]" value={formData.obend} readOnly disabled/>
             </div>
           </div>
 
@@ -268,7 +268,7 @@ const OBReview = ({ obData, onClose, pendingOBs, setPendingOBs, setHistory, refr
                 step="0.01"
                 min="0"
                 name="approvedHrs"
-                className="border rounded-md px-3 py-2 w-full text-xs"
+                className="border rounded-xl px-3 py-2 w-full text-xs"
                 value={formData.duration}
                 inputMode="decimal"
                 readOnly disabled
@@ -288,7 +288,7 @@ const OBReview = ({ obData, onClose, pendingOBs, setPendingOBs, setHistory, refr
                 min="0"
                 max={originalHrs}
                 name="approvedHrs"
-                className="border rounded-md px-3 py-2 w-full text-xs"
+                className="border rounded-xl px-3 py-2 w-full text-xs"
                 value={formData.approvedHrs}
                 onChange={handleChange}
                 inputMode="decimal"           
@@ -306,7 +306,7 @@ const OBReview = ({ obData, onClose, pendingOBs, setPendingOBs, setHistory, refr
           {/* Applicant Remarks */}
           <div className="mt-2">
             <label className="block text-gray-700 text-sm mb-1 text-xs">Remarks</label>
-            <textarea name="obRemarks" value={formData.obRemarks} className="w-full border rounded-md px-3 py-2 min-h-16 resize-y text-xs" disabled />
+            <textarea name="obRemarks" value={formData.obRemarks} className="w-full border rounded-xl px-3 py-2 min-h-16 resize-y text-xs" disabled />
           </div>
 
           {/* Approver Remarks */}
@@ -316,7 +316,7 @@ const OBReview = ({ obData, onClose, pendingOBs, setPendingOBs, setHistory, refr
               name="approverRemarks"
               value={formData.approverRemarks}
               onChange={handleChange}
-              className="w-full border rounded-md px-3 py-2 min-h-16 resize-y text-xs"
+              className="w-full border rounded-xl px-3 py-2 min-h-16 resize-y text-xs"
               placeholder="Optional notes…"
             />
           </div>
@@ -327,7 +327,7 @@ const OBReview = ({ obData, onClose, pendingOBs, setPendingOBs, setHistory, refr
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-end text-sm">
             <button
               type="button"
-              className="w-full sm:w-auto px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 active:scale-[.99] transition disabled:opacity-60"
+              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-red-500 text-white hover:bg-red-600 active:scale-[.99] transition disabled:opacity-60"
               onClick={handleDisapprove}
               disabled={isSubmitting}
             >
@@ -336,7 +336,7 @@ const OBReview = ({ obData, onClose, pendingOBs, setPendingOBs, setHistory, refr
             <button
               type="button"
               ref={lastFocusableRef}
-              className="w-full sm:w-auto px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 active:scale-[.99] transition disabled:opacity-60"
+              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 active:scale-[.99] transition disabled:opacity-60"
               onClick={handleApprove}
               disabled={isSubmitting}
             >

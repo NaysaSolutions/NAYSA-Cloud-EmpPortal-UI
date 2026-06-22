@@ -258,7 +258,7 @@ const LeaveReview = ({ leaveData, onClose, setPendingLeaves, setHistory, refresh
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg hover:bg-gray-100 active:scale-[.98] transition"
+            className="rounded-xl hover:bg-gray-100 active:scale-[.98] transition"
             aria-label="Close"
             ref={firstFieldRef}
           >

@@ -70,9 +70,9 @@ const fetchAllPayslipsInRange = async () => {
 
   const fetchCutoffs = async () => {
     try {
-      const res = await axios.get('/api/reports/payslipCutoff', {
-        params: { empno: user.empNo },
-      });
+      const res = await axios.get(API_ENDPOINTS.payslipCutoff, {
+  params: { empno: user.empNo },
+});
       setCutoffOptions(res.data?.employeecutoff || []);
     } catch (err) {
       console.error("Error fetching cutoff options:", err);
@@ -156,7 +156,7 @@ const handleExportPDF = () => {
           
           <div className="flex space-x-2">
             <select
-              className="flex-1 px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              className="flex-1 px-2 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               value={cutoffFrom}
               onChange={(e) => setCutoffFrom(e.target.value)}
             >
@@ -169,7 +169,7 @@ const handleExportPDF = () => {
             </select>
 
             <select
-              className="flex-1 px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              className="flex-1 px-2 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               value={cutoffTo}
               onChange={(e) => setCutoffTo(e.target.value)}
             >

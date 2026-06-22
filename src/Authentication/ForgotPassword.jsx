@@ -1,112 +1,85 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Swal from 'sweetalert2';
-import { IoArrowBack } from 'react-icons/io5';
-import axios from 'axios';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import axios from "axios";
+import API_ENDPOINTS from "@/apiConfig.jsx";
 
 function ForgotPassword() {
-    const [email, setEmail] = useState('');
-    const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-    const handleEmailChange = (e) => {
-        setEmail(e.target.value);
-    };
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    try {
+      const { data } = await axios.post(API_ENDPOINTS.forgotPassword, {
+        email: email.trim(),
+      });
 
-        setLoading(true);
+      if (data?.status === "success") {
+        await Swal.fire({
+          title: "Temporary Password Sent",
+          text: "Please check your registered email.",
+          icon: "success",
+          confirmButtonText: "OK",
+        });
+        navigate("/");
+      } else {
+        Swal.fire("Error", data?.message || "Request failed.", "error");
+      }
+    } catch (err) {
+      Swal.fire(
+        "Error",
+        err.response?.data?.message || "Something went wrong.",
+        "error"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        try {
-            const response = await axios.post('http://localhost:8000/api/forgot-password', {
-                email,
-            });
+  return (
+    <div className="bg-[linear-gradient(to_bottom,#becdda,#84a1ba)] flex items-center justify-center min-h-screen px-4">
+      <div className="bg-[linear-gradient(to_bottom,#84a1ba,#becdda)] px-6 py-10 rounded-3xl shadow-2xl w-full max-w-sm">
+        <h2 className="text-xl font-semibold text-blue-900 mb-6 text-center">
+          Forgot Password
+        </h2>
 
-            if (response.data.status === 'success') {
-                await Swal.fire({
-                    title: 'Password reset link sent!',
-                    text: 'Please check your email to reset your password.',
-                    icon: 'success',
-                    confirmButtonText: 'OK',
-                });
-            } else {
-                await Swal.fire({
-                    title: 'Error!',
-                    text: response.data.message || 'There was an issue sending the reset link.',
-                    icon: 'error',
-                    confirmButtonText: 'OK',
-                });
-            }
-        } catch (error) {
-            await Swal.fire({
-                title: 'Error!',
-                text: 'There was an issue sending the reset link. Please try again later.',
-                icon: 'error',
-                confirmButtonText: 'OK',
-            });
-        } finally {
-            setLoading(false);
-        }
-    };
+        <form onSubmit={handleSubmit}>
+          <div className="mb-5">
+            <label className="block text-sm font-medium text-gray-900 mb-1">
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="name@company.com"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-    return (
-        <div className="bg-[linear-gradient(to_bottom,#A2BBF1,#D3A4DD)] flex items-center justify-center h-screen relative">
-            {/* Back Icon */}
-            <button
-                onClick={() => navigate('/')}
-                className="absolute top-5 left-5 text-white text-3xl z-50"
-                aria-label="Go back to login page"
-            >
-                <IoArrowBack />
-            </button>
-            <div
-                className="relative px-20 py-10 rounded-3xl shadow-md"
-                style={{ width: '530px', height: '270px', position: 'relative' }}
-            >
-                <div
-                    className="absolute inset-0 rounded-3xl"
-                    style={{ backgroundColor: '#5882C1', opacity: 0.5, zIndex: 0 }}
-                ></div>
-                <div className="relative z-10">
-                    <h2
-                        className="text-4xl font-bold mb-5 text-white"
-                        style={{ fontFamily: 'SF Pro Rounded, sans-serif' }}
-                    >
-                        Forgot Password?
-                    </h2>
+          <button
+            type="submit"
+            disabled={loading || !email}
+            className="w-full bg-blue-800 text-white font-semibold py-3 rounded-lg hover:bg-blue-700 disabled:bg-blue-600"
+          >
+            {loading ? "Sending..." : "Send Temporary Password"}
+          </button>
 
-                    <form onSubmit={handleSubmit}>
-                        <div className="mb-4">
-                            <label
-                                htmlFor="email"
-                                className="block text-base font-normal text-gray-700"
-                            >
-                                Enter your email address
-                            </label>
-                            <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                value={email}
-                                onChange={handleEmailChange}
-                                required
-                                placeholder="email@gmail.com"
-                                className="mt-1 p-2 w-[380px] h-[45px] border-[1px] rounded-[12px]"
-                            />
-                        </div>
-                        <button
-                            type="submit"
-                            className="w-full bg-[#162e3a] text-base text-white p-3 rounded-lg"
-                            disabled={loading}
-                        >
-                            {loading ? 'Sending...' : 'Send Password Reset Link'}
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    );
+          <p
+            className="text-center text-sm text-blue-900 mt-4 cursor-pointer hover:underline"
+            onClick={() => navigate("/")}
+          >
+            Back to Login
+          </p>
+        </form>
+      </div>
+    </div>
+  );
 }
 
 export default ForgotPassword;

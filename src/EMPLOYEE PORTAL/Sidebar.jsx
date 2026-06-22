@@ -1,127 +1,123 @@
-import React, { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
-import { useSidebarStore } from "./useSidebarStore"; // Import the store we created
 import { Menu, X } from "lucide-react";
-import { toast } from "sonner";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 
-const fetchEmployeeData = async (empNo) => {
-  const response = await fetch(API_ENDPOINTS.dashBoard, {
+const Sidebar = () => {
+  const { user } = useAuth();
+  const [employeeInfo, setEmployeeInfo] = useState(null);
+  const [error, setError] = useState(null);
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    console.log("Auth user object:", user);
+  if (user?.empNo) {
+    const fetchEmployeeInfo = async () => {
+  try {
+    console.log("Sending request with:", { EMP_NO: user.empNo });
+
+    const response = await fetch(API_ENDPOINTS.dashBoard, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      Accept: "application/json",
+        "Content-Type": "application/json",
+        Accept: "application/json",
     },
-    body: JSON.stringify({ EMP_NO: empNo }),
-  });
+    body: JSON.stringify({ EMP_NO: user.empNo }),
+    }); 
 
-  const result = await response.json();
+    const result = await response.json();
+console.log("Raw response from API:", result);
 
-  if (!result.success || !Array.isArray(result.data) || result.data.length === 0) {
-    throw new Error("Employee info not found.");
+// Parse nested JSON string from result
+if (result.success && Array.isArray(result.data) && result.data.length > 0) {
+  setEmployeeInfo(result.data[0]);
+  console.log("Employee info set:", result.data[0]);
+} else {
+  throw new Error("Employee info not found.");
+}
+
+
+
+  } catch (err) {
+    console.error("Error fetching employee info:", err);
+    setError(err.message);
   }
-
-  return result.data[0];
 };
 
-const Sidebar = () => {
-  const { user, setUser } = useAuth();
-  
-  // Zustand: Replace local useState with global store
-  const isOpen = useSidebarStore((state) => state.isOpen);
-  const toggleSidebar = useSidebarStore((state) => state.toggleSidebar);
 
-  const { data: employeeInfo, error, isLoading, isError } = useQuery({
-    queryKey: ["employee", user?.empNo],
-    queryFn: () => fetchEmployeeData(user?.empNo),
-    enabled: !!user?.empNo,
-    staleTime: 1000 * 60 * 5,
-  });
+    fetchEmployeeInfo();
+  }
+}, [user?.empNo]);
 
-  // Sync with Global Context
-  useEffect(() => {
-    if (employeeInfo) {
-      setUser(employeeInfo);
-    }
-  }, [employeeInfo, setUser]);
 
-  // Sonner: Use non-intrusive toasts instead of breaking the layout
-  useEffect(() => {
-    if (isError) {
-      toast.error("Data Fetch Failed", {
-        description: error.message,
-      });
-    }
-  }, [isError, error]);
+  const toggleSidebar = () => setIsOpen(!isOpen);
+
+  if (error) {
+    return (
+      <div className="fixed top-[50px] left-0 w-full bg-white p-4 shadow-md z-50">
+        Error: {error}
+      </div>
+    );
+  }
 
   return (
     <>
       {/* Mobile Toggle Button */}
       <button
         onClick={toggleSidebar}
-        className="lg:hidden fixed top-12 left-6 z-50 bg-white shadow-md p-2 rounded-full border border-gray-100"
+        className="hidden fixed top-12 left-6 z-50 bg-white shadow-md p-2 rounded-full"
       >
         {isOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* Sidebar Container */}
+      {/* Sidebar */}
       <div
         className={`
-          fixed top-[64px] left-0 h-screen w-[200px] bg-white shadow-md p-5 z-40 transition-transform duration-300
+          fixed top-[60px] left-0 h-screen w-[200px] bg-white shadow-md p-5 z-40 transition-transform duration-300
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0 lg:block mt-4 cursor-pointer select-none
         `}
       >
+        {/* Profile Section */}
         <div className="flex flex-col items-center text-center">
           <img
-            src={user?.empNo ? `/${user.empNo}.jpg` : "/Default.jpg"}
-            alt="Profile"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = "/Default.jpg";
-            }}
-            className="w-[100px] h-[100px] rounded-full object-cover mb-4 border border-gray-100"
-          />
+              src={user?.empNo ? `/${user.empNo}.jpg` : "/Default.jpg"}
+              alt="Profile"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = "/Default.jpg";
+              }}
+            className="w-[100px] h-[100px] rounded-full object-cover mb-4"
+            />
 
-          <h2 className="text-[14px] font-semibold text-[#1c394e] break-words leading-tight">
-            Welcome Back,<br /> 
-            {isLoading ? (
-              <span className="inline-block w-16 h-4 bg-gray-100 animate-pulse rounded mt-2 mb-2" />
-            ) : (
-              (employeeInfo?.empName || "Employee")
-            )}!
+          <h2 className="text-[14px] font-semibold text-[#1c394e] break-words">
+            Welcome Back,<br /> {employeeInfo?.empName || "Employee"}!
           </h2>
         </div>
 
-        <hr className="my-3 border-gray-100" />
+        <hr className="my-2" />
 
-        {/* Details Section */}
-        <div className="text-[13px] text-gray-700 space-y-4">
-          <DetailItem label="Employee No." value={employeeInfo?.empNo} loading={isLoading} />
-          <DetailItem label="Branch" value={employeeInfo?.branchName} loading={isLoading} />
-          <DetailItem label="Payroll Group" value={employeeInfo?.payrollGroup} loading={isLoading} />
-          <DetailItem label="Department" value={employeeInfo?.department} loading={isLoading} />
-          <DetailItem label="Position" value={employeeInfo?.position} loading={isLoading} />
-          <DetailItem label="Status" value={employeeInfo?.employeeStatus} loading={isLoading} />
-          <DetailItem label="Shift" value={employeeInfo?.shiftSchedule} loading={isLoading} />
+        {/* Employee Details Section */}
+        <div className="text-[13px] text-gray-700 space-y-2">
+          <DetailItem label="Employee No." value={employeeInfo?.empNo} />
+          <DetailItem label="Branch" value={employeeInfo?.branchName} />
+          <DetailItem label="Payroll Group" value={employeeInfo?.payrollGroup} />
+          <DetailItem label="Department" value={employeeInfo?.department} />
+          <DetailItem label="Position" value={employeeInfo?.position} />
+          <DetailItem label="Employee Status" value={employeeInfo?.employeeStatus} />
+          <DetailItem label="Shift Schedule" value={employeeInfo?.shiftSchedule} />
         </div>
       </div>
     </>
   );
 };
 
-const DetailItem = ({ label, value, loading }) => (
-  <div className="flex flex-col">
-    <span className="font-semibold text-[#1c394e]">{label}:</span>
-    <span className="break-words leading-none">
-        {loading ? (
-          <div className="h-3 w-full bg-gray-100 animate-pulse rounded mt-1" />
-        ) : (
-          value || "N/A"
-        )}
-    </span>
-  </div>
+// Reusable component for displaying label-value pairs
+const DetailItem = ({ label, value }) => (
+  <p>
+    <span className="font-semibold">{label}:</span><br />
+    <span className="break-words">{value || "Loading..."}</span>
+  </p>
 );
 
 export default Sidebar;

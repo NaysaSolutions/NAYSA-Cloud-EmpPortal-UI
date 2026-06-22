@@ -1,8 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-
-// 1. Import TanStack Query (React Query)
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 
 import { AuthProvider, useAuth } from "./EMPLOYEE PORTAL/AuthContext";
 import Sidebar from "./EMPLOYEE PORTAL/Sidebar";
@@ -29,32 +28,54 @@ import Register from "./NAYSA Cloud/Register";
 import ForgotPassword from "./Authentication/ForgotPassword";
 import ScrollToTop from "./components/ScrollToTop";
 
-// 2. Initialize the QueryClient
-// This manages the cache and the timing of your data refreshes
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: true, // Automatically refresh data when you click back onto the tab
-      retry: 1,                   // Retry failed requests once
-      staleTime: 1000 * 60 * 5,   // Consider data fresh for 5 minutes
+      refetchOnWindowFocus: true,
+      retry: 1,
+      staleTime: 1000 * 60 * 5,
     },
   },
 });
 
 const App = () => {
   return (
-    // 3. Wrap everything with the QueryClientProvider
     <QueryClientProvider client={queryClient}>
+      <Toaster
+  position="top-right"
+  closeButton
+  expand={false}
+  richColors={false}
+  toastOptions={{
+    duration: 3000,
+    style: {
+      background: "rgba(255, 255, 255, 0.98)",
+      border: "1px solid rgba(229, 231, 235, 0.95)",
+      color: "#1e40ae",
+      borderRadius: "16px",
+      padding: "14px 16px",
+      boxShadow: "0 12px 30px rgba(15, 23, 42, 0.14)",
+      width: "400px",
+      backdropFilter: "blur(12px)",
+    },
+    classNames: {
+      toast: "toast-modern",
+      title: "text-sm font-semibold text-gray-900",
+      description: "text-sm text-gray-500 leading-snug",
+      closeButton:
+        "bg-white border border-gray-200 text-gray-400 hover:text-gray-700",
+    },
+  }}
+/>
+
       <AuthProvider>
         <Router>
           <ScrollToTop />
           <Routes>
-            {/* Public Routes */}
             <Route path="/" element={<LoginPortal />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
 
-            {/* Protected Routes */}
             <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
             <Route path="/timekeeping" element={<ProtectedRoute><Layout><Timekeeping /></Layout></ProtectedRoute>} />
             <Route path="/timekeepingAdj" element={<ProtectedRoute><Layout><TimekeepingAdjustment /></Layout></ProtectedRoute>} />
@@ -73,7 +94,6 @@ const App = () => {
             <Route path="/OfficialBusinessApproval" element={<ProtectedRoute><Layout><OfficialBusinessApproval /></Layout></ProtectedRoute>} />
             <Route path="/OfficialBusinessReview" element={<ProtectedRoute><Layout><OfficialBusinessReview /></Layout></ProtectedRoute>} />
 
-            {/* Catch-all Redirect */}
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </Router>
@@ -82,7 +102,6 @@ const App = () => {
   );
 };
 
-// Layout Component for pages with Sidebar & Navbar
 const Layout = ({ children }) => (
   <div className="flex">
     <Sidebar />
@@ -93,7 +112,6 @@ const Layout = ({ children }) => (
   </div>
 );
 
-// ProtectedRoute to prevent unauthorized access
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
   return user ? children : <Navigate to="/" />;

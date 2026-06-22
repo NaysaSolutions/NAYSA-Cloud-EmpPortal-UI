@@ -423,7 +423,7 @@ const cancelApplication = async (entry) => {
         </div>
 
         {/* Form */}
-        <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-lg text-sm">
+        <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-xl text-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="min-w-0">
               <label className="block font-semibold mb-1">Filing Date</label>
@@ -432,7 +432,7 @@ const cancelApplication = async (entry) => {
                   type="date"
                   value={applicationDate}
                   onChange={(e) => setApplicationDate(e.target.value)}
-                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
                 />
               </div>
             </div>
@@ -443,7 +443,7 @@ const cancelApplication = async (entry) => {
                   type="date"
                   value={otDate}
                   onChange={(e) => setOTDate(e.target.value)}
-                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
                 />
               </div>
             </div>
@@ -469,12 +469,12 @@ const cancelApplication = async (entry) => {
           </div>
 
           <div className="mt-4 flex justify-center">
-            <button className="bg-blue-800 text-white px-12 py-2 rounded-md hover:bg-blue-700" onClick={handleSubmit}>Submit</button>
+            <button className="bg-blue-800 text-white px-12 py-2 rounded-xl hover:bg-blue-700" onClick={handleSubmit}>Submit</button>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="mt-4 bg-white p-4 shadow-md rounded-lg">
+        <div className="mt-4 bg-white p-4 shadow-md rounded-xl">
           <h2 className="text-base font-semibold">Filter Overtime Applications</h2>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
           <div className="relative">
@@ -482,7 +482,7 @@ const cancelApplication = async (entry) => {
               type="date"
               value={searchFields.otDateStart}
               onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))}
-              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
             />
           </div>
           <div className="relative">
@@ -491,7 +491,7 @@ const cancelApplication = async (entry) => {
               value={searchFields.otDateEnd}
               onChange={(e) => setSearchFields((p) => ({ ...p, otDateEnd: e.target.value }))}
               min={searchFields.otDateStart}
-              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
             />
           </div>        
           <select value={searchFields.otType} onChange={(e) => setSearchFields((p) => ({ ...p, otType: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
@@ -506,10 +506,10 @@ const cancelApplication = async (entry) => {
         </div>
 
         {/* History */}
-        <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+        <div className="mt-4 bg-white p-4 shadow-lg rounded-xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <h2 className="text-base font-semibold">Overtime Application History</h2>
-            <div className="inline-flex rounded-lg border overflow-hidden self-start">
+            <div className="inline-flex rounded-xl border overflow-hidden self-start">
               <button className={`px-8 py-2 text-sm ${viewMode === "card" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("card")}>Card</button>
               <button className={`px-8 py-2 text-sm border-l ${viewMode === "accordion" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("accordion")}>Accordion</button>
               <button className={`px-8 py-2 text-sm border-l ${viewMode === "table" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("table")}>Table</button>
@@ -523,10 +523,10 @@ const cancelApplication = async (entry) => {
               {currentRecords.length ? currentRecords.map((entry, idx) => {
                 const statusClass = entry.otStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : entry.otStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : entry.otStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
                 return (
-                  <div key={idx} className="border rounded-lg p-4 shadow-sm">
+                  <div key={idx} className="border rounded-xl p-4 shadow-sm">
                     <div className="flex items-center justify-between mb-2">
                       <div className="font-semibold text-sm md:text-base">{dayjs(entry.otDate).format("MM/DD/YYYY")}</div>
-                      <span className={`inline-flex justify-center items-center text-sm w-28 py-1 rounded-lg ${statusClass}`}>{entry.otStatus || "N/A"}</span>
+                      <span className={`inline-flex justify-center items-center text-sm w-28 py-1 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span>
                     </div>
                     <div className="space-y-1 text-[12px] md:text-sm">
                       <div className="flex justify-between"><span className="text-gray-500 font-semibold">Hours</span><span className="font-medium">{entry.otHrs} hr(s)</span></div>
@@ -547,14 +547,14 @@ const cancelApplication = async (entry) => {
 
           {/* ACCORDION VIEW */}
           {viewMode === "accordion" && (
-            <div className="mt-4 divide-y border rounded-lg">
+            <div className="mt-4 divide-y border rounded-xl">
               {currentRecords.length ? currentRecords.map((entry, idx) => {
                 const statusClass = entry.otStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : entry.otStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : entry.otStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
                 return (
                   <details key={idx} className="group p-2 text-[12px] md:text-sm">
                     <summary className="flex items-center justify-between cursor-pointer list-none">
                       <div className="font-medium">{dayjs(entry.otDate).format("MM/DD/YYYY")} • {entry.otHrs} hr(s) • {getOvertimeTypeLabel(entry.otType)}</div>
-                      <span className={`inline-flex justify-center items-center w-28 py-1 rounded-lg ${statusClass}`}>{entry.otStatus || "N/A"}</span>
+                      <span className={`inline-flex justify-center items-center w-28 py-1 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span>
                     </summary>
                     <div className="mt-3 space-y-2">
                       <div><div className="text-gray-500 font-semibold">Remarks</div><div>{entry.otRemarks || "N/A"}</div></div>
@@ -571,7 +571,7 @@ const cancelApplication = async (entry) => {
 
           {/* TABLE VIEW */}
           {viewMode === "table" && (
-            <div className="w-full overflow-x-auto mt-4 rounded-lg">
+            <div className="w-full overflow-x-auto mt-4 rounded-xl">
               <table className="min-w-[900px] w-full text-sm text-center border ">
                 <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm">
                   <tr>
@@ -582,27 +582,27 @@ const cancelApplication = async (entry) => {
                     ))}
                   </tr>
                   <tr>
-                    {/* <td className="px-1 py-2 bg-white"><input type="date" value={searchFields.otDateStart} onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" /></td> */}
+                    {/* <td className="px-1 py-2 bg-white"><input type="date" value={searchFields.otDateStart} onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800" /></td> */}
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
                       <input
                         type="date"
                         value={searchFields.otDateStart}
                         onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))}
-                        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+                        className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
                         placeholder="N/A..."
                         disabled
                         readonly
                       />
                     </td>
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
-                      <input className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
+                      <input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
                     </td>
-                    <td className="px-1 py-2 bg-white"><select value={searchFields.otType} onChange={(e) => setSearchFields((p) => ({ ...p, otType: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"><option value="">All</option>{typeOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
-                    <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.otRemarks} onChange={(e) => setSearchFields((p) => ({ ...p, otRemarks: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" placeholder="Filter..." /></td>
-                    <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.appRemarks} onChange={(e) => setSearchFields((p) => ({ ...p, appRemarks: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" placeholder="Filter..." /></td>
-                    <td className="px-1 py-2 bg-white"><select value={searchFields.otStatus} onChange={(e) => setSearchFields((p) => ({ ...p, otStatus: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-white"><option value="">All</option>{statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
+                    <td className="px-1 py-2 bg-white"><select value={searchFields.otType} onChange={(e) => setSearchFields((p) => ({ ...p, otType: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800"><option value="">All</option>{typeOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
+                    <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.otRemarks} onChange={(e) => setSearchFields((p) => ({ ...p, otRemarks: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800" placeholder="Filter..." /></td>
+                    <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.appRemarks} onChange={(e) => setSearchFields((p) => ({ ...p, appRemarks: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800" placeholder="Filter..." /></td>
+                    <td className="px-1 py-2 bg-white"><select value={searchFields.otStatus} onChange={(e) => setSearchFields((p) => ({ ...p, otStatus: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-white"><option value="">All</option>{statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
-                      <input className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
+                      <input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
                     </td>
                   </tr>
                 </thead>
@@ -616,7 +616,7 @@ const cancelApplication = async (entry) => {
                         <td className="global-td whitespace-nowrap text-left">{getOvertimeTypeLabel(entry.otType)}</td>
                         <td className="global-td text-left max-w-[240px] truncate" title={entry.otRemarks || "N/A"}>{entry.otRemarks || "N/A"}</td>
                         <td className="global-td text-left max-w-[240px] truncate" title={entry.appRemarks || "N/A"}>{entry.appRemarks || "N/A"}</td>
-                        <td className="global-td text-center whitespace-nowrap"><span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-lg ${statusClass}`}>{entry.otStatus || "N/A"}</span></td>
+                        <td className="global-td text-center whitespace-nowrap"><span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span></td>
                         <td className="global-td text-center whitespace-nowrap">
                           {entry?.otStatus === "Pending" ? (
                             <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button>
@@ -635,7 +635,7 @@ const cancelApplication = async (entry) => {
           {/* Pagination */}
           <div className="flex justify-between items-center mt-2 pt-2">
             <div className="text-xs text-gray-600">Showing <b>{Math.min(indexOfFirstRecord + 1, filteredApplications.length)}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries</div>
-            <div className="flex items-center text-sm border rounded-lg overflow-hidden">
+            <div className="flex items-center text-sm border rounded-xl overflow-hidden">
               <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border-r hover:bg-gray-100 disabled:text-gray-400">&lt;</button>
               {[...Array(totalPages)].map((_, i) => (
                 <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 border-r ${currentPage === i + 1 ? "bg-blue-800 text-white" : "hover:bg-gray-100"}`}>{i + 1}</button>

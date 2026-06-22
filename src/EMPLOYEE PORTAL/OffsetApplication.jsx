@@ -61,7 +61,7 @@ const formSchema = z.object({
 
 const badgeClass = (status) => {
   const base =
-    "inline-flex justify-center items-center text-xs w-24 py-1 rounded-lg font-semibold";
+    "inline-flex justify-center items-center text-xs w-24 py-1 rounded-xl font-semibold";
   switch ((status || "").toLowerCase()) {
     case "approved":
       return `${base} bg-blue-100 text-blue-700`;
@@ -112,7 +112,7 @@ const DateInput = ({ id, value, onChange, min, disabled, className = "" }) => {
 };
 
 const ViewToggle = ({ viewMode, setViewMode }) => (
-  <div className="inline-flex rounded-lg border overflow-hidden self-start">
+  <div className="inline-flex rounded-xl border overflow-hidden self-start">
     {["card", "accordion", "table"].map((v, idx) => (
       <button
         key={v}
@@ -643,7 +643,7 @@ const OffsetApplication = () => {
       </div>
 
       {/* ================= FILTER TIMEKEEPING ================= */}
-      <div className="mt-4 bg-white p-4 shadow-md rounded-lg">
+      <div className="mt-4 bg-white p-4 shadow-md rounded-xl">
         <h2 className="text-base font-semibold">Filter Timekeeping Records</h2>
 
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
@@ -673,13 +673,13 @@ const OffsetApplication = () => {
       </div>
 
       {/* ================= TIMEKEEPING RECORDS ================= */}
-      <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+      <div className="mt-4 bg-white p-4 shadow-lg rounded-xl">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-semibold">Timekeeping Records</h2>
           {syncing && <span className="text-xs text-gray-500">Syncing…</span>}
         </div>
 
-        <div className="w-full overflow-x-auto rounded-lg border border-gray-200">
+        <div className="w-full overflow-x-auto rounded-xl border border-gray-200">
           <table className="w-full text-xs sm:text-sm text-center border-collapse">
             <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm">
               <tr>
@@ -773,7 +773,7 @@ const OffsetApplication = () => {
       </div>
 
       {/* ================= OVERTIME SOURCE DETAILS ================= */}
-      <div className="mt-4 bg-white p-6 shadow rounded-lg text-sm">
+      <div className="mt-4 bg-white p-6 shadow rounded-xl text-sm">
         <h2 className="text-base font-semibold mb-4">Overtime Source Details</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -807,7 +807,7 @@ const OffsetApplication = () => {
       </div>
 
       {/* ================= OFFSET APPLICATION DETAILS ================= */}
-      <div className="mt-4 bg-white p-6 shadow-md rounded-lg">
+      <div className="mt-4 bg-white p-6 shadow-md rounded-xl">
         <h2 className="text-base font-semibold mb-5">Offset Application Details</h2>
 
         <form onSubmit={form.handleSubmit(onSubmitForm)} className="space-y-5">
@@ -928,7 +928,7 @@ const OffsetApplication = () => {
       </div>
 
       {/* ================= FILTER HISTORY ================= */}
-      <div className="mt-4 bg-white p-4 shadow-md rounded-lg">
+      <div className="mt-4 bg-white p-4 shadow-md rounded-xl">
         <h2 className="text-base font-semibold">Filter Timekeeping Records History</h2>
 
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
@@ -977,7 +977,7 @@ const OffsetApplication = () => {
       </div>
 
       {/* ================= HISTORY ================= */}
-      <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+      <div className="mt-4 bg-white p-4 shadow-lg rounded-xl">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <h2 className="text-base font-semibold">Offset Application History</h2>
           <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
@@ -988,7 +988,7 @@ const OffsetApplication = () => {
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {pagedEntries.length ? (
               pagedEntries.map((entry, idx) => (
-                <div key={idx} className="border rounded-lg p-4 shadow-sm">
+                <div key={idx} className="border rounded-xl p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-semibold text-sm md:text-base">
                       {fmtDate(entry.offsetDate)}
@@ -1052,7 +1052,7 @@ const OffsetApplication = () => {
 
         {/* ACCORDION VIEW */}
         {viewMode === "accordion" && (
-          <div className="mt-4 divide-y border rounded-lg">
+          <div className="mt-4 divide-y border rounded-xl">
             {pagedEntries.length ? (
               pagedEntries.map((entry, idx) => (
                 <details key={idx} className="group p-2 text-[12px] md:text-sm">
@@ -1096,7 +1096,7 @@ const OffsetApplication = () => {
 
         {/* TABLE VIEW */}
         {viewMode === "table" && (
-          <div className="w-full overflow-x-auto mt-4 rounded-lg border border-gray-200">
+          <div className="w-full overflow-x-auto mt-4 rounded-xl border border-gray-200">
             <table className="w-full text-xs sm:text-sm text-center border-collapse">
               <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm">
                 {table.getHeaderGroups().map((hg) => (
@@ -1187,7 +1187,7 @@ const OffsetApplication = () => {
               of {filteredApplications.length} entries
             </div>
 
-            <div className="flex items-center text-sm border rounded-lg overflow-hidden">
+            <div className="flex items-center text-sm border rounded-xl overflow-hidden">
               <button
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}

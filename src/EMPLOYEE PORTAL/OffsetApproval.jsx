@@ -7,7 +7,7 @@ import { useAuth } from "./AuthContext.jsx";
 import OffsetReview from "../EMPLOYEE PORTAL/OffsetReview.jsx";
 
 const badgeClass = (status) => {
-  const base = "inline-flex justify-center items-center text-xs w-24 py-1 rounded-lg font-semibold";
+  const base = "inline-flex justify-center items-center text-xs w-24 py-1 rounded-xl font-semibold";
   switch ((status || "").toLowerCase()) {
     case "approved": return `${base} bg-blue-100 text-blue-700`;
     case "disapproved": return `${base} bg-red-100 text-red-700`;
@@ -67,7 +67,7 @@ const OffsetApproval = () => {
         </div>
 
         {/* PENDING SECTION */}
-        <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+        <div className="mt-4 bg-white p-4 shadow-lg rounded-xl">
           <h2 className="text-lg font-bold mb-4">Pending Offset Applications</h2>
 
           {isError && <p className="text-red-500 font-semibold mb-2">Failed to load offset approvals.</p>}
@@ -121,7 +121,7 @@ const OffsetApproval = () => {
         </div>
 
         {/* HISTORY SECTION */}
-        <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+        <div className="mt-4 bg-white p-4 shadow-lg rounded-xl">
           <h2 className="text-lg font-bold mb-4">Offset Approval History</h2>
 
           {isLoading ? (

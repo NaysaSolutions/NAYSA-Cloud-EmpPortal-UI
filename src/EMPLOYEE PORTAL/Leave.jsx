@@ -781,7 +781,7 @@ const getLeaveStamp = (row) => {
         </div>
 
         {/* Form Card */}
-        <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-lg text-sm">
+        <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-xl text-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
 
             <div className="min-w-0">
@@ -907,7 +907,7 @@ const getLeaveStamp = (row) => {
         </div>
 
         {/* Quick Filters (like Overtime) */}
-        <div className="mt-4 bg-white p-4 shadow-md rounded-lg">
+        <div className="mt-4 bg-white p-4 shadow-md rounded-xl">
         <h2 className="text-base font-semibold">Filter Leave Applications</h2>
         <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
           {/* Start */}
@@ -966,10 +966,10 @@ const getLeaveStamp = (row) => {
         </div>
 
         {/* History Card */}
-        <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+        <div className="mt-4 bg-white p-4 shadow-lg rounded-xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <h2 className="text-base font-semibold">Leave Application History</h2>
-            <div className="inline-flex rounded-lg border overflow-hidden self-start">
+            <div className="inline-flex rounded-xl border overflow-hidden self-start">
               <button className={`px-8 py-2 text-sm ${viewMode === "card" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("card")}>Card</button>
               <button className={`px-8 py-2 text-sm border-l ${viewMode === "accordion" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("accordion")}>
                 Accordion
@@ -996,12 +996,12 @@ const getLeaveStamp = (row) => {
 
 
                   return (
-                    <div key={idx} className="border rounded-lg p-4 shadow-sm">
+                    <div key={idx} className="border rounded-xl p-4 shadow-sm">
                       <div className="flex items-center justify-between mb-2">
                         <div className="font-semibold text-sm md:text-base">
                           {dayjs(entry.leaveStart).format("MM/DD/YYYY")} – {dayjs(entry.leaveEnd).format("MM/DD/YYYY")}
                         </div>
-                        <span className={`inline-flex justify-center items-center text-sm w-28 py-1 md:py-2 rounded-lg ${statusClass}`}>
+                        <span className={`inline-flex justify-center items-center text-sm w-28 py-1 md:py-2 rounded-xl ${statusClass}`}>
                           {entry.leaveStatus || "N/A"}
                         </span>
                       </div>
@@ -1049,7 +1049,7 @@ const getLeaveStamp = (row) => {
 
           {/* Accordion View */}
           {viewMode === "accordion" && (
-            <div className="mt-4 divide-y border rounded-lg">
+            <div className="mt-4 divide-y border rounded-xl">
               {currentRecords.length > 0 ? (
                 currentRecords.map((entry, idx) => {
                   const statusClass =
@@ -1067,7 +1067,7 @@ const getLeaveStamp = (row) => {
                         <div className="font-medium">
                           {dayjs(entry.leaveStart).format("MM/DD/YYYY")} – {dayjs(entry.leaveEnd).format("MM/DD/YYYY")} • {entry.leaveDays} day(s) • {entry.leaveDesc}
                         </div>
-                        <span className={`inline-flex justify-center items-center w-28 py-1 rounded-lg ${statusClass}`}>{entry.leaveStatus || "N/A"}</span>
+                        <span className={`inline-flex justify-center items-center w-28 py-1 rounded-xl ${statusClass}`}>{entry.leaveStatus || "N/A"}</span>
                       </summary>
                       <div className="mt-3 space-y-2">
                         <div>
@@ -1102,7 +1102,7 @@ const getLeaveStamp = (row) => {
 
           {/* Table View */}
           {viewMode === "table" && (
-            <div className="w-full overflow-x-auto mt-4 rounded-lg">
+            <div className="w-full overflow-x-auto mt-4 rounded-xl">
               <table className="min-w-[900px] w-full text-sm text-center border">
                 <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm">
                   <tr>
@@ -1130,7 +1130,7 @@ const getLeaveStamp = (row) => {
         type="date"
         value={searchFields.leaveDateStart}
         onChange={(e) => handleSearchChange(e, "leaveDateStart")}
-        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+        className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
         placeholder="N/A..."
         disabled
         readonly
@@ -1143,7 +1143,7 @@ const getLeaveStamp = (row) => {
         type="date"
         value={searchFields.leaveDateEnd}
         onChange={(e) => handleSearchChange(e, "leaveDateEnd")}
-        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+        className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
         placeholder="N/A..."
         disabled
         readonly
@@ -1156,7 +1156,7 @@ const getLeaveStamp = (row) => {
         type="text"
         value={searchFields.durationHours}
         onChange={(e) => handleSearchChange(e, "durationHours")}
-        className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+        className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
         placeholder="N/A..."
         disabled
         readonly
@@ -1169,7 +1169,7 @@ const getLeaveStamp = (row) => {
         type="text"
         value={searchFields.leaveType}
         onChange={(e) => handleSearchChange(e, "leaveType")}
-        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
+        className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800"
         placeholder="Filter..."
       />
     </td>
@@ -1180,7 +1180,7 @@ const getLeaveStamp = (row) => {
         type="text"
         value={searchFields.leaveRemarks}
         onChange={(e) => handleSearchChange(e, "leaveRemarks")}
-        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
+        className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800"
         placeholder="Filter..."
       />
     </td>
@@ -1191,7 +1191,7 @@ const getLeaveStamp = (row) => {
         type="text"
         value={searchFields.appRemarks}
         onChange={(e) => handleSearchChange(e, "appRemarks")}
-        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800"
+        className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800"
         placeholder="Filter..."
       />
     </td>
@@ -1202,7 +1202,7 @@ const getLeaveStamp = (row) => {
                       <select
                         value={searchFields.leaveStatus}
                         onChange={(e) => handleSearchChange(e, "leaveStatus")}
-                        className="w-full px-2 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-white"
+                        className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-white"
                       >
                         <option value="">All</option>
                         {statusOptions.map((s) => (
@@ -1214,7 +1214,7 @@ const getLeaveStamp = (row) => {
                     </td>
 
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
-                      <input className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
+                      <input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
                     </td>
 
 
@@ -1245,7 +1245,7 @@ const getLeaveStamp = (row) => {
                             {entry.appRemarks || "N/A"}
                           </td>
                           <td className="global-td text-center whitespace-nowrap">
-                            <span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-lg ${statusClass}`}>
+                            <span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-xl ${statusClass}`}>
                               {entry.leaveStatus || "N/A"}
                             </span>
                           </td>
@@ -1282,7 +1282,7 @@ const getLeaveStamp = (row) => {
             <div className="text-xs text-gray-600">
               Showing <b>{filteredApplications.length === 0 ? 0 : indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries
             </div>
-            <div className="flex items-center text-sm border rounded-lg overflow-hidden">
+            <div className="flex items-center text-sm border rounded-xl overflow-hidden">
               <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border-r text-gray-700 hover:bg-blue-200 disabled:text-gray-400 disabled:cursor-not-allowed">
                 &lt;
               </button>

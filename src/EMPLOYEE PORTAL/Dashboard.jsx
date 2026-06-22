@@ -325,7 +325,7 @@ const Dashboard = () => {
     <div className="mt-[80px] p-4 bg-gray-100 min-h-screen ml-0 lg:ml-[200px]">
       {/* Header */}
       <div className="flex justify-center sm:justify-between items-start w-full">
-        <div className="bg-blue-800 p-3 rounded-lg text-white flex flex-col md:flex-row md:justify-between md:items-center gap-2 mb-4 w-full shadow-lg">
+        <div className="bg-blue-800 p-3 rounded-xl text-white flex flex-col md:flex-row md:justify-between md:items-center gap-2 mb-4 w-full shadow-lg">
           {/* Date Section */}
           <div className="text-center sm:text-left">
             <p className="text-sm sm:text-lg font-bold text-white">
@@ -354,7 +354,7 @@ const Dashboard = () => {
                 bg-gradient-to-b from-blue-500 to-blue-700
                 border border-blue-800
                 text-white font-semibold tracking-wide
-                px-4 py-3.5 rounded-lg text-md sm:text-lg
+                px-4 py-3.5 rounded-xl text-md sm:text-lg
                 shadow-[inset_0_2px_1px_rgba(255,255,255,0.2),_0_4px_6px_rgba(0,0,0,0.25)]
                 transition-all duration-200 ease-in-out
                 hover:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),_0_2px_4px_rgba(0,0,0,0.3)]
@@ -375,7 +375,7 @@ const Dashboard = () => {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div
-          className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
+          className="bg-yellow-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
           onClick={() => navigate("/leave")}
         >
           <h3 className="font-bold text-[11px] md:text-base">
@@ -386,7 +386,7 @@ const Dashboard = () => {
           </p>
         </div>
         <div
-          className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
+          className="bg-yellow-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
           onClick={() => navigate("/overtime")}
         >
           <h3 className="font-bold text-[11px] md:text-base">
@@ -397,7 +397,7 @@ const Dashboard = () => {
           </p>
         </div>
         <div
-          className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
+          className="bg-yellow-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
           onClick={() => navigate("/Official-Business")}
         >
           <h3 className="font-bold text-[11px] md:text-base">
@@ -408,7 +408,7 @@ const Dashboard = () => {
           </p>
         </div>
         <div
-          className="bg-yellow-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
+          className="bg-yellow-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
           onClick={() => navigate("/timekeepingAdj")}
         >
           <h3 className="font-bold text-[11px] md:text-base">
@@ -424,7 +424,7 @@ const Dashboard = () => {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div
-              className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
+              className="bg-blue-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
               onClick={() => navigate("/leaveApproval")}
             >
               <h3 className="font-bold text-[11px] md:text-base">
@@ -435,7 +435,7 @@ const Dashboard = () => {
               </p>
             </div>
             <div
-              className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
+              className="bg-blue-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
               onClick={() => navigate("/overtimeApproval")}
             >
               <h3 className="font-bold text-[11px] md:text-base">
@@ -446,7 +446,7 @@ const Dashboard = () => {
               </p>
             </div>
             <div
-              className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
+              className="bg-blue-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
               onClick={() => navigate("/OfficialBusinessApproval")}
             >
               <h3 className="font-bold text-[11px] md:text-base">
@@ -457,7 +457,7 @@ const Dashboard = () => {
               </p>
             </div>
             <div
-              className="bg-blue-500 p-4 rounded-lg shadow-lg text-white cursor-pointer select-none"
+              className="bg-blue-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
               onClick={() => navigate("/timekeepingAdjApproval")}
             >
               <h3 className="font-bold text-[11px] md:text-base">
@@ -475,7 +475,7 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-2">
         {/* Leave Credit Section */}
-        <div className="bg-white p-6 sm:p-4 rounded-lg shadow-lg w-full">
+        <div className="bg-white p-6 sm:p-4 rounded-xl shadow-lg w-full">
           <h2 className="dashboard-text-header">Leave Credit</h2>
           {/* <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span> */}
 
@@ -550,7 +550,7 @@ const Dashboard = () => {
         </div>
 
         {/* Personal Calendar */}
-        <div className="bg-white p-3 sm:p-4 rounded-lg shadow-lg w-full">
+        <div className="bg-white p-3 sm:p-4 rounded-xl shadow-lg w-full">
           <h2 className="text-base sm:text-base font-semibold mb-2 text-blue-800 text-center">
             Personal Calendar
           </h2>
@@ -639,17 +639,17 @@ const Dashboard = () => {
 
           {/* Calendar Legend */}
           <div className="flex justify-between text-xs md:text-sm mt-4">
-            {/* <div className="flex items-center"><span className="w-4 h-4 rounded-lg bg-red-400 inline-block mr-1"></span> Holiday</div> */}
+            {/* <div className="flex items-center"><span className="w-4 h-4 rounded-xl bg-red-400 inline-block mr-1"></span> Holiday</div> */}
             <div className="flex items-center text-red-500 font-bold">
-              <span className="w-4 h-4 rounded-lg bg-red-500 inline-block mr-1"></span>
+              <span className="w-4 h-4 rounded-xl bg-red-500 inline-block mr-1"></span>
               Holiday
             </div>
             <div className="flex items-center text-blue-400 font-bold">
-              <span className="w-4 h-4 rounded-lg bg-blue-400 inline-block mr-1"></span>{" "}
+              <span className="w-4 h-4 rounded-xl bg-blue-400 inline-block mr-1"></span>{" "}
               Approved Leave
             </div>
             <div className="flex items-center text-yellow-400 font-bold">
-              <span className="w-4 h-4 rounded-lg bg-yellow-400 inline-block mr-1"></span>{" "}
+              <span className="w-4 h-4 rounded-xl bg-yellow-400 inline-block mr-1"></span>{" "}
               Pending Leave
             </div>
           </div>
@@ -659,7 +659,7 @@ const Dashboard = () => {
       <hr className="mt-2 mb-2" />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-2 min-h-screen">
         {/* Daily Time Record Section */}
-        <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
           <h2 className="dashboard-text-header">Daily Time Record</h2>
           <span className="dashboard-text-span">Recent Transactions</span>
 
@@ -726,11 +726,11 @@ const Dashboard = () => {
         </div>
 
         {/* Loan Balance Inquiry */}
-        {/* <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative"> */}
+        {/* <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative"> */}
         {/* <h2 className="text-lg font-semibold mb-2 text-blue-800">My Loan Balance</h2>
   <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span> */}
 
-        <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
           <h2 className="dashboard-text-header">My Loan Balance</h2>
           <span className="dashboard-text-span">Recent Transactions</span>
 
@@ -797,7 +797,7 @@ const Dashboard = () => {
         </div>
 
         {/* Overtime Applications */}
-        <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
           <h2 className="dashboard-text-header">My Overtime Applications</h2>
           <span className="dashboard-text-span">Recent Transactions</span>
 
@@ -864,7 +864,7 @@ const Dashboard = () => {
           )}
         </div>
 
-        <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
           <h2 className="dashboard-text-header">My Leave Applications</h2>
           <span className="dashboard-text-span">Recent Transactions</span>
 
@@ -932,7 +932,7 @@ const Dashboard = () => {
 
         {/* Official Business Applications */}
 
-        <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
           <h2 className="dashboard-text-header">
             My Official Business Applications
           </h2>
@@ -1011,7 +1011,7 @@ const Dashboard = () => {
         {user.approver === "1" && (
           <>
             {/* Overtime Approval */}
-            <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+            <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
               <h2 className="dashboard-text-header">Overtime for Approval</h2>
               <span className="dashboard-text-span">Recent Transactions</span>
 
@@ -1089,7 +1089,7 @@ const Dashboard = () => {
             </div>
 
             {/* Leave Approval */}
-            <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+            <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
               <h2 className="dashboard-text-header">Leave for Approval</h2>
               <span className="dashboard-text-span">Recent Transactions</span>
 
@@ -1169,7 +1169,7 @@ const Dashboard = () => {
             </div>
 
             {/* Official Business Approval */}
-            <div className="bg-white p-4 rounded-lg shadow-md flex flex-col flex-grow relative">
+            <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
               <h2 className="dashboard-text-header">
                 Official Business for Approval
               </h2>

@@ -8,7 +8,7 @@ import API_ENDPOINTS from "@/apiConfig.jsx";
 
 const badgeClass = (status) => {
   const base =
-    "inline-flex justify-center items-center text-xs w-20 py-1 rounded-lg font-semibold";
+    "inline-flex justify-center items-center text-xs w-20 py-1 rounded-xl font-semibold";
   switch ((status || "").toLowerCase()) {
     case "approved":
       return `${base} bg-blue-100 text-blue-700`;
@@ -112,7 +112,7 @@ const OvertimeApproval = () => {
         </div>
 
         {/* Pending Overtime */}
-        <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+        <div className="mt-4 bg-white p-4 shadow-lg rounded-xl">
           <h2 className="text-lg font-bold mb-4">Pending Overtime Applications</h2>
           {error && <p className="text-red-500 text-center">{error}</p>}
 
@@ -141,7 +141,7 @@ const OvertimeApproval = () => {
                         {overtime.otStatus}
                       </span>
                       <button
-                        className="text-[12px] bg-blue-500 text-white px-5 py-1 rounded-lg hover:bg-blue-600 transition"
+                        className="text-[12px] bg-blue-500 text-white px-5 py-1 rounded-xl hover:bg-blue-600 transition"
                         onClick={() => handleReviewClick(overtime)}
                       >
                         Review
@@ -163,7 +163,7 @@ const OvertimeApproval = () => {
           </div>
 
           {/* Desktop: Table */}
-          <div className="hidden md:block w-full overflow-x-auto max-h-[450px] overflow-y-auto relative rounded-lg ">
+          <div className="hidden md:block w-full overflow-x-auto max-h-[450px] overflow-y-auto relative rounded-xl ">
             <table className="min-w-full text-center text-sm lg:text-base border ">
               <thead className="global-thead-approval sticky top-0 z-10">
                 <tr className="border-b">
@@ -188,7 +188,7 @@ const OvertimeApproval = () => {
                       <td className="global-td-approval text-left">{overtime.otRemarks || "N/A"}</td>
                       <td className="global-td-approval text-center whitespace-nowrap">
                         <button
-                          className="bg-blue-500 text-white px-4 py-0.5 rounded-lg hover:bg-blue-600 transition"
+                          className="bg-blue-500 text-white px-4 py-0.5 rounded-xl hover:bg-blue-600 transition"
                           onClick={() => handleReviewClick(overtime)}
                         >
                           Review
@@ -209,7 +209,7 @@ const OvertimeApproval = () => {
         </div>
 
         {/* Overtime Approval History */}
-        <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+        <div className="mt-4 bg-white p-4 shadow-lg rounded-xl">
           <h2 className="text-lg font-bold mb-4">Overtime Approval History</h2>
 
           {/* Mobile: Cards / Accordion */}
@@ -245,7 +245,7 @@ const OvertimeApproval = () => {
           </div>
 
           {/* Desktop: Table */}
-          <div className="hidden md:block w-full overflow-x-auto max-h-[450px] overflow-y-auto relative rounded-lg">
+          <div className="hidden md:block w-full overflow-x-auto max-h-[450px] overflow-y-auto relative rounded-xl">
             <table className="min-w-full text-center text-sm lg:text-base border">
               <thead className="global-thead-approval sticky top-0 z-10">
                 <tr className="border-b">
