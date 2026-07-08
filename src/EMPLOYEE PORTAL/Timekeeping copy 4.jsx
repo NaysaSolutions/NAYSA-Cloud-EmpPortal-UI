@@ -229,52 +229,31 @@ const Timekeeping = ({ onBreakStart }) => {
     });
   };
 
-const normalizeEnabledFlag = (value, defaultValue = 1) => {
-  if (value == null || String(value).trim() === "") {
-    return defaultValue;
-  }
+const isLocationValidationRequired = (branchLocation) => {
+  const geotagging = Number(branchLocation?.geotagging ?? 1);
+  const geofence = Number(branchLocation?.geofence ?? 1);
 
-  const textValue = String(value).trim().toUpperCase();
-
-  if (["1", "Y", "YES", "TRUE", "T", "ON"].includes(textValue)) {
-    return 1;
-  }
-
-  if (["0", "N", "NO", "FALSE", "F", "OFF"].includes(textValue)) {
-    return 0;
-  }
-
-  const numberValue = Number(value);
-  return Number.isFinite(numberValue) ? numberValue : defaultValue;
+  return geotagging === 1 && geofence === 1;
 };
 
-const isGeotaggingEnabled = (branchLocation) =>
-  normalizeEnabledFlag(branchLocation?.geotagging, 1) === 1;
-
-const isGeofenceEnabled = (branchLocation) =>
-  normalizeEnabledFlag(branchLocation?.geofence, 1) === 1;
-
-const isLocationCaptureRequired = (branchLocation) =>
-  isGeotaggingEnabled(branchLocation) || isGeofenceEnabled(branchLocation);
-
-const isLocationValidationRequired = (branchLocation) =>
-  isGeofenceEnabled(branchLocation);
-
 const validateGeofenceLocation = (userCoords, branchLocation) => {
-  if (!isGeofenceEnabled(branchLocation)) {
-    return {
-      allowed: true,
-      message: "Geofence validation is disabled.",
-      distance: 0,
-      allowedRadius: 0,
-      accuracy: Number(userCoords?.accuracy ?? 0),
-    };
-  }
-
   if (!branchLocation) {
     return {
       allowed: false,
       message: "Assigned location is not loaded. Please contact HR/Admin.",
+    };
+  }
+
+  const geotagging = Number(branchLocation.geotagging ?? 1);
+  const geofence = Number(branchLocation.geofence ?? 1);
+
+  if (geotagging !== 1 || geofence !== 1) {
+    return {
+      allowed: true,
+      message: "Location validation is disabled.",
+      distance: 0,
+      allowedRadius: 0,
+      accuracy: Number(userCoords?.accuracy ?? 0),
     };
   }
 
@@ -373,12 +352,6 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   const roundCoord = (n, p = 5) => Number(n).toFixed(p);
 
   const branchLocation = empBranchLoc;
-  const shouldShowLocationAddress = branchLocation
-    ? isGeotaggingEnabled(branchLocation)
-    : isLocationRequired;
-  const shouldShowGeofenceDetails = branchLocation
-    ? isGeofenceEnabled(branchLocation)
-    : isLocationRequired;
 
   const reverseGeocode = async (lat, lon) => {
   const key = `${roundCoord(lat, 5)},${roundCoord(lon, 5)}`;
@@ -575,25 +548,24 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
               fetchedLocation.ALLOWED_RADIUS ??
               50
           ),
-          geotagging: normalizeEnabledFlag(
+          geotagging: Number(
             fetchedLocation.geotagging ??
               fetchedLocation.GEOTAGGING ??
               fetchedLocation.geoTagging ??
               fetchedLocation.GEO_TAGGING ??
               fetchedLocation.geotag ??
-              fetchedLocation.GEO_TAG,
-            1
+              fetchedLocation.GEO_TAG ??
+              1
           ),
-          geofence: normalizeEnabledFlag(
+          geofence: Number(
             fetchedLocation.geofence ??
               fetchedLocation.GEOFENCE ??
               fetchedLocation.geofencing ??
-              fetchedLocation.GEOFENCING,
-            1
+              fetchedLocation.GEOFENCING ??
+              1
           ),
         };
 
-        const locationCaptureRequired = isLocationCaptureRequired(formattedLocation);
         const locationValidationRequired = isLocationValidationRequired(formattedLocation);
 
         if (
@@ -612,7 +584,7 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
         }
 
         setEmpBranchLoc(formattedLocation);
-        setIsLocationRequired(locationCaptureRequired);
+        setIsLocationRequired(locationValidationRequired);
 
         console.log("Employee Branch Location:", formattedLocation);
       } else {
@@ -1025,9 +997,6 @@ let locationCheck = null;
 let capturedImageInfo = null;
 let reverseGeocodePromise = null;
 
-    const geotaggingEnabled = isGeotaggingEnabled(branchLocation);
-    const geofenceEnabled = isGeofenceEnabled(branchLocation);
-
     if (isLocationRequired) {
       setLoading({ show: true, message: "Getting your location..." });
 
@@ -1067,19 +1036,15 @@ let reverseGeocodePromise = null;
 
       if (!locationCheck.allowed) {
         try {
-          const geoErrorResult = await reverseGeocode(
+          address = await reverseGeocode(
             userCoords.latitude,
             userCoords.longitude
           );
-          address =
-            geoErrorResult?.actualCapturedLocation ||
-            geoErrorResult?.fullMapAddress ||
-            "Unable to resolve address";
         } catch {
           address = "Unable to resolve address";
         }
 
-        setLocationAddress(geotaggingEnabled ? address : "");
+        setLocationAddress(address);
 
         showErrorToast(
           "Location Not Allowed",
@@ -1114,30 +1079,28 @@ let reverseGeocodePromise = null;
         return;
       }
 
-      if (geotaggingEnabled) {
-        setLoading({ show: true, message: "Resolving address..." });
+      setLoading({ show: true, message: "Resolving address..." });
 
-        reverseGeocodePromise = (async () => {
-          try {
-            const geoResult = await reverseGeocode(
-              userCoords.latitude,
-              userCoords.longitude
-            );
+      reverseGeocodePromise = (async () => {
+  try {
+    const geoResult = await reverseGeocode(
+      userCoords.latitude,
+      userCoords.longitude
+    );
 
-            return geoResult || {
-              actualCapturedLocation: "N/A",
-              nearestLandmark: "N/A",
-              fullMapAddress: "N/A",
-            };
-          } catch {
-            return {
-              actualCapturedLocation: "N/A",
-              nearestLandmark: "N/A",
-              fullMapAddress: "N/A",
-            };
-          }
-        })();
-      }
+    return geoResult || {
+      actualCapturedLocation: "N/A",
+      nearestLandmark: "N/A",
+      fullMapAddress: "N/A",
+    };
+  } catch {
+    return {
+      actualCapturedLocation: "N/A",
+      nearestLandmark: "N/A",
+      fullMapAddress: "N/A",
+    };
+  }
+})();
     }
 
     if (isImageCaptureRequired) {
@@ -1152,26 +1115,20 @@ capturedImageInfo = await captureImageProcess(type);
     }
 
     if (isLocationRequired) {
-      if (geotaggingEnabled && reverseGeocodePromise) {
-        const gpsResult = await reverseGeocodePromise;
+  const gpsResult = await reverseGeocodePromise;
 
-        actualCapturedLocation = gpsResult.actualCapturedLocation || "N/A";
-        nearestMapLandmark = gpsResult.nearestLandmark || "N/A";
-        address = actualCapturedLocation;
+  actualCapturedLocation = gpsResult.actualCapturedLocation || "N/A";
+  nearestMapLandmark = gpsResult.nearestLandmark || "N/A";
+  verifiedAssignedBranch = branchLocation?.address || "N/A";
 
-        setLocationAddress(actualCapturedLocation);
-      } else {
-        actualCapturedLocation = "N/A";
-        nearestMapLandmark = "N/A";
-        address = "N/A";
+  gpsAccuracy = userCoords?.accuracy ?? null;
+  distanceFromBranch = locationCheck?.distance ?? null;
 
-        setLocationAddress("");
-      }
+  // Main address shown in existing screens can remain the actual GPS address
+  address = actualCapturedLocation;
 
-      verifiedAssignedBranch = branchLocation?.address || "N/A";
-      gpsAccuracy = userCoords?.accuracy ?? null;
-      distanceFromBranch = locationCheck?.distance ?? null;
-    }
+  setLocationAddress(actualCapturedLocation);
+}
 
     const now = dayjs().tz(PH_TIMEZONE);
     const currentTime = now.format("HH:mm:ss");
@@ -1238,21 +1195,19 @@ capturedImageInfo = await captureImageProcess(type);
           breakOutImagePath,
 
           latitude: userCoords?.latitude ?? null,
-          longitude: userCoords?.longitude ?? null,
-          accuracy: gpsAccuracy,
-          locationAddress: geotaggingEnabled ? actualCapturedLocation : "N/A",
+longitude: userCoords?.longitude ?? null,
+accuracy: gpsAccuracy,
+locationAddress: actualCapturedLocation,
 
-          actualCapturedLocation: geotaggingEnabled ? actualCapturedLocation : "N/A",
-          nearestMapLandmark: geotaggingEnabled ? nearestMapLandmark : "N/A",
-          verifiedAssignedBranch,
-          distanceFromBranch,
+actualCapturedLocation,
+nearestMapLandmark,
+verifiedAssignedBranch,
+distanceFromBranch,
 
-          branchcode: branchLocation?.branchcode ?? null,
-          branchname: branchLocation?.branchname ?? null,
-          branchAddress: verifiedAssignedBranch,
-          allowedRadius: branchLocation?.allowedRadius ?? null,
-          geotagging: geotaggingEnabled ? 1 : 0,
-          geofence: geofenceEnabled ? 1 : 0,
+branchcode: branchLocation?.branchcode ?? null,
+branchname: branchLocation?.branchname ?? null,
+branchAddress: verifiedAssignedBranch,
+allowedRadius: branchLocation?.allowedRadius ?? null,
         },
       },
     ];
@@ -1325,11 +1280,11 @@ capturedImageInfo = await captureImageProcess(type);
 
     const headerColumns = ["Employee No.", "Employee Name", "Date", "Time In"];
 
-    if (shouldShowLocationAddress) headerColumns.push("Time In Location");
+    if (isLocationRequired) headerColumns.push("Time In Location");
 
     headerColumns.push("Break In", "Break Out", "Time Out");
 
-    if (shouldShowLocationAddress) headerColumns.push("Time Out Location");
+    if (isLocationRequired) headerColumns.push("Time Out Location");
 
     headerColumns.push("Worked (hrs)");
 
@@ -1341,7 +1296,7 @@ capturedImageInfo = await captureImageProcess(type);
         `"${record.time_in ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}"`,
       ];
 
-      if (shouldShowLocationAddress) {
+      if (isLocationRequired) {
         row.push(`"${record.time_in_address || "N/A"}"`);
       }
 
@@ -1351,7 +1306,7 @@ capturedImageInfo = await captureImageProcess(type);
         `"${record.time_out ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}"`
       );
 
-      if (shouldShowLocationAddress) {
+      if (isLocationRequired) {
         row.push(`"${record.time_out_address || "N/A"}"`);
       }
 
@@ -1414,6 +1369,8 @@ capturedImageInfo = await captureImageProcess(type);
 });
 
 if (!confirm) return;
+
+    if (!confirm.isConfirmed) return;
 
     try {
       const response = await axios.post(API_ENDPOINTS.confirmDTR, {
@@ -1750,7 +1707,7 @@ if (!confirm) return;
 )}
                   </div>
 
-                  {shouldShowLocationAddress && (
+                  {isLocationRequired && (
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center gap-1.5 text-[11px] text-gray-400 uppercase font-bold tracking-wide">
                         <MapPin size={14} className="text-green-500" /> Time In Location
@@ -1786,7 +1743,7 @@ if (!confirm) return;
                   </div>
 
                   <div className="flex flex-col gap-2 flex-1">
-                    {shouldShowLocationAddress && record.time_out_address ? (
+                    {isLocationRequired && record.time_out_address ? (
                       <>
                         <div className="flex items-center gap-1.5 text-[11px] text-gray-400 uppercase font-bold tracking-wide">
                           <MapPin size={14} className="text-red-400" /> Time Out Location
@@ -1886,7 +1843,7 @@ if (!confirm) return;
                   </div>
                 </div>
 
-                {shouldShowLocationAddress && (
+                {isLocationRequired && (
                   <div>
                     <div className="text-sm font-medium text-gray-700 mb-3">Locations</div>
                     <div className="space-y-2">
@@ -2002,7 +1959,7 @@ if (!confirm) return;
 
   const FullTableView = ({ filteredRecords }) => {
     const isBlank = (v) => v == null || String(v).trim() === "";
-    const colSpan = 5 + (shouldShowLocationAddress ? 2 : 0);
+    const colSpan = 5 + (isLocationRequired ? 2 : 0);
 
     const handleAdjustClick = (record) => {
       navigate("/timekeepingAdj", { state: { record } });
@@ -2066,7 +2023,7 @@ if (!confirm) return;
                     }
                   />
 
-                  {shouldShowLocationAddress && (
+                  {isLocationRequired && (
                     <Row label="In Loc:" value={record.time_in_address || "N/A"} />
                   )}
 
@@ -2095,7 +2052,7 @@ if (!confirm) return;
                     }
                   />
 
-                  {shouldShowLocationAddress && (
+                  {isLocationRequired && (
                     <Row label="Out Loc:" value={record.time_out_address || "N/A"} />
                   )}
                 </div>
@@ -2112,10 +2069,10 @@ if (!confirm) return;
               <tr className="border-b border-gray-200 text-xs font-bold text-gray-900 bg-gray-50">
                 <th className="px-3 py-3 whitespace-nowrap">Shift Date</th>
                 <th className="px-3 py-3 whitespace-nowrap">Time In</th>
-                {shouldShowLocationAddress && <th className="px-3 py-3">Location In</th>}
+                {isLocationRequired && <th className="px-3 py-3">Location In</th>}
                 <th className="px-3 py-3 whitespace-nowrap">Break</th>
                 <th className="px-3 py-3 whitespace-nowrap">Time Out</th>
-                {shouldShowLocationAddress && <th className="px-3 py-3">Location Out</th>}
+                {isLocationRequired && <th className="px-3 py-3">Location Out</th>}
                 <th className="px-3 py-3 text-right whitespace-nowrap">Total hrs</th>
               </tr>
             </thead>
@@ -2154,7 +2111,7 @@ if (!confirm) return;
                           </button>
                         )}
                       </td>
-                      {shouldShowLocationAddress && (
+                      {isLocationRequired && (
                         <td className="px-3 py-3 align-top max-w-[200px] break-words leading-relaxed text-gray-700">
                           {record.time_in_address || "N/A"}
                         </td>
@@ -2184,7 +2141,7 @@ if (!confirm) return;
                           </button>
                         )}
                       </td>
-                      {shouldShowLocationAddress && (
+                      {isLocationRequired && (
                         <td className="px-3 py-3 align-top max-w-[200px] break-words leading-relaxed text-gray-700">
                           {record.time_out_address || "N/A"}
                         </td>
@@ -2459,24 +2416,7 @@ if (!confirm) return;
             {branchLocation?.address || "N/A"}
           </p>
 
-          <div className="flex flex-wrap gap-2 mb-3">
-            <span className={`px-2 py-1 rounded-full text-[11px] font-semibold ${
-              shouldShowLocationAddress
-                ? "bg-green-50 text-green-700 border border-green-200"
-                : "bg-gray-50 text-gray-500 border border-gray-200"
-            }`}>
-              Geotagging: {shouldShowLocationAddress ? "ON" : "OFF"}
-            </span>
-            <span className={`px-2 py-1 rounded-full text-[11px] font-semibold ${
-              shouldShowGeofenceDetails
-                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                : "bg-gray-50 text-gray-500 border border-gray-200"
-            }`}>
-              Geofence: {shouldShowGeofenceDetails ? "ON" : "OFF"}
-            </span>
-          </div>
-
-          {shouldShowGeofenceDetails && (
+          {isLocationRequired && (
             <p className="text-gray-800 text-[12px] md:text-sm mb-6">
               <span className="font-bold">Allowed Radius:</span>{" "}
               {branchLocation?.allowedRadius ?? "N/A"} meters
@@ -2497,7 +2437,7 @@ if (!confirm) return;
               : "Not Recorded"}
           </p>
 
-          {shouldShowLocationAddress && (
+          {isLocationRequired && (
             <p className="text-gray-800 text-[14px] md:text-sm mb-4">
               <span className="font-bold">📍Location:</span>{" "}
               {todayRecord?.time_in_address || "Not Recorded"}
@@ -2511,7 +2451,7 @@ if (!confirm) return;
               : "Not Recorded"}
           </p>
 
-          {shouldShowLocationAddress && (
+          {isLocationRequired && (
             <p className="text-gray-800 text-[14px] md:text-sm mb-4">
               <span className="font-bold">📍Location:</span>{" "}
               {todayRecord?.break_in_address || "Not Recorded"}
@@ -2525,7 +2465,7 @@ if (!confirm) return;
               : "Not Recorded"}
           </p>
 
-          {shouldShowLocationAddress && (
+          {isLocationRequired && (
             <p className="text-gray-800 text-[14px] md:text-sm mb-4">
               <span className="font-bold">📍Location:</span>{" "}
               {todayRecord?.break_out_address || "Not Recorded"}
@@ -2539,7 +2479,7 @@ if (!confirm) return;
               : "Not Recorded"}
           </p>
 
-          {shouldShowLocationAddress && (
+          {isLocationRequired && (
             <p className="text-gray-800 text-[14px] md:text-sm mb-4">
               <span className="font-bold">📍Location:</span>{" "}
               {todayRecord?.time_out_address || "Not Recorded"}

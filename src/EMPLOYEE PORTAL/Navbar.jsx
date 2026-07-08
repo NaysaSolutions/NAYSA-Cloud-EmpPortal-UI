@@ -36,7 +36,8 @@ const Navbar = () => {
         label: "Timekeeping",
         children: [
           { path: "/timekeeping", label: "Timekeeping (In and Out)" },
-          { path: "/timekeepingAdjApproval", label: "Timekeeping for Approval" }
+          { path: "/timekeepingAdjApproval", label: "Timekeeping for Approval" },
+          { path: "/dtrMonitoring", label: "DTR Monitoring" }
           // { path: "/offsetApproval", label: "Offset for Approval" }   // ✅ ADDED
         ]
       }]
@@ -83,7 +84,7 @@ const Navbar = () => {
         {/* <span className="font-bold text-sm md:text-lg">NEW NEMAR DEVELOPMENT CORPORATION</span> */}
         {/* <span className="font-bold text-lg">STT (PHILIPPINES), INC.</span> */}
         {/* <span className="font-bold text-lg">TEST SOLUTION SERVICES INC.</span> */}
-        <span className="font-bold text-lg">NEW NEMAR CORPORATION</span>
+        <span className="font-bold text-lg">TEST SOLUTIONS SERVICES INC.</span>
 
         {/* <span className="font-bold text-lg">NAYSA-SOLUTIONS INC.</span> */}
 
