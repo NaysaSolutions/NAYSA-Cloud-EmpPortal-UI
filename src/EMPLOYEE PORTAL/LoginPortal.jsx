@@ -39,6 +39,58 @@ function LoginPortal() {
     empno: formData.empno.trim(),
     password: formData.password.trim(),
   };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+
+  const requestData = {
+    empno: formData.empno.trim(),
+    password: formData.password.trim(),
+  };
+
+  try {
+    const response = await axios.post(API_ENDPOINTS.loginEmp, requestData);
+
+    if (response.data.status === "success") {
+      localStorage.setItem("token", response.data.token);
+
+      const userData = {
+        ...response.data.data,
+        empNo: response.data.data.empno || formData.empno.trim(),
+        empName: response.data.data.emp_name || "",
+      };
+
+      setUser(userData);
+
+      Swal.fire({
+        title: "Login Successful",
+        text: "Welcome back!",
+        icon: "success",
+        confirmButtonText: "OK",
+      });
+
+      navigate("/dashboard");
+    } else {
+      Swal.fire({
+        title: "Login Failed",
+        text: response.data.message || "Invalid credentials.",
+        icon: "error",
+        confirmButtonText: "OK",
+      });
+    }
+  } catch (error) {
+    console.error("Login request failed:", error);
+
+    Swal.fire({
+      title: "Error",
+      text: error.response?.data?.message || "Something went wrong.",
+      icon: "error",
+      confirmButtonText: "OK",
+    });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const loadingToast = toast.loading("Signing in...", {
     description: "Please wait while we verify your account.",

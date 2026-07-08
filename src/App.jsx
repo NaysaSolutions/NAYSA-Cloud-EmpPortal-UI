@@ -9,6 +9,7 @@ import Navbar from "./EMPLOYEE PORTAL/Navbar";
 import Dashboard from "./EMPLOYEE PORTAL/Dashboard";
 import LoginPortal from "./EMPLOYEE PORTAL/LoginPortal";
 import Timekeeping from "./EMPLOYEE PORTAL/Timekeeping";
+import TimekeepingEnrollment from "./EMPLOYEE PORTAL/TimekeepingFaceEnrollment";
 import TimekeepingAdjustment from "./EMPLOYEE PORTAL/TimekeepingAdjustment";
 import TimekeepingAdjustmentApproval from "./EMPLOYEE PORTAL/TimekeepingAdjustmentApproval";
 import TimekeepingAdjustmentReview from "./EMPLOYEE PORTAL/TimekeepingAdjustmentReview";

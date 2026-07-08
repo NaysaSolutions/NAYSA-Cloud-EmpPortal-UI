@@ -11,6 +11,7 @@ import LeaveCreditModal from "./LeaveCreditModal";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import "@/index.css";
 import Timekeeping from "./Timekeeping"; // Adjust the path as needed
+import TimekeepingFaceEnroll from "./TimekeepingFaceEnrollment"; // Adjust the path as needed
 
 dayjs.extend(advancedFormat);
 
@@ -363,11 +364,37 @@ const Dashboard = () => {
                 active:translate-y-[2px]
                 w-full sm:w-auto
               "
-              >
-                <FontAwesomeIcon icon={faClock} size="lg" className="mr-2" />
-                Timekeeping
-              </button>
-            </div>
+            >
+              <FontAwesomeIcon icon={faClock} size="lg" className="mr-2" />
+              Timekeeping
+            </button>
+            {/* <button
+  onClick={() =>
+    navigate("/timekeepingFaceEnroll", {
+      state: {
+        employeeData: user,
+        user: user,
+      },
+    })
+  }
+  className="
+                bg-gradient-to-b from-blue-500 to-blue-700
+                border border-blue-800
+                text-white font-semibold tracking-wide
+                px-4 py-3.5 rounded-lg text-md sm:text-lg
+                shadow-[inset_0_2px_1px_rgba(255,255,255,0.2),_0_4px_6px_rgba(0,0,0,0.25)]
+                transition-all duration-200 ease-in-out
+                hover:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),_0_2px_4px_rgba(0,0,0,0.3)]
+                hover:translate-y-[1px]
+                active:shadow-[inset_0_3px_5px_rgba(0,0,0,0.4)]
+                active:translate-y-[2px]
+                w-full sm:w-auto
+              "
+            >
+  Face Enrollment
+</button> */}
+          </div>
+
           </div>
         </div>
       </div>
