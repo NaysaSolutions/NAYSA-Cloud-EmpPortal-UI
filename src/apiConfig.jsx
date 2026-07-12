@@ -57,11 +57,15 @@ const API_ENDPOINTS = {
      officialBusinessApproval:                  `${API_BASE_URL}/approvalOB`,
 
      
-    //DTR
+    // DTR
     upsertTimeIn:         `${API_BASE_URL}/upsertTimeIn`,
     saveImage:            `${API_BASE_URL}/saveImage`,
     getNewImageId:        `${API_BASE_URL}/getNewImageId`,
     getDTRRecords:        `${API_BASE_URL}/dtrRecords`,
+
+    getAllDTR:            `${API_BASE_URL}/getAllDTR`,
+    getAllDTRHR:          `${API_BASE_URL}/getAllDTRHR`,
+
     getEmpBranchLoc:      `${API_BASE_URL}/empBranchLocation`,
 
     getDTRAppInq:         `${API_BASE_URL}/getDTRAppInq`,
@@ -70,7 +74,7 @@ const API_ENDPOINTS = {
     getDTRApprHistory:    `${API_BASE_URL}/getDTRApprHistory`,
     upsertDTR:            `${API_BASE_URL}/upsertDTR`,
     approvalDTR:          `${API_BASE_URL}/approvalDTR`,
-    cancelDTR:            `${API_BASE_URL}/cancelDTR`,  
+    cancelDTR:            `${API_BASE_URL}/cancelDTR`,
     confirmDTR:           `${API_BASE_URL}/dtr/confirm`,
 
     // FACEIO

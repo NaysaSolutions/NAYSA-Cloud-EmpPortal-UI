@@ -248,14 +248,12 @@ const normalizeEnabledFlag = (value, defaultValue = 1) => {
   return Number.isFinite(numberValue) ? numberValue : defaultValue;
 };
 
-const isGeotaggingEnabled = (branchLocation) =>
-  normalizeEnabledFlag(branchLocation?.geotagging, 1) === 1;
+const isGeotaggingEnabled = () => true;
 
 const isGeofenceEnabled = (branchLocation) =>
   normalizeEnabledFlag(branchLocation?.geofence, 1) === 1;
 
-const isLocationCaptureRequired = (branchLocation) =>
-  isGeotaggingEnabled(branchLocation) || isGeofenceEnabled(branchLocation);
+const isLocationCaptureRequired = () => true;
 
 const isLocationValidationRequired = (branchLocation) =>
   isGeofenceEnabled(branchLocation);
@@ -575,15 +573,7 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
               fetchedLocation.ALLOWED_RADIUS ??
               50
           ),
-          geotagging: normalizeEnabledFlag(
-            fetchedLocation.geotagging ??
-              fetchedLocation.GEOTAGGING ??
-              fetchedLocation.geoTagging ??
-              fetchedLocation.GEO_TAGGING ??
-              fetchedLocation.geotag ??
-              fetchedLocation.GEO_TAG,
-            1
-          ),
+          geotagging: 1,
           geofence: normalizeEnabledFlag(
             fetchedLocation.geofence ??
               fetchedLocation.GEOFENCE ??
@@ -916,6 +906,26 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   [requestNewImageId, saveCapturedFaceImage, verifyFace]
 );
 
+  const getNormalizedRecordDate = useCallback((record) => {
+    const rawDate =
+      record?.date ||
+      record?.dtrDate ||
+      record?.DTR_DATE ||
+      record?.DTRDATE ||
+      record?.DATE ||
+      record?.recordDate ||
+      record?.record_date ||
+      record?.dateTime ||
+      record?.date_time;
+
+    if (!rawDate) return null;
+
+    const parsedDate = dayjs(rawDate);
+    return parsedDate.isValid()
+      ? parsedDate.tz(PH_TIMEZONE).format("YYYY-MM-DD")
+      : null;
+  }, []);
+
   const fetchDTRRecords = useCallback(async () => {
     if (!user?.empNo || !startDate || !endDate) return;
 
@@ -924,20 +934,32 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
         `${API_ENDPOINTS.getDTRRecords}/${user.empNo}/${startDate}/${endDate}`
       );
 
-      if (response.data.success) {
-        const nextRecords = response.data.records || [];
-        setRecords(nextRecords);
+      const payload =
+        response?.data?.records ||
+        response?.data?.data ||
+        response?.data?.result ||
+        [];
 
-        const today = nextRecords.find(
-          (record) => record.date === dayjs().tz(PH_TIMEZONE).format("YYYY-MM-DD")
-        );
+      const nextRecords = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.records)
+          ? payload.records
+          : Array.isArray(payload?.data)
+            ? payload.data
+            : [];
 
-        setTodayRecord(today || null);
-      }
+      setRecords(nextRecords);
+
+      const todayStr = dayjs().tz(PH_TIMEZONE).format("YYYY-MM-DD");
+      const today =
+        nextRecords.find((record) => getNormalizedRecordDate(record) === todayStr) ||
+        null;
+
+      setTodayRecord(today);
     } catch (error) {
       console.error("Error fetching DTR records:", error);
     }
-  }, [user?.empNo, startDate, endDate]);
+  }, [user?.empNo, startDate, endDate, getNormalizedRecordDate]);
 
   useEffect(() => {
     fetchDTRRecords();
