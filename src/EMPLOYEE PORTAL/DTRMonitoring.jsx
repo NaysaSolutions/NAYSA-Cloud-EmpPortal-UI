@@ -888,7 +888,7 @@ export default function DTRMonitoring() {
       ? "mx-auto max-w-[430px]"
       : deviceMode === "tablet"
         ? "mx-auto max-w-[900px]"
-        : "w-full";
+        : "mx-auto max-w-[1100px]";
 
   const normalizedRows = useMemo(
     () => records.map((row, index) => normalizeDtrRow(row, index, assetOrigin)),
@@ -1400,7 +1400,7 @@ export default function DTRMonitoring() {
       {columns.map((column) => (
         <td
           key={column.key}
-          className={`border-b border-slate-100 px-3 py-2.5 align-middle text-sm text-slate-600 ${
+          className={`border-b border-slate-100 px-3 py-2.5 align-middle text-xs text-slate-600 ${
             column.numeric ? "text-right" : "text-left"
           }`}
           style={{ minWidth: column.minWidth }}
@@ -1530,13 +1530,13 @@ export default function DTRMonitoring() {
         {sortedRows.length > 0 && (
           <tfoot className="sticky bottom-0 z-10 bg-gray-100">
             <tr>
-              <td colSpan={10} className="px-3 py-3 text-right text-sm font-semibold">
+              <td colSpan={10} className="px-1 py-1 text-right text-xs font-semibold">
                 Total Worked Hours
               </td>
-              <td className="px-3 py-3 text-right text-base font-bold">
+              <td className="px-2 py-2 text-right text-xs font-bold">
                 {formatHours(totalWorkedHours)}
               </td>
-              <td className="px-3 py-3" />
+              <td className="px-1 py-1" />
             </tr>
           </tfoot>
         )}
