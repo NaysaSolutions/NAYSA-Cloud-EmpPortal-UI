@@ -37,6 +37,27 @@ const Labeled = ({ label, children }) => (
 
 // -----------------------------------------------------------------------------
 
+const parseDtrRows = (payload) => {
+  if (Array.isArray(payload)) return payload;
+
+  const result = payload?.data?.[0]?.result;
+  if (typeof result === "string") {
+    try {
+      const parsed = JSON.parse(result || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.error("Unable to parse DTR approval result:", error, result);
+      return [];
+    }
+  }
+
+  if (Array.isArray(payload?.data)) return payload.data;
+  if (Array.isArray(payload?.records)) return payload.records;
+  if (Array.isArray(payload?.result)) return payload.result;
+
+  return [];
+};
+
 const TimekeepingAdjustmentApproval = () => {
   const { user } = useAuth();
 
@@ -64,11 +85,10 @@ const TimekeepingAdjustmentApproval = () => {
         body: JSON.stringify({ EMP_NO: user.empNo, STAT: "Pending" }),
       });
       const inq = await inqRes.json();
-      const pendingRows =
-        inq?.success && inq?.data?.[0]?.result
-          ? JSON.parse(inq.data[0].result || "[]")
-          : [];
-
+      const pendingRows = parseDtrRows(inq).filter(
+        (r) => (r.dtrStatus || "").toLowerCase() === "pending"
+      );
+      console.log("Pending Rows:", pendingRows); // Debugging line  
       // History (non-pending)
       const histRes = await fetch(API_ENDPOINTS.getDTRApprHistory, {
         method: "POST",
@@ -80,13 +100,13 @@ const TimekeepingAdjustmentApproval = () => {
         }),
       });
       const hist = await histRes.json();
-      const histRows =
-        hist?.success && hist?.data?.[0]?.result
-          ? JSON.parse(hist.data[0].result || "[]")
-          : [];
+      const histRows = parseDtrRows(hist);
 
       setPending(pendingRows);
-      setHistory(histRows.filter((r) => (r.dtrStatus || "") !== "Pending"));
+      
+      setHistory(
+        histRows.filter((r) => (r.dtrStatus || "").toLowerCase() !== "pending")
+      );
     } catch (e) {
       console.error(e);
       setError("Failed to load approvals.");
