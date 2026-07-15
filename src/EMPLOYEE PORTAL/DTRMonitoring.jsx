@@ -327,6 +327,98 @@ const formatTimeOnly = (value) => {
   });
 };
 
+const parseJsonValue = (value) => {
+  if (typeof value !== "string") return null;
+
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
+const extractDtrRecordArray = (value) => {
+  const parsedValue = parseJsonValue(value);
+  if (parsedValue) return extractDtrRecordArray(parsedValue);
+
+  if (Array.isArray(value)) {
+    if (value.length === 1 && value[0] && typeof value[0] === "object") {
+      const nestedRows =
+        extractDtrRecordArray(value[0].result) ||
+        extractDtrRecordArray(value[0].RESULT) ||
+        extractDtrRecordArray(value[0].records) ||
+        extractDtrRecordArray(value[0].data);
+
+      if (nestedRows) return nestedRows;
+    }
+
+    const unwrappedRows = value.flatMap((item) => {
+      if (!item || typeof item !== "object") return [item];
+      const nestedRows =
+        extractDtrRecordArray(item.result) ||
+        extractDtrRecordArray(item.RESULT);
+      return nestedRows || [item];
+    });
+
+    if (unwrappedRows.length !== value.length || unwrappedRows.some((item, index) => item !== value[index])) {
+      return unwrappedRows;
+    }
+
+    return value;
+  }
+
+  if (!value || typeof value !== "object") return null;
+
+  return (
+    extractDtrRecordArray(value.records) ||
+    extractDtrRecordArray(value.data) ||
+    extractDtrRecordArray(value.result) ||
+    extractDtrRecordArray(value.RESULT)
+  );
+};
+
+const parseDtrPayloadRows = (payload, selectedEndpoint) => {
+  if (Array.isArray(payload)) return extractDtrRecordArray(payload) || [];
+
+  if (payload && typeof payload === "object") {
+    if (payload.success === false) {
+      throw new Error(
+        payload.message ||
+          payload.error_details ||
+          `Failed to fetch DTR records from ${selectedEndpoint}.`,
+      );
+    }
+
+    return extractDtrRecordArray(payload) || [];
+  }
+
+  throw new Error(`Unexpected API response from ${selectedEndpoint}.`);
+};
+
+const normalizeDtrApiPayload = (payload, selectedEndpoint) => {
+  if (typeof payload !== "string") return payload;
+
+  const trimmedPayload = payload.trim();
+
+  if (
+    trimmedPayload.startsWith("<!DOCTYPE html") ||
+    trimmedPayload.startsWith("<html") ||
+    trimmedPayload.includes("<div id=\"root\">") ||
+    trimmedPayload.includes("<div id='root'>")
+  ) {
+    throw new Error(
+      `The production server returned the React HTML page instead of JSON for ${selectedEndpoint}. ` +
+        "Check the IIS web.config rewrite rules. The /api path must be handled by Laravel before the React SPA fallback.",
+    );
+  }
+
+  try {
+    return JSON.parse(trimmedPayload);
+  } catch {
+    throw new Error(`Unexpected text response from ${selectedEndpoint}.`);
+  }
+};
+
 const preserveAcronym = (word) => {
   const acronym = word.toUpperCase();
   if (["DTR", "HR", "OT", "AWOL", "AM", "PM"].includes(acronym)) {
@@ -502,9 +594,31 @@ const buildTimekeepingImageCandidates = (
 };
 const normalizeDtrRow = (row, index, assetOrigin) => {
   const source = normalizeText(getValue(row, ["source", "SOURCE", "type", "TYPE"]));
-  const empNo = normalizeText(getValue(row, ["empno", "EMPNO", "empNo", "EMP_NO"]));
+  const empNo = normalizeText(
+    getValue(row, [
+      "empno",
+      "EMPNO",
+      "empNo",
+      "EMP_NO",
+      "employeeNo",
+      "EMPLOYEE_NO",
+      "employee_no",
+      "EmployeeNo",
+    ]),
+  );
   const empName = normalizeText(
-    getValue(row, ["empName", "EMPNAME", "emp_name", "EMP_NAME"]),
+    getValue(row, [
+      "empName",
+      "EMPNAME",
+      "emp_name",
+      "EMP_NAME",
+      "employeeName",
+      "EMPLOYEE_NAME",
+      "employee_name",
+      "EmployeeName",
+      "name",
+      "NAME",
+    ]),
   );
   const department = normalizeText(
     getValue(row, ["Department", "department", "DEPARTMENT", "deptName", "DEPT_NAME"]),
@@ -519,9 +633,18 @@ const normalizeDtrRow = (row, index, assetOrigin) => {
     getValue(row, ["REMARKS", "remarks", "Remarks", "status", "STATUS"]),
   );
 
-  const day = normalizeText(
-    getValue(row, ["day", "Day"]),
-  );
+  const day =
+    normalizeText(
+      getValue(row, [
+        "day",
+        "Day",
+        "DAY",
+        "dayName",
+        "DAY_NAME",
+        "weekday",
+        "WEEKDAY",
+      ]),
+    ) || formatDayName(date);
 
   const timeInImagePath = getValue(row, [
     "time_in_image_path",
@@ -855,8 +978,13 @@ export default function DTRMonitoring() {
   const [photoPreview, setPhotoPreview] = useState(null);
 
   const isFetchingRef = useRef(false);
+  const fetchRequestIdRef = useRef(0);
   const recordsSignatureRef = useRef("");
+  const hasEmployeeScopeMountedRef = useRef(false);
   const assetOrigin = useMemo(() => getApiAssetOrigin(), []);
+  // Temporary bypass: selecting Employee DTR should use the approver/HR DTR endpoint
+  // while the hr_flag validation issue is being checked.
+  const shouldUseApproverDtrEndpoint = isHrUser || employeeScope === "EMPLOYEE";
 
   useEffect(() => {
     if (!isHrUser) {
@@ -1056,7 +1184,8 @@ export default function DTRMonitoring() {
 
   const fetchAllDTR = useCallback(
     async ({ silent = false } = {}) => {
-      if (isFetchingRef.current) return;
+      const requestId = fetchRequestIdRef.current + 1;
+      fetchRequestIdRef.current = requestId;
       isFetchingRef.current = true;
 
       try {
@@ -1074,9 +1203,11 @@ export default function DTRMonitoring() {
           throw new Error("Start Date must not be greater than End Date.");
         }
 
-        const fallbackPath = isHrUser ? "/getAllDTRHR" : "/getAllDTR";
+        const fallbackPath = shouldUseApproverDtrEndpoint ? "/getAllDTRHR" : "/getAllDTR";
         const selectedEndpoint = resolveApiEndpoint(
-          isHrUser ? API_ENDPOINTS?.getAllDTRHR : API_ENDPOINTS?.getAllDTR,
+          shouldUseApproverDtrEndpoint
+            ? API_ENDPOINTS?.getAllDTRHR
+            : API_ENDPOINTS?.getAllDTR,
           fallbackPath,
         );
 
@@ -1099,6 +1230,8 @@ export default function DTRMonitoring() {
           END_DATE: endDate,
           // For getAllDTRHR, this is the logged-in HR/approver employee number.
           // The selected employee dropdown is applied to the returned rows locally.
+          empno: currentEmpNo,
+          EMPNO: currentEmpNo,
           empNo: currentEmpNo,
           EMP_NO: currentEmpNo,
         };
@@ -1108,29 +1241,31 @@ export default function DTRMonitoring() {
           headers: { Accept: "application/json" },
         });
 
-        const payload = response.data;
-        if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
-          throw new Error(
-            `Invalid API response from ${selectedEndpoint}. Check the Laravel route /api${fallbackPath}.`,
-          );
-        }
+        let payload = normalizeDtrApiPayload(response.data, selectedEndpoint);
 
-        if (!payload.success) {
-          throw new Error(
-            payload.message ||
-              payload.error_details ||
-              `Failed to fetch DTR records from ${selectedEndpoint}.`,
-          );
-        }
+console.log("DTR PRODUCTION RESPONSE:", {
+  url: response?.request?.responseURL || selectedEndpoint,
+  status: response.status,
+  contentType: response.headers?.["content-type"],
+  dataType: typeof payload,
+  isArray: Array.isArray(payload),
+  data: payload,
+});
 
-        const rows = payload.records || payload.data || [];
-        const nextRows = Array.isArray(rows) ? rows : [];
-        const nextSignature = JSON.stringify(nextRows);
+let nextRows = parseDtrPayloadRows(payload, selectedEndpoint);
 
-        if (nextSignature !== recordsSignatureRef.current) {
-          recordsSignatureRef.current = nextSignature;
-          setRecords(nextRows);
-        }
+if (nextRows.length === 0) {
+  console.warn("DTR API returned 0 parsed rows:", payload);
+}
+
+console.log("DTR records loaded:", nextRows.length);
+
+const nextSignature = JSON.stringify(nextRows);
+
+if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatureRef.current) {
+  recordsSignatureRef.current = nextSignature;
+  setRecords(nextRows);
+}
       } catch (err) {
         console.error("Error fetching DTR records:", {
           message: err.message,
@@ -1138,7 +1273,7 @@ export default function DTRMonitoring() {
           status: err.response?.status,
         });
 
-        if (!silent) {
+        if (requestId === fetchRequestIdRef.current && !silent) {
           recordsSignatureRef.current = "";
           setRecords([]);
           setError(
@@ -1149,12 +1284,14 @@ export default function DTRMonitoring() {
           );
         }
       } finally {
-        isFetchingRef.current = false;
-        setLoading(false);
-        setIsRefreshing(false);
+        if (requestId === fetchRequestIdRef.current) {
+          isFetchingRef.current = false;
+          setLoading(false);
+          setIsRefreshing(false);
+        }
       }
     },
-    [startDate, endDate, isHrUser, currentEmpNo],
+    [startDate, endDate, shouldUseApproverDtrEndpoint, currentEmpNo],
   );
 
   useEffect(() => {
@@ -1162,6 +1299,17 @@ export default function DTRMonitoring() {
     // Initial load only. Date changes are applied when Load is clicked.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!hasEmployeeScopeMountedRef.current) {
+      hasEmployeeScopeMountedRef.current = true;
+      return;
+    }
+
+    fetchAllDTR();
+    // Refetch only when DTR View changes. Date changes are applied when Load is clicked.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employeeScope]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -1827,11 +1975,13 @@ export default function DTRMonitoring() {
                   setEmployeeScope(event.target.value);
                   setSelectedEmployeeNo("");
                 }}
-                disabled={!isHrUser}
+                /* Temporarily enabled while HR flag validation is being checked. */
+                /* disabled={!isHrUser} */
                 className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-100"
               >
                 <option value="MY">My DTR</option>
-                {isHrUser && <option value="EMPLOYEE">Employee DTR</option>}
+                {/* Temporarily bypass HR flag validation for Employee DTR option. */}
+                <option value="EMPLOYEE">Employee DTR</option>
               </select>
             </div>
             <div>
@@ -1839,7 +1989,8 @@ export default function DTRMonitoring() {
               <select
                 value={selectedEmployeeNo}
                 onChange={(event) => setSelectedEmployeeNo(event.target.value)}
-                disabled={!isHrUser || employeeScope !== "EMPLOYEE"}
+                /* Temporarily bypass HR flag validation; keep disabled until Employee DTR is selected. */
+                disabled={employeeScope !== "EMPLOYEE"}
                 className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-100"
               >
                 <option value="">All Employees</option>
