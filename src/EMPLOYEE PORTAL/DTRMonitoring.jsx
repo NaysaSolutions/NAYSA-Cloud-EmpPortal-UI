@@ -19,16 +19,12 @@ import {
   FileSpreadsheet,
   FilterX,
   Image as ImageIcon,
-  Layers3,
   LayoutGrid,
   List,
-  Monitor,
   RefreshCw,
   RotateCcw,
   Search,
-  Smartphone,
   Table2,
-  Tablet,
   User,
   Users,
   X,
@@ -325,6 +321,167 @@ const formatTimeOnly = (value) => {
     minute: "2-digit",
     second: "2-digit",
   });
+};
+
+const hasDatePart = (value) =>
+  /\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(normalizeText(value));
+
+const getFirstNonBlankValue = (row, keys) => {
+  for (const key of keys) {
+    const value = row?.[key];
+    if (normalizeText(value)) return value;
+  }
+
+  return "";
+};
+
+const getActualDateTimeValue = (row, type) => {
+  const source = row?.raw || row || {};
+  const actualDateTimeKeys =
+    type === "timeIn"
+      ? [
+          "time_in_datetime",
+          "TIME_IN_DATETIME",
+          "timeInDateTime",
+          "time_in_date_time",
+          "TIME_IN_DATE_TIME",
+          "actual_time_in",
+          "ACTUAL_TIME_IN",
+          "actualTimeIn",
+          "dtrTimeIn",
+          "DTR_TIME_IN",
+          "datetime_in",
+          "date_time_in",
+          "in_datetime",
+          "time_in_full",
+        ]
+      : [
+          "time_out_datetime",
+          "TIME_OUT_DATETIME",
+          "timeOutDateTime",
+          "time_out_date_time",
+          "TIME_OUT_DATE_TIME",
+          "actual_time_out",
+          "ACTUAL_TIME_OUT",
+          "actualTimeOut",
+          "dtrTimeOut",
+          "DTR_TIME_OUT",
+          "datetime_out",
+          "date_time_out",
+          "out_datetime",
+          "time_out_full",
+        ];
+  const normalizedValue = type === "timeIn" ? row?.timeIn : row?.timeOut;
+  const rawTimeKeys =
+    type === "timeIn"
+      ? ["time_in", "TIME_IN", "timeIn", "TIMEIN"]
+      : ["time_out", "TIME_OUT", "timeOut", "TIMEOUT"];
+
+  return normalizeText(
+    getFirstNonBlankValue(source, actualDateTimeKeys) ||
+      normalizedValue ||
+      getFirstNonBlankValue(source, rawTimeKeys),
+  );
+};
+
+const getActualDateValue = (row, type) => {
+  const source = row?.raw || row || {};
+  const keys =
+    type === "timeIn"
+      ? [
+          "time_in_date",
+          "TIME_IN_DATE",
+          "timeInDate",
+          "actual_time_in_date",
+          "actualTimeInDate",
+        ]
+      : [
+          "time_out_date",
+          "TIME_OUT_DATE",
+          "timeOutDate",
+          "actual_time_out_date",
+          "actualTimeOutDate",
+        ];
+
+  return normalizeText(getFirstNonBlankValue(source, keys));
+};
+
+const parseActualDateTime = (dateValue, timeValue) => {
+  const rawTime = normalizeText(timeValue);
+  if (!rawTime) return null;
+
+  if (hasDatePart(rawTime)) {
+    const parsed = new Date(rawTime.replace(" ", "T"));
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  const parsedDate = parseDateValue(dateValue);
+  if (!parsedDate) return null;
+
+  const timeMatch = rawTime.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+  if (!timeMatch) return null;
+
+  let hours = Number(timeMatch[1]);
+  const minutes = Number(timeMatch[2]);
+  const seconds = Number(timeMatch[3] || 0);
+  const meridiem = timeMatch[4]?.toUpperCase();
+
+  if (meridiem === "PM" && hours < 12) hours += 12;
+  if (meridiem === "AM" && hours === 12) hours = 0;
+
+  return new Date(
+    parsedDate.getFullYear(),
+    parsedDate.getMonth(),
+    parsedDate.getDate(),
+    hours,
+    minutes,
+    seconds,
+  );
+};
+
+const formatDateTimeDisplay = (date) => {
+  if (!date || Number.isNaN(date.getTime())) return "-";
+
+  const dateText = date.toLocaleDateString("en-US", {
+    month: "2-digit",
+    day: "2-digit",
+    year: "numeric",
+  });
+  const timeText = date
+    .toLocaleTimeString("en-US", {
+      hour12: true,
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+    .toLowerCase();
+
+  return `${dateText} ${timeText}`;
+};
+
+const formatDtrActualDateTime = (row, type) => {
+  const actualDate = getActualDateValue(row, type);
+  const actualValue = getActualDateTimeValue(row, type);
+  const baseDate = actualDate || row?.date || row?.raw?.date || row?.raw?.DATE;
+  let parsedDateTime = parseActualDateTime(baseDate, actualValue);
+
+  if (
+    type === "timeOut" &&
+    parsedDateTime &&
+    !actualDate &&
+    !hasDatePart(actualValue)
+  ) {
+    const parsedTimeIn = parseActualDateTime(
+      getActualDateValue(row, "timeIn") || row?.date || row?.raw?.date || row?.raw?.DATE,
+      getActualDateTimeValue(row, "timeIn"),
+    );
+
+    if (parsedTimeIn && parsedDateTime < parsedTimeIn) {
+      parsedDateTime = new Date(parsedDateTime.getTime());
+      parsedDateTime.setDate(parsedDateTime.getDate() + 1);
+    }
+  }
+
+  return formatDateTimeDisplay(parsedDateTime);
 };
 
 const parseJsonValue = (value) => {
@@ -624,8 +781,46 @@ const normalizeDtrRow = (row, index, assetOrigin) => {
     getValue(row, ["Department", "department", "DEPARTMENT", "deptName", "DEPT_NAME"]),
   );
   const date = normalizeText(getValue(row, ["date", "DATE", "dtrDate", "DTR_DATE"]));
-  const timeIn = getValue(row, ["time_in", "TIME_IN", "timeIn", "TIMEIN"]);
-  const timeOut = getValue(row, ["time_out", "TIME_OUT", "timeOut", "TIMEOUT"]);
+  const timeIn = getFirstNonBlankValue(row, [
+    "time_in_datetime",
+    "TIME_IN_DATETIME",
+    "timeInDateTime",
+    "time_in_date_time",
+    "TIME_IN_DATE_TIME",
+    "actual_time_in",
+    "ACTUAL_TIME_IN",
+    "actualTimeIn",
+    "dtrTimeIn",
+    "DTR_TIME_IN",
+    "datetime_in",
+    "date_time_in",
+    "in_datetime",
+    "time_in_full",
+    "time_in",
+    "TIME_IN",
+    "timeIn",
+    "TIMEIN",
+  ]);
+  const timeOut = getFirstNonBlankValue(row, [
+    "time_out_datetime",
+    "TIME_OUT_DATETIME",
+    "timeOutDateTime",
+    "time_out_date_time",
+    "TIME_OUT_DATE_TIME",
+    "actual_time_out",
+    "ACTUAL_TIME_OUT",
+    "actualTimeOut",
+    "dtrTimeOut",
+    "DTR_TIME_OUT",
+    "datetime_out",
+    "date_time_out",
+    "out_datetime",
+    "time_out_full",
+    "time_out",
+    "TIME_OUT",
+    "timeOut",
+    "TIMEOUT",
+  ]);
   const workedHours = parseHours(
     getValue(row, ["worked_hrs", "WORKED_HRS", "workedHrs", "WORKED_HOURS"], 0),
   );
@@ -776,7 +971,7 @@ const DateInput = ({ value, onChange }) => (
       type="date"
       value={value}
       onChange={onChange}
-      className="dtr-date-input h-10 w-full rounded-xl border border-slate-300 bg-white px-3 pr-10 text-sm text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+      className="dtr-date-input h-10 w-full rounded-xl border border-slate-300 bg-white px-3 pr-10 text-xs text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
     />
     <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">
       <svg
@@ -849,29 +1044,41 @@ const PhotoThumb = ({
   );
 };
 
-const MetricCard = ({ label, value, icon: Icon }) => (
-  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+const METRIC_ACCENTS = {
+  slate: "bg-slate-100 text-slate-600",
+  sky: "bg-sky-100 text-sky-700",
+  emerald: "bg-emerald-100 text-emerald-700",
+  amber: "bg-amber-100 text-amber-700",
+  rose: "bg-rose-100 text-rose-700",
+};
+
+const MetricCard = ({ label, value, icon: Icon, accent = "slate" }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:border-slate-300 sm:p-4">
     <div className="flex items-center justify-between gap-3">
-      <div className="text-xs font-semibold text-slate-500">{label}</div>
-      {Icon && <Icon className="h-4 w-4 text-slate-400" aria-hidden="true" />}
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      {Icon && (
+        <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${METRIC_ACCENTS[accent] || METRIC_ACCENTS.slate}`}>
+          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        </span>
+      )}
     </div>
-    <div className="mt-1 text-2xl font-bold text-slate-800">{value}</div>
+    <div className="mt-1.5 truncate text-lg font-bold text-slate-800 sm:text-xl">{value}</div>
   </div>
 );
 
 const columns = [
-  { key: "source", label: "Type", minWidth: 120 },
-  { key: "empNo", label: "Employee No", minWidth: 120 },
+  { key: "source", label: "Type", minWidth: 130 },
+  { key: "empNo", label: "Employee No", minWidth: 110 },
   { key: "empName", label: "Employee Name", minWidth: 220 },
-  { key: "department", label: "Department", minWidth: 170 },
-  { key: "date", label: "Date", minWidth: 120 },
-  { key: "day", label: "Day", minWidth: 110 },
-  { key: "timeIn", label: "Time In", minWidth: 135 },
+  { key: "department", label: "Department", minWidth: 150 },
+  { key: "date", label: "Date", minWidth: 80 },
+  { key: "day", label: "Day", minWidth: 80 },
+  { key: "timeIn", label: "Time In", minWidth: 140, filterable: false },
   { key: "timeInImage", label: "Time In Photo", minWidth: 105, filterable: false, sortable: false },
-  { key: "timeOut", label: "Time Out", minWidth: 135 },
+  { key: "timeOut", label: "Time Out", minWidth: 140, filterable: false },
   { key: "timeOutImage", label: "Time Out Photo", minWidth: 110, filterable: false, sortable: false },
-  { key: "workedHours", label: "Worked Hours", minWidth: 125, numeric: true },
-  { key: "remarks", label: "Remarks", minWidth: 190 },
+  { key: "workedHours", label: "Worked Hours", minWidth: 125, numeric: true, filterable: false },
+  { key: "remarks", label: "Remarks", minWidth: 400 },
 ];
 
 const getDisplayValue = (row, key) => {
@@ -883,13 +1090,13 @@ const getDisplayValue = (row, key) => {
     case "day":
       return row.day || "-";
     case "timeIn":
-      return formatTimeOnly(row.timeIn);
+      return formatDtrActualDateTime(row, "timeIn");
     case "timeOut":
-      return formatTimeOnly(row.timeOut);
+      return formatDtrActualDateTime(row, "timeOut");
     case "workedHours":
       return formatHours(row.workedHours);
     case "remarks":
-      return properCase(row.remarks);
+      return row.remarks;
     default:
       return normalizeText(row[key]) || "-";
   }
@@ -948,7 +1155,6 @@ export default function DTRMonitoring() {
     [authUser],
   );
   const currentEmpNo = normalizeText(getUserEmpNo(resolvedUser));
-  const currentUserName = normalizeText(getUserName(resolvedUser));
   const currentHrFlag = normalizeFlag(getUserHrFlag(resolvedUser));
   const isHrUser = currentHrFlag === "Y";
 
@@ -968,9 +1174,10 @@ export default function DTRMonitoring() {
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [layoutMode, setLayoutMode] = useState("auto");
-  const [deviceMode, setDeviceMode] = useState("auto");
-  const [windowWidth, setWindowWidth] = useState(
-    typeof window === "undefined" ? 1440 : window.innerWidth,
+  const [viewportWidth, setViewportWidth] = useState(
+    typeof window === "undefined"
+      ? 1440
+      : window.visualViewport?.width || window.innerWidth,
   );
   const [loading, setLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -994,29 +1201,31 @@ export default function DTRMonitoring() {
   }, [isHrUser]);
 
   useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
+    const handleResize = () => {
+      setViewportWidth(window.visualViewport?.width || window.innerWidth);
+    };
+
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.visualViewport?.addEventListener("resize", handleResize);
+    handleResize();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.visualViewport?.removeEventListener("resize", handleResize);
+    };
   }, []);
 
+  const contentWidth = Math.max(0, viewportWidth - (viewportWidth >= 1024 ? 200 : 0));
   const detectedDevice =
-    windowWidth < 640 ? "mobile" : windowWidth < 1024 ? "tablet" : "desktop";
-  const effectiveDevice = deviceMode === "auto" ? detectedDevice : deviceMode;
+    contentWidth < 640 ? "mobile" : contentWidth < 1024 ? "tablet" : "desktop";
   const effectiveLayout =
     layoutMode === "auto"
-      ? effectiveDevice === "desktop"
+      ? detectedDevice === "desktop"
         ? "table"
-        : effectiveDevice === "tablet"
+        : detectedDevice === "tablet"
           ? "accordion"
           : "card"
       : layoutMode;
-
-  const previewWidthClass =
-    deviceMode === "mobile"
-      ? "mx-auto max-w-[430px]"
-      : deviceMode === "tablet"
-        ? "mx-auto max-w-[900px]"
-        : "mx-auto max-w-[1100px]";
 
   const normalizedRows = useMemo(
     () => records.map((row, index) => normalizeDtrRow(row, index, assetOrigin)),
@@ -1092,8 +1301,8 @@ export default function DTRMonitoring() {
           row.department,
           row.date,
           row.day,
-          row.timeIn,
-          row.timeOut,
+          // row.timeIn,
+          // row.timeOut,
           row.workedHours,
           row.remarks,
         ]
@@ -1400,10 +1609,10 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         Department: row.department,
         Date: formatDateDisplay(row.date),
         Day: row.day,
-        "Time In": formatTimeOnly(row.timeIn),
-        "Time Out": formatTimeOnly(row.timeOut),
+        "Time In": formatDtrActualDateTime(row, "timeIn"),
+        "Time Out": formatDtrActualDateTime(row, "timeOut"),
         "Worked Hours": Number(row.workedHours.toFixed(2)),
-        Remarks: properCase(row.remarks),
+        Remarks: row.remarks,
       });
     };
 
@@ -1501,7 +1710,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
       case "source":
         return (
           <span
-            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getSourceBadgeClass(
+            className={`inline-flex rounded-xl px-2.5 py-1 text-[11px] font-semibold ring-1 ${getSourceBadgeClass(
               row.source,
             )}`}
           >
@@ -1531,11 +1740,11 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
       case "remarks":
         return (
           <span
-            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getRemarksBadgeClass(
+            className={`inline-flex rounded-xl px-2.5 py-1 text-[11px] font-semibold ring-1 ${getRemarksBadgeClass(
               row.remarks,
             )}`}
           >
-            {properCase(row.remarks)}
+            {(row.remarks)}
           </span>
         );
       default:
@@ -1543,13 +1752,20 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
     }
   };
 
-  const renderTableRecordRow = (row) => (
-    <tr key={row.__id} className="transition hover:bg-sky-50/40">
+  const renderTableRecordRow = (row, rowIndex = 0) => (
+    <tr
+      key={row.__id}
+      className={`transition hover:bg-sky-50/60 ${rowIndex % 2 === 1 ? "bg-slate-50/60" : "bg-white"}`}
+    >
       {columns.map((column) => (
         <td
           key={column.key}
-          className={`border-b border-slate-100 px-3 py-2.5 align-middle text-xs text-slate-600 ${
+          className={`border-b border-slate-100 px-3 py-2.5 align-middle text-[11px] text-slate-600 ${
             column.numeric ? "text-right" : "text-left"
+          } ${
+            column.key === "empName"
+              ? "sticky left-0 z-[1] bg-inherit shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]"
+              : ""
           }`}
           style={{ minWidth: column.minWidth }}
         >
@@ -1560,15 +1776,19 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   );
 
   const renderTableView = () => (
-    <div className="max-h-[68vh] w-full overflow-auto">
-      <table className="w-full min-w-[1580px] border-collapse text-left">
-        <thead className="sticky top-0 z-20 bg-slate-100 shadow-sm">
+    <div className="w-full overflow-x-auto max-h-[500px] rounded-xl">
+      <table className="w-full min-w-[1280px]  border-collapse text-left">
+        <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
-                className={`border-b border-slate-200 px-3 py-3 text-xs font-semibold text-slate-700 ${
+                className={`border-b border-slate-200 bg-slate-100 px-3 py-3 text-[11px] font-semibold text-slate-700 ${
                   column.numeric ? "text-right" : "text-left"
+                } ${
+                  column.key === "empName"
+                    ? "sticky left-0 z-30 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]"
+                    : ""
                 }`}
                 style={{ minWidth: column.minWidth }}
               >
@@ -1592,7 +1812,9 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               {columns.map((column) => (
                 <th
                   key={`filter-${column.key}`}
-                  className="border-b border-slate-200 px-2 py-2"
+                  className={`border-b border-slate-200 bg-white px-2 py-2 ${
+                    column.key === "empName" ? "sticky left-0 z-30 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]" : ""
+                  }`}
                   style={{ minWidth: column.minWidth }}
                 >
                   {column.filterable === false ? (
@@ -1608,7 +1830,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                         }))
                       }
                       placeholder={`Filter ${column.label}`}
-                      className="h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                      className="h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-[11px] font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                     />
                   )}
                 </th>
@@ -1620,13 +1842,13 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-12 text-center text-sm font-medium text-slate-500">
+              <td colSpan={columns.length} className="px-4 py-12 text-center text-xs font-medium text-slate-500">
                 Loading DTR records...
               </td>
             </tr>
           ) : pageItems.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-12 text-center text-sm font-medium text-slate-500">
+              <td colSpan={columns.length} className="px-4 py-12 text-center text-xs font-medium text-slate-500">
                 No DTR records found.
               </td>
             </tr>
@@ -1650,10 +1872,10 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                           <ChevronRight className="h-4 w-4 text-sky-700" />
                         )}
                         <span className="font-semibold text-sky-900">{group.label}</span>
-                        <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-semibold text-sky-700">
+                        <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
                           {group.rows.length} records
                         </span>
-                        <span className="ml-auto text-sm font-bold text-sky-900">
+                        <span className="ml-auto text-xs font-bold text-sky-900">
                           {formatHours(group.workedHours)} hrs
                         </span>
                       </button>
@@ -1661,10 +1883,10 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                   </tr>
                   {expanded && group.rows.map(renderTableRecordRow)}
                   <tr className="bg-slate-50">
-                    <td colSpan={10} className="border-b border-slate-200 px-3 py-2 text-right text-xs font-semibold text-slate-600">
+                    <td colSpan={10} className="border-b border-slate-200 px-3 py-2 text-right text-[11px] font-semibold text-slate-600">
                       Subtotal Worked Hours
                     </td>
-                    <td className="border-b border-slate-200 px-3 py-2 text-right text-sm font-bold text-slate-800">
+                    <td className="border-b border-slate-200 px-3 py-2 text-right text-xs font-bold text-slate-800">
                       {formatHours(group.workedHours)}
                     </td>
                     <td className="border-b border-slate-200" />
@@ -1678,10 +1900,10 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         {sortedRows.length > 0 && (
           <tfoot className="sticky bottom-0 z-10 bg-gray-100">
             <tr>
-              <td colSpan={10} className="px-1 py-1 text-right text-xs font-semibold">
+              <td colSpan={10} className="px-1 py-1 text-right text-[11px] font-semibold">
                 Total Worked Hours
               </td>
-              <td className="px-2 py-2 text-right text-xs font-bold">
+              <td className="px-2 py-2 text-right text-[11px] font-bold">
                 {formatHours(totalWorkedHours)}
               </td>
               <td className="px-1 py-1" />
@@ -1695,16 +1917,16 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   const renderRecordDetails = (row) => (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div className="rounded-xl bg-slate-50 p-3">
-        <div className="text-xs font-semibold text-slate-500">Employee</div>
+        <div className="text-[11px] font-semibold text-slate-500">Employee</div>
         <div className="mt-1 font-semibold text-slate-800">{row.empName || "-"}</div>
-        <div className="text-xs text-slate-500">{row.empNo || "-"}</div>
+        <div className="text-[11px] text-slate-500">{row.empNo || "-"}</div>
       </div>
       <div className="rounded-xl bg-slate-50 p-3">
-        <div className="text-xs font-semibold text-slate-500">Department</div>
+        <div className="text-[11px] font-semibold text-slate-500">Department</div>
         <div className="mt-1 font-medium text-slate-800">{row.department || "-"}</div>
       </div>
       <div className="rounded-xl bg-slate-50 p-3">
-        <div className="text-xs font-semibold text-slate-500">Time In</div>
+        <div className="text-[11px] font-semibold text-slate-500">Time In</div>
         <div className="mt-2 flex items-center gap-3">
           <PhotoThumb
             src={row.timeInImage}
@@ -1713,11 +1935,11 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             onOpen={openPhoto}
             size="lg"
           />
-          <div className="font-semibold text-slate-800">{formatTimeOnly(row.timeIn)}</div>
+          <div className="font-semibold text-slate-800">{formatDtrActualDateTime(row, "timeIn")}</div>
         </div>
       </div>
       <div className="rounded-xl bg-slate-50 p-3">
-        <div className="text-xs font-semibold text-slate-500">Time Out</div>
+        <div className="text-[11px] font-semibold text-slate-500">Time Out</div>
         <div className="mt-2 flex items-center gap-3">
           <PhotoThumb
             src={row.timeOutImage}
@@ -1726,18 +1948,18 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             onOpen={openPhoto}
             size="lg"
           />
-          <div className="font-semibold text-slate-800">{formatTimeOnly(row.timeOut)}</div>
+          <div className="font-semibold text-slate-800">{formatDtrActualDateTime(row, "timeOut")}</div>
         </div>
       </div>
     </div>
   );
 
   const renderRecordCard = (row) => (
-    <article key={row.__id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-4">
+    <article key={row.__id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
+      <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-3.5 sm:p-4">
         <div className="min-w-0">
           <div className="truncate font-bold text-slate-800">{row.empName || "Unknown Employee"}</div>
-          <div className="mt-0.5 text-xs text-slate-500">
+          <div className="mt-0.5 truncate text-[11px] text-slate-500">
             {row.empNo || "-"} · {row.department || "No Department"}
           </div>
         </div>
@@ -1746,22 +1968,22 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         </span>
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-3.5 sm:p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <div className="text-xs font-semibold text-slate-500">Date</div>
+            <div className="text-[11px] font-semibold text-slate-500">Date</div>
             <div className="mt-0.5 font-semibold text-slate-800">{formatDateDisplay(row.date)}</div>
-            <div className="text-xs text-slate-500">{row.day}</div>
+            <div className="text-[11px] text-slate-500">{row.day}</div>
           </div>
           <div className="text-right">
-            <div className="text-xs font-semibold text-slate-500">Worked Hours</div>
+            <div className="text-[11px] font-semibold text-slate-500">Worked Hours</div>
             <div className="mt-0.5 text-2xl font-bold text-sky-800">{formatHours(row.workedHours)}</div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-slate-50 p-3">
-            <div className="text-xs font-semibold text-slate-500">Time In</div>
+            <div className="text-[11px] font-semibold text-slate-500">Time In</div>
             <div className="mt-2 flex flex-col items-center gap-2 text-center">
               <PhotoThumb
                 src={row.timeInImage}
@@ -1770,11 +1992,11 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 onOpen={openPhoto}
                 size="lg"
               />
-              <span className="text-xs font-semibold text-slate-700">{formatTimeOnly(row.timeIn)}</span>
+              <span className="text-[11px] font-semibold text-slate-700">{formatDtrActualDateTime(row, "timeIn")}</span>
             </div>
           </div>
           <div className="rounded-xl bg-slate-50 p-3">
-            <div className="text-xs font-semibold text-slate-500">Time Out</div>
+            <div className="text-[11px] font-semibold text-slate-500">Time Out</div>
             <div className="mt-2 flex flex-col items-center gap-2 text-center">
               <PhotoThumb
                 src={row.timeOutImage}
@@ -1783,14 +2005,14 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 onOpen={openPhoto}
                 size="lg"
               />
-              <span className="text-xs font-semibold text-slate-700">{formatTimeOnly(row.timeOut)}</span>
+              <span className="text-[11px] font-semibold text-slate-700">{formatDtrActualDateTime(row, "timeOut")}</span>
             </div>
           </div>
         </div>
 
         <div>
-          <div className="mb-1 text-xs font-semibold text-slate-500">Remarks</div>
-          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getRemarksBadgeClass(row.remarks)}`}>
+          <div className="mb-1 text-[11px] font-semibold text-slate-500">Remarks</div>
+          <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${getRemarksBadgeClass(row.remarks)}`}>
             {properCase(row.remarks)}
           </span>
         </div>
@@ -1799,11 +2021,11 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   );
 
   const renderCardView = () => {
-    if (loading) return <div className="p-12 text-center text-sm text-slate-500">Loading DTR records...</div>;
-    if (pageItems.length === 0) return <div className="p-12 text-center text-sm text-slate-500">No DTR records found.</div>;
+    if (loading) return <div className="p-12 text-center text-xs text-slate-500">Loading DTR records...</div>;
+    if (pageItems.length === 0) return <div className="p-12 text-center text-xs text-slate-500">No DTR records found.</div>;
 
     if (groupBy === "none") {
-      return <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">{pageItems.map(renderRecordCard)}</div>;
+      return <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 2xl:grid-cols-3">{pageItems.map(renderRecordCard)}</div>;
     }
 
     return (
@@ -1819,15 +2041,15 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               >
                 {expanded ? <ChevronDown className="h-4 w-4 text-sky-700" /> : <ChevronRight className="h-4 w-4 text-sky-700" />}
                 <span className="font-semibold text-sky-900">{group.label}</span>
-                <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-sky-700">{group.rows.length}</span>
-                <span className="ml-auto text-sm font-bold text-sky-900">{formatHours(group.workedHours)} hrs</span>
+                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-sky-700">{group.rows.length}</span>
+                <span className="ml-auto text-xs font-bold text-sky-900">{formatHours(group.workedHours)} hrs</span>
               </button>
               {expanded && (
-                <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 2xl:grid-cols-3">
                   {group.rows.map(renderRecordCard)}
                 </div>
               )}
-              <div className="border-t border-slate-200 px-4 py-2 text-right text-sm font-semibold text-slate-700">
+              <div className="border-t border-slate-200 px-4 py-2 text-right text-xs font-semibold text-slate-700">
                 Subtotal Worked Hours: <span className="font-bold">{formatHours(group.workedHours)}</span>
               </div>
             </section>
@@ -1844,23 +2066,30 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         <button
           type="button"
           onClick={() => toggleRecord(row.__id)}
-          className="flex w-full items-center gap-3 p-3 text-left hover:bg-slate-50"
+          className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-slate-50 active:bg-slate-100"
         >
-          {expanded ? <ChevronDown className="h-4 w-4 shrink-0 text-sky-700" /> : <ChevronRight className="h-4 w-4 shrink-0 text-slate-500" />}
+          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
+            {expanded ? <ChevronDown className="h-4 w-4 text-sky-700" /> : <ChevronRight className="h-4 w-4" />}
+          </span>
           <div className="min-w-0 flex-1">
-            <div className="truncate font-semibold text-slate-800">{row.empName || row.empNo || "Unknown Employee"}</div>
-            <div className="mt-0.5 text-xs text-slate-500">{formatDateDisplay(row.date)} · {row.day} · {properCase(row.source)}</div>
+            <div className="flex items-center gap-2">
+              <span className="truncate font-semibold text-slate-800">{row.empName || row.empNo || "Unknown Employee"}</span>
+              <span className={`hidden shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 sm:inline-flex ${getSourceBadgeClass(row.source)}`}>
+                {properCase(row.source)}
+              </span>
+            </div>
+            <div className="mt-0.5 truncate text-[11px] text-slate-500">{formatDateDisplay(row.date)} · {row.day}</div>
           </div>
-          <div className="hidden text-right sm:block">
-            <div className="text-xs text-slate-500">{formatTimeOnly(row.timeIn)} – {formatTimeOnly(row.timeOut)}</div>
-            <div className="font-bold text-sky-800">{formatHours(row.workedHours)} hrs</div>
+          <div className="shrink-0 text-right">
+            <div className="hidden text-[11px] text-slate-500 sm:block">{formatDtrActualDateTime(row, "timeIn")} – {formatDtrActualDateTime(row, "timeOut")}</div>
+            <div className="font-bold text-sky-800">{formatHours(row.workedHours)} <span className="text-[10px] font-semibold text-slate-400">hrs</span></div>
           </div>
         </button>
         {expanded && (
           <div className="space-y-3 border-t border-slate-100 p-4">
             {renderRecordDetails(row)}
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 p-3">
-              <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getRemarksBadgeClass(row.remarks)}`}>{properCase(row.remarks)}</span>
+              <span className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold ring-1 ${getRemarksBadgeClass(row.remarks)}`}>{(row.remarks)}</span>
               <span className="font-bold text-slate-800">Worked Hours: {formatHours(row.workedHours)}</span>
             </div>
           </div>
@@ -1870,8 +2099,8 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   };
 
   const renderAccordionView = () => {
-    if (loading) return <div className="p-12 text-center text-sm text-slate-500">Loading DTR records...</div>;
-    if (pageItems.length === 0) return <div className="p-12 text-center text-sm text-slate-500">No DTR records found.</div>;
+    if (loading) return <div className="p-12 text-center text-xs text-slate-500">Loading DTR records...</div>;
+    if (pageItems.length === 0) return <div className="p-12 text-center text-xs text-slate-500">No DTR records found.</div>;
 
     if (groupBy === "none") {
       return <div className="space-y-2 p-4">{pageItems.map(renderAccordionRow)}</div>;
@@ -1890,11 +2119,11 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               >
                 {expanded ? <ChevronDown className="h-4 w-4 text-sky-700" /> : <ChevronRight className="h-4 w-4 text-sky-700" />}
                 <span className="font-semibold text-sky-900">{group.label}</span>
-                <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-sky-700">{group.rows.length}</span>
-                <span className="ml-auto text-sm font-bold text-sky-900">{formatHours(group.workedHours)} hrs</span>
+                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-sky-700">{group.rows.length}</span>
+                <span className="ml-auto text-xs font-bold text-sky-900">{formatHours(group.workedHours)} hrs</span>
               </button>
               {expanded && <div className="space-y-2 p-3">{group.rows.map(renderAccordionRow)}</div>}
-              <div className="border-t border-slate-200 px-4 py-2 text-right text-sm font-semibold text-slate-700">
+              <div className="border-t border-slate-200 px-4 py-2 text-right text-xs font-semibold text-slate-700">
                 Subtotal Worked Hours: <span className="font-bold">{formatHours(group.workedHours)}</span>
               </div>
             </section>
@@ -1915,60 +2144,60 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   const displayedEnd = Math.min(firstIndex + rowsPerPage, pageCollection.length);
 
   return (
-    <div className="ml-0 mt-[80px] min-h-screen overflow-x-hidden bg-gray-100 p-2 sm:p-4 lg:ml-[200px]">
-      <div className={`min-w-0 space-y-4 transition-all ${previewWidthClass}`}>
+    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[200px] mt-[80px] w-full lg:w-[calc(99vw-200px)] max-w-full overflow-x-hidden p-2 sm:p-4 bg-gray-100 min-h-screen">
+      <div className="mx-auto min-w-0 w-full space-y-2 transition-all">
         <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-slate-800 sm:text-2xl">DTR Monitoring</h1>
-              <p className="mt-1 text-sm text-slate-500">
+              <h1 className="text-xl font-bold text-slate-800 sm:text-xl">DTR Monitoring</h1>
+              <p className="mt-1 text-xs text-slate-500">
                 Review attendance, worked hours, and timekeeping photos in one responsive view.
               </p>
             </div>
 
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+            <div className="grid w-full grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-row sm:flex-wrap">
               <button
                 type="button"
                 onClick={() => fetchAllDTR()}
                 disabled={loading}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-sky-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-sky-700 px-2.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:px-4 sm:text-xs"
               >
-                <RefreshCw className={`h-4 w-4 ${loading || isRefreshing ? "animate-spin" : ""}`} />
-                {loading ? "Loading..." : isRefreshing ? "Refreshing..." : "Load"}
+                <RefreshCw className={`h-4 w-4 shrink-0 ${loading || isRefreshing ? "animate-spin" : ""}`} />
+                <span className="truncate">{loading ? "Loading..." : isRefreshing ? "Refreshing..." : "Load"}</span>
               </button>
 
               <button
                 type="button"
                 onClick={exportExcel}
                 disabled={!sortedRows.length}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-2.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:px-4 sm:text-xs"
               >
-                <FileSpreadsheet className="h-4 w-4" />
-                Export to Excel
+                <FileSpreadsheet className="h-4 w-4 shrink-0" />
+                <span className="truncate">Export</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50 sm:gap-2 sm:px-4 sm:text-xs"
               >
-                <RotateCcw className="h-4 w-4" />
-                Reset
+                <RotateCcw className="h-4 w-4 shrink-0" />
+                <span className="truncate">Reset</span>
               </button>
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">Start Date</label>
+              <label className="mb-1 block text-[11px] font-semibold text-slate-500">Start Date</label>
               <DateInput value={startDate} onChange={(event) => setStartDate(event.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">End Date</label>
+              <label className="mb-1 block text-[11px] font-semibold text-slate-500">End Date</label>
               <DateInput value={endDate} onChange={(event) => setEndDate(event.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">DTR View</label>
+              <label className="mb-1 block text-[11px] font-semibold text-slate-500">DTR View</label>
               <select
                 value={employeeScope}
                 onChange={(event) => {
@@ -1977,7 +2206,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 }}
                 /* Temporarily enabled while HR flag validation is being checked. */
                 /* disabled={!isHrUser} */
-                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-100"
+                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-100"
               >
                 <option value="MY">My DTR</option>
                 {/* Temporarily bypass HR flag validation for Employee DTR option. */}
@@ -1985,13 +2214,13 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">Employee Name</label>
+              <label className="mb-1 block text-[11px] font-semibold text-slate-500">Employee Name</label>
               <select
                 value={selectedEmployeeNo}
                 onChange={(event) => setSelectedEmployeeNo(event.target.value)}
                 /* Temporarily bypass HR flag validation; keep disabled until Employee DTR is selected. */
                 disabled={employeeScope !== "EMPLOYEE"}
-                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-100"
+                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-100"
               >
                 <option value="">All Employees</option>
                 {employeeOptions.map((employee) => (
@@ -2002,11 +2231,11 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-500">Type</label>
+              <label className="mb-1 block text-[11px] font-semibold text-slate-500">Type</label>
               <select
                 value={sourceFilter}
                 onChange={(event) => setSourceFilter(event.target.value)}
-                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
               >
                 {sourceOptions.map((source) => (
                   <option key={source} value={source}>
@@ -2017,9 +2246,9 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             </div>
           </div>
 
-          <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-end">
+          <div className="mt-3 flex flex-col gap-3 2xl:flex-row 2xl:items-end">
             <div className="min-w-0 flex-1">
-              <label className="mb-1 block text-xs font-semibold text-slate-500">Search</label>
+              <label className="mb-1 block text-[11px] font-semibold text-slate-500">Search</label>
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <input
@@ -2027,7 +2256,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
                   placeholder="Search employee, department, date, type, time, or remarks..."
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-9 text-sm text-slate-700 outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-9 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                 />
                 {searchText && (
                   <button
@@ -2041,16 +2270,16 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:flex">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-500">Group By</label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-4 2xl:flex">
+              <div className="sm:w-[150px]">
+                <label className="mb-1 block text-[11px] font-semibold text-slate-500">Group By</label>
                 <select
                   value={groupBy}
                   onChange={(event) => {
                     setGroupBy(event.target.value);
                     setExpandedGroups({});
                   }}
-                  className="h-10 w-full min-w-[150px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                 >
                   {groupOptions.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
@@ -2058,12 +2287,12 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 </select>
               </div>
 
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-slate-500">Layout</label>
+              <div className="sm:w-[140px]">
+                <label className="mb-1 block text-[11px] font-semibold text-slate-500">Layout</label>
                 <select
                   value={layoutMode}
                   onChange={(event) => setLayoutMode(event.target.value)}
-                  className="h-10 w-full min-w-[140px] rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                 >
                   <option value="auto">Auto Responsive</option>
                   <option value="table">Table</option>
@@ -2075,7 +2304,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               <button
                 type="button"
                 onClick={() => setShowColumnFilters((previous) => !previous)}
-                className={`mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold transition ${
+                className={`mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition ${
                   showColumnFilters
                     ? "border-sky-300 bg-sky-50 text-sky-700"
                     : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
@@ -2090,7 +2319,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 type="button"
                 onClick={clearAllFilters}
                 disabled={!hasActiveFilters}
-                className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <FilterX className="h-4 w-4" />
                 Clear Filters
@@ -2098,58 +2327,18 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-slate-500">Responsive Preview:</span>
-              {[
-                { value: "auto", label: "Auto", icon: Layers3 },
-                { value: "desktop", label: "Desktop", icon: Monitor },
-                { value: "tablet", label: "Tablet", icon: Tablet },
-                { value: "mobile", label: "Mobile", icon: Smartphone },
-              ].map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setDeviceMode(value)}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition ${
-                    deviceMode === value
-                      ? "border-sky-300 bg-white text-sky-700 shadow-sm"
-                      : "border-transparent text-slate-600 hover:bg-white"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-              <span className="rounded-full bg-white px-2.5 py-1 font-semibold ring-1 ring-slate-200">
-                Device: {properCase(effectiveDevice)}
-              </span>
-              <span className="rounded-full bg-white px-2.5 py-1 font-semibold ring-1 ring-slate-200">
-                Layout: {properCase(effectiveLayout)}
-              </span>
-              {employeeScope === "MY" && (
-                <span className="rounded-full bg-white px-2.5 py-1 font-semibold ring-1 ring-slate-200">
-                  {currentUserName || currentEmpNo || "Current User"}
-                </span>
-              )}
-            </div>
-          </div>
-
           {showColumnFilters && effectiveLayout !== "table" && (
             <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-slate-700">Column Filters</div>
-                  <div className="text-xs text-slate-500">Available in Card and Accordion layouts.</div>
+                  <div className="text-xs font-semibold text-slate-700">Column Filters</div>
+                  <div className="text-[11px] text-slate-500">Available in Card and Accordion layouts.</div>
                 </div>
                 {Object.values(columnFilters).some((value) => normalizeText(value) !== "") && (
                   <button
                     type="button"
                     onClick={() => setColumnFilters({})}
-                    className="text-xs font-semibold text-sky-700 hover:underline"
+                    className="text-[11px] font-semibold text-sky-700 hover:underline"
                   >
                     Clear Column Filters
                   </button>
@@ -2173,7 +2362,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                           }))
                         }
                         placeholder={`Filter ${column.label}`}
-                        className="h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                        className="h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-[11px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                       />
                     </div>
                   ))}
@@ -2181,17 +2370,17 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             </div>
           )}
 
-          <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <MetricCard label="Loaded Records" value={records.length} icon={Layers3} />
-            <MetricCard label="Displayed Records" value={filteredRows.length} icon={Users} />
-            <MetricCard label="With DTR" value={withDtrCount} icon={User} />
-            <MetricCard label="No DTR" value={noDtrCount} icon={FilterX} />
-            <MetricCard label="Total Worked Hours" value={formatHours(totalWorkedHours)} icon={Table2} />
+          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-5">
+            <MetricCard label="Loaded Records" value={records.length} icon={Table2} accent="slate" />
+            <MetricCard label="Displayed Records" value={filteredRows.length} icon={Users} accent="sky" />
+            <MetricCard label="With DTR" value={withDtrCount} icon={User} accent="emerald" />
+            <MetricCard label="No DTR" value={noDtrCount} icon={FilterX} accent="rose" />
+            <MetricCard label="Total Worked Hours" value={formatHours(totalWorkedHours)} icon={Table2} accent="amber" />
           </div>
         </section>
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-red-700">
             {error}
           </div>
         )}
@@ -2199,8 +2388,8 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-sm font-semibold text-slate-800">DTR Records</div>
-              <div className="mt-0.5 text-xs text-slate-500">
+              <div className="text-xs font-semibold text-slate-800">DTR Records</div>
+              <div className="mt-0.5 text-[11px] text-slate-500">
                 Photos are displayed on-screen but are excluded from Excel export.
               </div>
             </div>
@@ -2211,7 +2400,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                   <button
                     type="button"
                     onClick={() => setAllGroupsExpanded(true)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
                   >
                     <ChevronsDown className="h-3.5 w-3.5" />
                     Expand All
@@ -2219,7 +2408,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                   <button
                     type="button"
                     onClick={() => setAllGroupsExpanded(false)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
                   >
                     <ChevronsUp className="h-3.5 w-3.5" />
                     Collapse All
@@ -2227,10 +2416,14 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 </>
               )}
 
-              <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1" title="Current layout">
-                <Table2 className={`h-4 w-4 ${effectiveLayout === "table" ? "text-sky-700" : "text-slate-400"}`} />
-                <List className={`h-4 w-4 ${effectiveLayout === "accordion" ? "text-sky-700" : "text-slate-400"}`} />
-                <LayoutGrid className={`h-4 w-4 ${effectiveLayout === "card" ? "text-sky-700" : "text-slate-400"}`} />
+              <div
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-sky-700"
+                title={`Current layout: ${effectiveLayout}`}
+              >
+                {effectiveLayout === "table" && <Table2 className="h-3.5 w-3.5" />}
+                {effectiveLayout === "accordion" && <List className="h-3.5 w-3.5" />}
+                {effectiveLayout === "card" && <LayoutGrid className="h-3.5 w-3.5" />}
+                <span className="hidden capitalize sm:inline">{effectiveLayout}</span>
               </div>
             </div>
           </div>
@@ -2238,7 +2431,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           {renderDataView()}
 
           <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="text-xs text-slate-600">
+            <div className="text-[11px] text-slate-600">
               Showing <b>{displayedStart}-{displayedEnd}</b> of {pageCollection.length} {paginationLabel}
               {groupBy !== "none" && (
                 <span className="ml-1">({filteredRows.length} total records)</span>
@@ -2246,12 +2439,12 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <label className="flex items-center gap-2 text-xs text-slate-600">
+              <label className="flex items-center gap-2 text-[11px] text-slate-600">
                 {groupBy === "none" ? "Rows" : "Groups"} per page
                 <select
                   value={rowsPerPage}
                   onChange={(event) => setRowsPerPage(Number(event.target.value))}
-                  className="h-8 rounded-lg border border-slate-300 bg-white px-2 text-xs text-slate-700 outline-none focus:border-sky-500"
+                  className="h-8 rounded-lg border border-slate-300 bg-white px-2 text-[11px] text-slate-700 outline-none focus:border-sky-500"
                 >
                   {[10, 20, 50, 100, 200].map((value) => (
                     <option key={value} value={value}>{value}</option>
@@ -2259,7 +2452,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 </select>
               </label>
 
-              <div className="flex items-center overflow-hidden rounded-lg border border-slate-300 bg-white text-xs">
+              <div className="flex items-center overflow-hidden rounded-lg border border-slate-300 bg-white text-[11px]">
                 <button
                   type="button"
                   onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
@@ -2294,13 +2487,13 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           onClick={() => setPhotoPreview(null)}
         >
           <div
-            className="relative max-h-[90vh] max-w-3xl overflow-hidden rounded-2xl bg-white p-3 shadow-2xl"
+            className="relative max-h-[92vh] w-full max-w-[min(92vw,32rem)] overflow-hidden rounded-2xl bg-white p-2.5 shadow-2xl sm:max-w-3xl sm:p-3"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               type="button"
               onClick={() => setPhotoPreview(null)}
-              className="absolute right-5 top-5 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+              className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 sm:right-5 sm:top-5"
               aria-label="Close picture preview"
             >
               <X className="h-5 w-5" />
@@ -2308,9 +2501,9 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             <img
               src={photoPreview.src}
               alt={photoPreview.label}
-              className="max-h-[80vh] w-auto max-w-full rounded-xl object-contain"
+              className="max-h-[74vh] w-auto max-w-full rounded-xl object-contain sm:max-h-[80vh]"
             />
-            <div className="px-2 pb-1 pt-3 text-center text-sm font-semibold text-slate-700">
+            <div className="px-2 pb-1 pt-3 text-center text-xs font-semibold text-slate-700">
               {photoPreview.label}
             </div>
           </div>

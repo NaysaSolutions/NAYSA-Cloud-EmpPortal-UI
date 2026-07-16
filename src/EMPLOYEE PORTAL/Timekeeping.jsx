@@ -113,6 +113,7 @@ const Timekeeping = ({ onBreakStart }) => {
   const revGeoCacheRef = useRef(new Map());
 
   const isProcessingTimeEventRef = useRef(false);
+  const pendingTimekeepingImagesRef = useRef(new Map());
 
   const getBestCoords = async ({ forceFresh = false } = {}) => {
     if (!navigator.geolocation) {
@@ -897,7 +898,10 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
         newImageId
       );
 
-      return savedImageInfo;
+      return {
+        ...savedImageInfo,
+        previewUrl: imageDataUrl,
+      };
     } finally {
       setCapturing(false);
       setCountdown(0);
@@ -926,6 +930,313 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
       : null;
   }, []);
 
+  const isValueBlank = useCallback((value) => {
+    return value == null || String(value).trim() === "";
+  }, []);
+
+  const getDtrActualDateTimeValue = useCallback((record, type) => {
+    const keys =
+      type === "timeIn"
+        ? [
+            "time_in_datetime",
+            "timeInDateTime",
+            "TIME_IN_DATETIME",
+            "time_in_date_time",
+            "TIME_IN_DATE_TIME",
+            "actual_time_in",
+            "actualTimeIn",
+            "ACTUAL_TIME_IN",
+            "dtrTimeIn",
+            "DTR_TIME_IN",
+            "datetime_in",
+            "date_time_in",
+            "in_datetime",
+            "time_in_full",
+            "time_in",
+            "timeIn",
+          ]
+        : [
+            "time_out_datetime",
+            "timeOutDateTime",
+            "TIME_OUT_DATETIME",
+            "time_out_date_time",
+            "TIME_OUT_DATE_TIME",
+            "actual_time_out",
+            "actualTimeOut",
+            "ACTUAL_TIME_OUT",
+            "dtrTimeOut",
+            "DTR_TIME_OUT",
+            "datetime_out",
+            "date_time_out",
+            "out_datetime",
+            "time_out_full",
+            "time_out",
+            "timeOut",
+          ];
+
+    for (const key of keys) {
+      const value = record?.[key];
+
+      if (!isValueBlank(value)) return String(value).trim();
+    }
+
+    return "";
+  }, [isValueBlank]);
+
+  const getDtrActualDateValue = useCallback((record, type) => {
+    const keys =
+      type === "timeIn"
+        ? [
+            "time_in_date",
+            "timeInDate",
+            "TIME_IN_DATE",
+            "actual_time_in_date",
+            "actualTimeInDate",
+          ]
+        : [
+            "time_out_date",
+            "timeOutDate",
+            "TIME_OUT_DATE",
+            "actual_time_out_date",
+            "actualTimeOutDate",
+          ];
+
+    for (const key of keys) {
+      const value = record?.[key];
+
+      if (!isValueBlank(value)) return String(value).trim();
+    }
+
+    return "";
+  }, [isValueBlank]);
+
+  const parseDtrDateTime = useCallback((dateValue, timeValue) => {
+    const rawTime = String(timeValue || "").trim();
+
+    if (!rawTime) return null;
+
+    if (/\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(rawTime)) {
+      const parsed = dayjs(rawTime);
+      return parsed.isValid() ? parsed : null;
+    }
+
+    const rawDate = String(dateValue || "").trim();
+    const parsedDate = dayjs(rawDate);
+
+    if (!parsedDate.isValid()) return null;
+
+    const timeMatch = rawTime.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i);
+
+    if (!timeMatch) return null;
+
+    let hours = Number(timeMatch[1]);
+    const minutes = timeMatch[2];
+    const seconds = timeMatch[3] || "00";
+    const meridiem = timeMatch[4]?.toUpperCase();
+
+    if (meridiem === "PM" && hours < 12) hours += 12;
+    if (meridiem === "AM" && hours === 12) hours = 0;
+
+    const normalizedTime = `${String(hours).padStart(2, "0")}:${minutes}:${seconds}`;
+    const parsedDateTime = dayjs(`${parsedDate.format("YYYY-MM-DD")} ${normalizedTime}`);
+
+    return parsedDateTime.isValid() ? parsedDateTime : null;
+  }, []);
+
+  const formatDtrActualDateTime = useCallback(
+    (record, type) => {
+      const actualDate = getDtrActualDateValue(record, type);
+      const actualValue = getDtrActualDateTimeValue(record, type);
+      const recordDate = actualDate || getNormalizedRecordDate(record) || record?.date;
+      let parsedDateTime = parseDtrDateTime(recordDate, actualValue);
+
+      if (
+        type === "timeOut" &&
+        parsedDateTime &&
+        !actualDate &&
+        !/\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(actualValue)
+      ) {
+        const parsedTimeIn = parseDtrDateTime(
+          getDtrActualDateValue(record, "timeIn") ||
+            getNormalizedRecordDate(record) ||
+            record?.date,
+          getDtrActualDateTimeValue(record, "timeIn")
+        );
+
+        if (parsedTimeIn && parsedDateTime.isBefore(parsedTimeIn)) {
+          parsedDateTime = parsedDateTime.add(1, "day");
+        }
+      }
+
+      return parsedDateTime ? parsedDateTime.format("MM/DD/YYYY hh:mm a") : "N/A";
+    },
+    [
+      getDtrActualDateTimeValue,
+      getDtrActualDateValue,
+      getNormalizedRecordDate,
+      parseDtrDateTime,
+    ]
+  );
+
+  const getRecordShiftTimeIn = useCallback((record) => {
+    return (
+      record?.shift_time_in ||
+      record?.shiftTimeIn ||
+      record?.SHIFT_TIME_IN ||
+      record?.SHIFTTIMEIN ||
+      record?.shiftIn ||
+      record?.shift_in ||
+      null
+    );
+  }, []);
+
+  const getRecordShiftTimeInDateTime = useCallback(
+    (record) => {
+      const recordDate = getNormalizedRecordDate(record);
+      const shiftTimeIn = getRecordShiftTimeIn(record);
+
+      if (!recordDate || isValueBlank(shiftTimeIn)) return null;
+
+      const rawShiftTime = String(shiftTimeIn).trim();
+      const directDateTime = dayjs(rawShiftTime);
+
+      if (directDateTime.isValid() && /\d{4}-\d{2}-\d{2}/.test(rawShiftTime)) {
+        return directDateTime.tz(PH_TIMEZONE);
+      }
+
+      const timeMatch = rawShiftTime.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+
+      if (!timeMatch) return null;
+
+      const [, hour, minute, second = "00"] = timeMatch;
+      const normalizedTime = `${hour.padStart(2, "0")}:${minute}:${second}`;
+      const shiftDateTime = dayjs.tz(
+        `${recordDate} ${normalizedTime}`,
+        PH_TIMEZONE
+      );
+
+      return shiftDateTime.isValid() ? shiftDateTime : null;
+    },
+    [getNormalizedRecordDate, getRecordShiftTimeIn, isValueBlank]
+  );
+
+  const getActiveTimekeepingRecord = useCallback(
+    (nextRecords) => {
+      const now = dayjs().tz(PH_TIMEZONE);
+      const todayStr = now.format("YYYY-MM-DD");
+      const today =
+        nextRecords.find((record) => getNormalizedRecordDate(record) === todayStr) ||
+        null;
+
+      const openPreviousRecords = nextRecords
+        .filter((record) => {
+          const recordDate = getNormalizedRecordDate(record);
+
+          return (
+            recordDate &&
+            recordDate < todayStr &&
+            !isValueBlank(record?.time_in) &&
+            isValueBlank(record?.time_out)
+          );
+        })
+        .sort((a, b) => {
+          const dateA = getNormalizedRecordDate(a) || "";
+          const dateB = getNormalizedRecordDate(b) || "";
+
+          return dateB.localeCompare(dateA);
+        });
+
+      const openPreviousRecord = openPreviousRecords[0] || null;
+
+      if (!openPreviousRecord) return today;
+
+      const openRecordDate = getNormalizedRecordDate(openPreviousRecord);
+      const nextShiftRecord = nextRecords
+        .filter((record) => {
+          const recordDate = getNormalizedRecordDate(record);
+          return recordDate && recordDate > openRecordDate;
+        })
+        .sort((a, b) => {
+          const dateA = getNormalizedRecordDate(a) || "";
+          const dateB = getNormalizedRecordDate(b) || "";
+
+          return dateA.localeCompare(dateB);
+        })
+        .find((record) => getRecordShiftTimeInDateTime(record));
+
+      const nextShiftTimeIn = nextShiftRecord
+        ? getRecordShiftTimeInDateTime(nextShiftRecord)
+        : null;
+
+      if (!nextShiftTimeIn || now.isBefore(nextShiftTimeIn)) {
+        return openPreviousRecord;
+      }
+
+      return today;
+    },
+    [getNormalizedRecordDate, getRecordShiftTimeInDateTime, isValueBlank]
+  );
+
+  const applyPendingTimekeepingImages = useCallback(
+    (nextRecords) => {
+      if (pendingTimekeepingImagesRef.current.size === 0) {
+        return nextRecords;
+      }
+
+      return nextRecords.map((record) => {
+        const recordDate = getNormalizedRecordDate(record);
+
+        if (!recordDate) return record;
+
+        const timeInImage = pendingTimekeepingImagesRef.current.get(
+          `${recordDate}:TIME IN`
+        );
+        const timeOutImage = pendingTimekeepingImagesRef.current.get(
+          `${recordDate}:TIME OUT`
+        );
+
+        if (!timeInImage && !timeOutImage) return record;
+
+        return {
+          ...record,
+          ...(timeInImage
+            ? {
+                time_in_image_path:
+                  record.time_in_image_path ||
+                  record.timeInImagePath ||
+                  record.TIME_IN_IMAGE_PATH ||
+                  record.time_in_image ||
+                  timeInImage.previewUrl ||
+                  timeInImage.path,
+                time_in_image_id:
+                  record.time_in_image_id ||
+                  record.timeInImageId ||
+                  record.TIME_IN_IMAGE_ID ||
+                  timeInImage.id,
+              }
+            : {}),
+          ...(timeOutImage
+            ? {
+                time_out_image_path:
+                  record.time_out_image_path ||
+                  record.timeOutImagePath ||
+                  record.TIME_OUT_IMAGE_PATH ||
+                  record.time_out_image ||
+                  timeOutImage.previewUrl ||
+                  timeOutImage.path,
+                time_out_image_id:
+                  record.time_out_image_id ||
+                  record.timeOutImageId ||
+                  record.TIME_OUT_IMAGE_ID ||
+                  timeOutImage.id,
+              }
+            : {}),
+        };
+      });
+    },
+    [getNormalizedRecordDate]
+  );
+
   const fetchDTRRecords = useCallback(async () => {
     if (!user?.empNo || !startDate || !endDate) return;
 
@@ -948,18 +1259,20 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
             ? payload.data
             : [];
 
-      setRecords(nextRecords);
+      const recordsWithPendingImages = applyPendingTimekeepingImages(nextRecords);
 
-      const todayStr = dayjs().tz(PH_TIMEZONE).format("YYYY-MM-DD");
-      const today =
-        nextRecords.find((record) => getNormalizedRecordDate(record) === todayStr) ||
-        null;
-
-      setTodayRecord(today);
+      setRecords(recordsWithPendingImages);
+      setTodayRecord(getActiveTimekeepingRecord(recordsWithPendingImages));
     } catch (error) {
       console.error("Error fetching DTR records:", error);
     }
-  }, [user?.empNo, startDate, endDate, getNormalizedRecordDate]);
+  }, [
+    user?.empNo,
+    startDate,
+    endDate,
+    getActiveTimekeepingRecord,
+    applyPendingTimekeepingImages,
+  ]);
 
   useEffect(() => {
     fetchDTRRecords();
@@ -1198,6 +1511,10 @@ capturedImageInfo = await captureImageProcess(type);
     const now = dayjs().tz(PH_TIMEZONE);
     const currentTime = now.format("HH:mm:ss");
     const currentDateStr = now.format("YYYY-MM-DD");
+    const eventDateStr =
+      type === "TIME OUT"
+        ? getNormalizedRecordDate(todayRecord) || currentDateStr
+        : currentDateStr;
     const displayTime = now.format("hh:mm:ss A");
 
     let timeInImageIdToSend = null;
@@ -1242,7 +1559,7 @@ capturedImageInfo = await captureImageProcess(type);
         empNo: user.empNo,
         detail: {
           empNo: user.empNo,
-          date: currentDateStr,
+          date: eventDateStr,
 
           timeIn: type === "TIME IN" ? currentTime : null,
           timeOut: type === "TIME OUT" ? currentTime : null,
@@ -1286,6 +1603,84 @@ capturedImageInfo = await captureImageProcess(type);
     const response = await axios.post(API_ENDPOINTS.upsertTimeIn, eventData);
 
     if (response.data.status === "success") {
+      if (
+        capturedImageInfo &&
+        (type === "TIME IN" || type === "TIME OUT")
+      ) {
+        pendingTimekeepingImagesRef.current.set(`${eventDateStr}:${type}`, {
+          id: capturedImageInfo.id,
+          path: capturedImageInfo.path,
+          previewUrl: capturedImageInfo.previewUrl,
+        });
+      }
+
+      const applySavedEventToRecord = (record) => {
+        const recordDate = getNormalizedRecordDate(record);
+
+        if (recordDate !== eventDateStr) return record;
+
+        const nextRecord = { ...record };
+
+        if (type === "TIME IN") {
+          nextRecord.time_in = currentTime;
+          nextRecord.time_in_date = currentDateStr;
+          nextRecord.time_in_datetime = `${currentDateStr} ${currentTime}`;
+          nextRecord.time_in_address = geotaggingEnabled
+            ? actualCapturedLocation
+            : "N/A";
+
+          if (capturedImageInfo) {
+            nextRecord.time_in_image_path =
+              capturedImageInfo.previewUrl || capturedImageInfo.path;
+            nextRecord.time_in_image_id = capturedImageInfo.id;
+          }
+        }
+
+        if (type === "TIME OUT") {
+          nextRecord.time_out = currentTime;
+          nextRecord.time_out_date = currentDateStr;
+          nextRecord.time_out_datetime = `${currentDateStr} ${currentTime}`;
+          nextRecord.time_out_address = geotaggingEnabled
+            ? actualCapturedLocation
+            : "N/A";
+
+          if (capturedImageInfo) {
+            nextRecord.time_out_image_path =
+              capturedImageInfo.previewUrl || capturedImageInfo.path;
+            nextRecord.time_out_image_id = capturedImageInfo.id;
+          }
+        }
+
+        return nextRecord;
+      };
+
+      const createSavedEventRecord = () =>
+        applySavedEventToRecord({
+          empNo: user.empNo,
+          empName: user.empName || user.empname || user.name || "",
+          date: eventDateStr,
+          branchcode: branchLocation?.branchcode ?? null,
+          branchname: branchLocation?.branchname ?? null,
+        });
+
+      setRecords((previousRecords) => {
+        const hasMatchingRecord = previousRecords.some(
+          (record) => getNormalizedRecordDate(record) === eventDateStr
+        );
+
+        if (!hasMatchingRecord) {
+          return [createSavedEventRecord(), ...previousRecords];
+        }
+
+        return previousRecords.map(applySavedEventToRecord);
+      });
+
+      setTodayRecord((previousRecord) =>
+        previousRecord
+          ? applySavedEventToRecord(previousRecord)
+          : createSavedEventRecord()
+      );
+
       showSuccessToast("Success", `${type} recorded successfully!`);
       fetchDTRRecords();
     } else {
@@ -1360,7 +1755,7 @@ capturedImageInfo = await captureImageProcess(type);
         `"${employeeNumber}"`,
         `"${record.empName || record.empname || employeeName}"`,
         `"${dayjs(record.date).format("MM/DD/YYYY")}"`,
-        `"${record.time_in ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}"`,
+        `"${record.time_in ? formatDtrActualDateTime(record, "timeIn") : "N/A"}"`,
       ];
 
       if (shouldShowLocationAddress) {
@@ -1370,7 +1765,7 @@ capturedImageInfo = await captureImageProcess(type);
       row.push(
         `"${record.break_in ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}"`,
         `"${record.break_out ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}"`,
-        `"${record.time_out ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}"`
+        `"${record.time_out ? formatDtrActualDateTime(record, "timeOut") : "N/A"}"`
       );
 
       if (shouldShowLocationAddress) {
@@ -1703,8 +2098,8 @@ if (!confirm) return;
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-lg lg:text-xl font-bold text-gray-900">
-                      {dayjs(record.date).format("MMM D, YYYY")}
+                    <h3 className="text-sm lg:text-xl font-bold text-gray-900">
+                      {dayjs(record.date).format("MMMM D, YYYY")}
                     </h3>
                     {isFinal && (
                       <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-600 border border-green-200">
@@ -1712,7 +2107,7 @@ if (!confirm) return;
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500 font-medium">
+                  <p className="text-base text-gray-500 font-medium">
                     {record.worked_hrs != null
                       ? `${Number(record.worked_hrs).toFixed(2)} hrs`
                       : "0.00 hrs"}
@@ -1720,16 +2115,25 @@ if (!confirm) return;
                 </div>
 
                 <div className="text-right">
-                  <div className="text-[10px] lg:text-[11px] text-gray-400 uppercase tracking-widest mb-1 font-bold">
+                  {/* <div className="text-[10px] lg:text-[11px] text-gray-400 uppercase tracking-widest mb-1 font-bold">
                     IN • OUT
-                  </div>
+                  </div> */}
                   <div className="font-mono text-sm lg:text-base font-semibold text-gray-800">
                     {record.time_in
-                      ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A")
+                      ? formatDtrActualDateTime(record, "timeIn")
                       : "N/A"}{" "}
-                    •{" "}
+                    {/* •{" "}
                     {record.time_out
-                      ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A")
+                      ? formatDtrActualDateTime(record, "timeOut")
+                      : "N/A"} */}
+                  </div>
+                  <div className="font-mono text-sm lg:text-base font-semibold text-gray-800">
+                    {/* {record.time_in
+                      ? formatDtrActualDateTime(record, "timeIn")
+                      : "N/A"}{" "}
+                    •{" "} */}
+                    {record.time_out
+                      ? formatDtrActualDateTime(record, "timeOut")
                       : "N/A"}
                   </div>
                 </div>
@@ -1867,11 +2271,11 @@ if (!confirm) return;
                 </div>
                 <div className="text-sm text-gray-600">
                   {record.time_in
-                    ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A")
+                    ? formatDtrActualDateTime(record, "timeIn")
                     : "N/A"}{" "}
                   -{" "}
                   {record.time_out
-                    ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A")
+                    ? formatDtrActualDateTime(record, "timeOut")
                     : "N/A"}
                 </div>
               </div>
@@ -1950,10 +2354,10 @@ if (!confirm) return;
             const canOffset = isFinal && hasCompleteTime;
 
             const timeInDisplay = record.time_in
-              ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A")
+              ? formatDtrActualDateTime(record, "timeIn")
               : "Missing";
             const timeOutDisplay = record.time_out
-              ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A")
+              ? formatDtrActualDateTime(record, "timeOut")
               : "Missing";
             const breakInDisplay = record.break_in
               ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A")
@@ -1967,27 +2371,28 @@ if (!confirm) return;
                 key={index}
                 className="grid grid-cols-3 gap-4 items-center p-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors"
               >
-                <div className="text-sm text-gray-800 font-medium">
+                <div className="text-xs text-gray-800 font-medium">
                   {dayjs(record.date).format("MM/DD/YYYY")}
                 </div>
 
                 <div className="flex justify-center">
-                  <div className="flex flex-col text-xs space-y-1">
+                  <div className="flex flex-col text-xs space-y-2">
                     <div className="text-gray-500">
-                      <span className="inline-block w-8">In:</span>
-                      <span className={!record.time_in ? "text-red-500 font-medium" : "text-gray-800"}>
-                        {timeInDisplay}
+                      <span className="inline-block w-16">Time In:</span>
+                      <span className={!record.time_in ? "text-red-500 font-medium" : "text-gray-800 whitespace-nowrap"}> {timeInDisplay}
                       </span>
                     </div>
                     <div className="text-gray-500">
-                      <span className="inline-block w-8">Out:</span>
-                      <span className={!record.time_out ? "text-red-500 font-medium" : "text-gray-800"}>
-                        {timeOutDisplay}
+                      <span className="inline-block w-16">Time Out:</span>
+                      <span className={!record.time_out ? "text-red-500 font-medium" : "text-gray-800 whitespace-nowrap"}> {timeOutDisplay}
                       </span>
                     </div>
-                    <div className="text-gray-400 mt-1">
-                      Break: {breakInDisplay} - {breakOutDisplay}
+                  <div className="text-gray-500">
+                      <span className="inline-block w-16">Break Time:</span>
+                      <span className="text-gray-800 text-[12px] whitespace-nowrap"> {breakInDisplay} - {breakOutDisplay}
+                      </span>
                     </div>
+                    
                   </div>
                 </div>
 
@@ -1999,7 +2404,7 @@ if (!confirm) return;
                   {isIncomplete && !isFinal && (
                     <button
                       onClick={() => handleAdjustClick(record)}
-                      className="px-3 py-1 text-[11px] bg-yellow-500 hover:bg-yellow-600 text-white rounded font-medium shadow-sm transition-colors"
+                      className="px-2 py-4 text-[11px] bg-yellow-500 hover:bg-yellow-600 text-white rounded font-medium shadow-sm transition-colors"
                     >
                       Adjust Time
                     </button>
@@ -2074,13 +2479,13 @@ if (!confirm) return;
                     label="Time In:"
                     value={
                       !showAdjIn ? (
-                        dayjs(record.time_in, "HH:mm:ss").format("hh:mm:ss A")
+                        formatDtrActualDateTime(record, "timeIn")
                       ) : isFinal ? (
                         "N/A"
                       ) : (
                         <button
                           onClick={() => handleAdjustClick(record)}
-                          className="px-2 py-0.5 text-[10px] bg-yellow-500 text-white rounded"
+                          className="px-10 py-1 text-[11px] bg-yellow-500 text-white rounded"
                         >
                           Adjust
                         </button>
@@ -2103,13 +2508,13 @@ if (!confirm) return;
                     label="Time Out:"
                     value={
                       !showAdjOut ? (
-                        dayjs(record.time_out, "HH:mm:ss").format("hh:mm:ss A")
+                        formatDtrActualDateTime(record, "timeOut")
                       ) : isFinal ? (
                         "N/A"
                       ) : (
                         <button
                           onClick={() => handleAdjustClick(record)}
-                          className="px-2 py-0.5 text-[10px] bg-yellow-500 text-white rounded"
+                          className="px-10 py-1 text-[11px] bg-yellow-500 text-white rounded"
                         >
                           Adjust
                         </button>
@@ -2163,7 +2568,7 @@ if (!confirm) return;
                       <td className="px-3 py-3 align-top whitespace-nowrap">
                         {isFinal || !showAdjIn ? (
                           record.time_in ? (
-                            dayjs(record.time_in, "HH:mm:ss").format("hh:mm A")
+                            formatDtrActualDateTime(record, "timeIn")
                           ) : (
                             "N/A"
                           )
@@ -2193,7 +2598,7 @@ if (!confirm) return;
                       <td className="px-3 py-3 align-top whitespace-nowrap">
                         {isFinal || !showAdjOut ? (
                           record.time_out ? (
-                            dayjs(record.time_out, "HH:mm:ss").format("hh:mm A")
+                            formatDtrActualDateTime(record, "timeOut")
                           ) : (
                             "N/A"
                           )
@@ -2271,7 +2676,7 @@ if (!confirm) return;
                       </td>
                       <td className="px-3 py-3 align-top whitespace-nowrap">
                         {!showAdjIn ? (
-                          `${dateStr} ${dayjs(record.time_in, "HH:mm:ss").format("hh:mm A")}`
+                          formatDtrActualDateTime(record, "timeIn")
                         ) : isFinal ? (
                           "N/A"
                         ) : (
@@ -2285,7 +2690,7 @@ if (!confirm) return;
                       </td>
                       <td className="px-3 py-3 align-top whitespace-nowrap">
                         {!showAdjOut ? (
-                          `${dateStr} ${dayjs(record.time_out, "HH:mm:ss").format("hh:mm A")}`
+                          formatDtrActualDateTime(record, "timeOut")
                         ) : isFinal ? (
                           "N/A"
                         ) : (
@@ -2334,13 +2739,13 @@ if (!confirm) return;
                   <div className="text-xs text-gray-700">
                     Time In:{" "}
                     {record.time_in
-                      ? dayjs(record.time_in, "HH:mm:ss").format("hh:mm A")
+                      ? formatDtrActualDateTime(record, "timeIn")
                       : "N/A"}
                   </div>
                   <div className="text-xs text-gray-700">
                     Time Out:{" "}
                     {record.time_out
-                      ? dayjs(record.time_out, "HH:mm:ss").format("hh:mm A")
+                      ? formatDtrActualDateTime(record, "timeOut")
                       : "N/A"}
                   </div>
                 </div>
@@ -2356,19 +2761,22 @@ if (!confirm) return;
 
   return (
     <div className="ml-0 lg:ml-[200px] mt-[70px] p-4 sm:p-6 bg-gray-100 min-h-screen">
-      <div className="bg-blue-800 p-3 rounded-xl text-white flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4 w-full shadow-lg">
-        <div className="text-center sm:text-left">
-          <p className="text-sm sm:text-lg font-light">
-            <span className="kanit-text">Today</span>
-          </p>
-          <h1 className="text-base sm:text-lg md:text-2xl font-extrabold">
+
+      <div className="bg-blue-800 mt-2 px-3 py-2 sm:p-3 rounded-xl text-white flex flex-row items-center justify-between gap-3 mb-3 w-full shadow-lg">
+        <div className="min-w-0">
+          <p className="text-[10px] sm:text-xs font-light leading-none">Today</p>
+          <h1 className="text-sm sm:text-lg md:text-2xl font-extrabold leading-tight truncate">
             {currentDate.format("MMMM DD, YYYY")}
           </h1>
         </div>
 
-        <div className="text-center sm:text-left">
-          <p className="text-xs font-extrabold mb-2">Philippine Standard Time</p>
-          <p className="text-lg sm:text-2xl font-bold">{time || "00:00 PM"}</p>
+        <div className="text-right shrink-0">
+          <p className="text-[9px] sm:text-xs font-extrabold leading-none mb-1">
+            Philippine Standard Time
+          </p>
+          <p className="text-base sm:text-2xl font-bold leading-none">
+            {time || "00:00 PM"}
+          </p>
         </div>
       </div>
 
@@ -2515,7 +2923,7 @@ if (!confirm) return;
           <p className="text-blue-800 text-[14px] md:text-lg mb-2">
             <span className="font-extrabold">🕐 Time In:</span>{" "}
             {todayRecord?.time_in
-              ? dayjs(todayRecord.time_in, "HH:mm:ss").format("hh:mm:ss A")
+              ? formatDtrActualDateTime(todayRecord, "timeIn")
               : "Not Recorded"}
           </p>
 
@@ -2557,7 +2965,7 @@ if (!confirm) return;
           <p className="text-blue-800 text-[14px] md:text-lg mb-2">
             <span className="font-bold">🕐 Time Out:</span>{" "}
             {todayRecord?.time_out
-              ? dayjs(todayRecord.time_out, "HH:mm:ss").format("hh:mm:ss A")
+              ? formatDtrActualDateTime(todayRecord, "timeOut")
               : "Not Recorded"}
           </p>
 
