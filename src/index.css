@@ -10,6 +10,17 @@ body {
 
   }
 
+@media (min-width: 1024px) {
+  body.employee-sidebar-hidden [class*="lg:ml-[200px]"],
+  body.employee-sidebar-hidden [class*="lg:ml-[260px]"] {
+    margin-left: 0 !important;
+  }
+
+  body.employee-sidebar-hidden [class*="lg:w-[calc(99vw-200px)]"] {
+    width: 100% !important;
+  }
+}
+
   .oswald-text {
     font-family: 'Oswald', sans-serif;
   }

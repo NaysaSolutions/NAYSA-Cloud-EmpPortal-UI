@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import API_ENDPOINTS, { IMAGE_BASE_URL } from "../apiConfig";
 import { useAuth } from "./AuthContext";
+import { useSidebarStore } from "./useSidebarStore";
 
 const getToday = () => new Date();
 
@@ -1149,6 +1150,7 @@ const getGroupValue = (row, groupBy) => {
 
 export default function DTRMonitoring() {
   const { user: authUser } = useAuth();
+  const isSidebarOpen = useSidebarStore((state) => state.isOpen);
 
   const resolvedUser = useMemo(
     () => unwrapUser(authUser) || getLoggedUser() || {},
@@ -1215,7 +1217,8 @@ export default function DTRMonitoring() {
     };
   }, []);
 
-  const contentWidth = Math.max(0, viewportWidth - (viewportWidth >= 1024 ? 200 : 0));
+  const sidebarWidth = viewportWidth >= 1024 && isSidebarOpen ? 200 : 0;
+  const contentWidth = Math.max(0, viewportWidth - sidebarWidth);
   const detectedDevice =
     contentWidth < 640 ? "mobile" : contentWidth < 1024 ? "tablet" : "desktop";
   const effectiveLayout =
@@ -1776,7 +1779,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   );
 
   const renderTableView = () => (
-    <div className="w-full overflow-x-auto max-h-[500px] rounded-xl">
+    <div className="min-w-0 w-full max-w-full overflow-x-auto max-h-[500px] rounded-xl">
       <table className="w-full min-w-[1280px]  border-collapse text-left">
         <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
           <tr>
@@ -2144,9 +2147,15 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   const displayedEnd = Math.min(firstIndex + rowsPerPage, pageCollection.length);
 
   return (
-    <div className="ml-0 sm:ml-0 md:ml-0 lg:ml-[200px] mt-[80px] w-full lg:w-[calc(99vw-200px)] max-w-full overflow-x-hidden p-2 sm:p-4 bg-gray-100 min-h-screen">
-      <div className="mx-auto min-w-0 w-full space-y-2 transition-all">
-        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <div
+      className={`ml-0 sm:ml-0 md:ml-0 mt-[80px] min-w-0 w-full max-w-[100vw] overflow-x-hidden p-2 sm:p-4 bg-gray-100 min-h-screen ${
+        isSidebarOpen
+          ? "lg:ml-[200px] lg:w-[calc(99vw-200px)] lg:max-w-[calc(100vw-200px)]"
+          : "lg:ml-0 lg:w-full lg:max-w-[100vw]"
+      }`}
+    >
+      <div className="mx-auto min-w-0 w-full max-w-full space-y-2 transition-all">
+        <section className="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
             <div className="min-w-0">
               <h1 className="text-xl font-bold text-slate-800 sm:text-xl">DTR Monitoring</h1>

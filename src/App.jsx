@@ -108,7 +108,7 @@ const App = () => {
 const Layout = ({ children }) => (
   <div className="flex">
     <Sidebar />
-    <div className="flex-grow">
+    <div className="min-w-0 flex-grow">
       <Navbar />
       {children}
     </div>

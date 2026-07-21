@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
-import { Menu, X } from "lucide-react";
 import API_ENDPOINTS from "@/apiConfig.jsx";
+import { useSidebarStore } from "./useSidebarStore";
 
 const Sidebar = () => {
   const { user } = useAuth();
+  const { isOpen, setSidebarOpen, closeSidebar } = useSidebarStore();
   const [employeeInfo, setEmployeeInfo] = useState(null);
   const [error, setError] = useState(null);
-  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     console.log("Auth user object:", user);
@@ -50,7 +50,24 @@ if (result.success && Array.isArray(result.data) && result.data.length > 0) {
 }, [user?.empNo]);
 
 
-  const toggleSidebar = () => setIsOpen(!isOpen);
+  useEffect(() => {
+    const handleResize = () => {
+      setSidebarOpen(window.innerWidth >= 1024);
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, [setSidebarOpen]);
+
+  useEffect(() => {
+    document.body.classList.toggle("employee-sidebar-hidden", !isOpen);
+
+    return () => {
+      document.body.classList.remove("employee-sidebar-hidden");
+    };
+  }, [isOpen]);
 
   if (error) {
     return (
@@ -62,20 +79,20 @@ if (result.success && Array.isArray(result.data) && result.data.length > 0) {
 
   return (
     <>
-      {/* Mobile Toggle Button */}
-      <button
-        onClick={toggleSidebar}
-        className="hidden fixed top-12 left-6 z-50 bg-white shadow-md p-2 rounded-full"
-      >
-        {isOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
       {/* Sidebar */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 top-[70px] z-30 bg-black/30 lg:hidden"
+          onClick={closeSidebar}
+          aria-hidden="true"
+        />
+      )}
+
       <div
         className={`
           fixed top-[60px] left-0 h-screen w-[200px] bg-white shadow-md p-5 z-40 transition-transform duration-300
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 lg:block mt-4 cursor-pointer select-none
+          mt-4 cursor-pointer select-none
         `}
       >
         {/* Profile Section */}

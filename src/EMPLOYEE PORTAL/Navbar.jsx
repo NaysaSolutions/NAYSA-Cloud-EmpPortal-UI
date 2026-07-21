@@ -3,11 +3,13 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faXmark, faBell } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from "./AuthContext"; // Use Auth context
+import { useSidebarStore } from "./useSidebarStore";
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth(); // Get user from context
+  const { isOpen: isSidebarOpen, toggleSidebar } = useSidebarStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef();
@@ -92,9 +94,21 @@ const Navbar = () => {
       {/* Main Navbar */}
       <div className="flex justify-between items-center bg-white shadow-md p-1 fixed top-[15px] mt-3 left-0 w-full z-20 cursor-pointer select-none">
         {/* Logo + Title */}
-        <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
-          <img src="/naysa_logo.png" className="w-[75px] h-[45px]" alt="Naysa Logo" />
-          <span className="text-blue-800 font-bold mt-1 text-base sm:text-base md:text-base">Employee Portal</span>
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className="ml-2 flex h-9 w-9 items-center justify-center rounded-md text-blue-800 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
+            title={isSidebarOpen ? "Hide sidebar" : "Show sidebar"}
+          >
+            <FontAwesomeIcon icon={isSidebarOpen ? faXmark : faBars} size="lg" />
+          </button>
+
+          <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
+            <img src="/naysa_logo.png" className="w-[75px] h-[45px]" alt="Naysa Logo" />
+            <span className="text-blue-800 font-bold mt-1 text-base sm:text-base md:text-base">Employee Portal</span>
+          </div>
         </div>
 
         {/* Desktop Nav Links */}
