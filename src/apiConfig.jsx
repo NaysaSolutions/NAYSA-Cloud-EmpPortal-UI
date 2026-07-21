@@ -62,6 +62,7 @@ const API_ENDPOINTS = {
     saveImage:            `${API_BASE_URL}/saveImage`,
     getNewImageId:        `${API_BASE_URL}/getNewImageId`,
     getDTRRecords:        `${API_BASE_URL}/dtrRecords`,
+    serverTime:           `${API_BASE_URL}/server-time`,
 
     getAllDTR:            `${API_BASE_URL}/getAllDTR`,
     getAllDTRHR:          `${API_BASE_URL}/getAllDTRHR`,

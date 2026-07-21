@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Tooltip } from "react-tooltip";
 import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext"; // Import AuthContext
 import { useNavigate } from "react-router-dom";
@@ -14,9 +16,55 @@ import Timekeeping from "./Timekeeping"; // Adjust the path as needed
 import TimekeepingFaceEnroll from "./TimekeepingFaceEnrollment"; // Adjust the path as needed
 
 dayjs.extend(advancedFormat);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const PH_TIMEZONE = "Asia/Manila";
+const SERVER_TIME_SYNC_INTERVAL_MS = 300000;
+
+const parseServerDateTime = (value) => {
+  if (value == null || value === "") return null;
+
+  if (typeof value === "number") {
+    return value < 1000000000000 ? value * 1000 : value;
+  }
+
+  const rawValue = String(value).trim();
+  const hasExplicitTimezone =
+    /(?:Z|[+-]\d{2}:?\d{2})$/i.test(rawValue) || /\b(?:GMT|UTC)\b/i.test(rawValue);
+  const parsed = hasExplicitTimezone
+    ? dayjs(rawValue)
+    : dayjs.tz(rawValue, PH_TIMEZONE);
+
+  return parsed.isValid() ? parsed.valueOf() : null;
+};
+
+const getServerTimestampFromPayload = (payload, response) => {
+  const candidates = [
+    payload?.philippineStandardTime,
+    payload?.philippine_standard_time,
+    payload?.serverTime,
+    payload?.server_time,
+    payload?.currentDateTime,
+    payload?.current_datetime,
+    payload?.datetime,
+    payload?.timestamp,
+    response?.headers?.get?.("date"),
+  ];
+
+  for (const candidate of candidates) {
+    const timestamp = parseServerDateTime(candidate);
+    if (timestamp) return timestamp;
+  }
+
+  return null;
+};
 
 const Dashboard = () => {
-  const [currentDate, setCurrentDate] = useState(dayjs());
+  const trustedClockRef = useRef(null);
+  const trustedMonthInitializedRef = useRef(false);
+
+  const [currentDate, setCurrentDate] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(dayjs().startOf("month"));
   const [entryTime, setEntryTime] = useState(null); // Entry Time
   const [breakTime, setBreakTime] = useState(3600); // Default break time in seconds (1 hour)
@@ -38,6 +86,70 @@ const Dashboard = () => {
   const { user, setUser, authLoading } = useAuth();
   const navigate = useNavigate();
   const [showBackToTop, setShowBackToTop] = useState(false);
+
+  const getTrustedPhilippineNow = useCallback(() => {
+    const trustedClock = trustedClockRef.current;
+
+    if (
+      !trustedClock ||
+      !Number.isFinite(trustedClock.serverTimestamp) ||
+      !Number.isFinite(trustedClock.performanceTimestamp)
+    ) {
+      return null;
+    }
+
+    return dayjs(
+      trustedClock.serverTimestamp +
+        (performance.now() - trustedClock.performanceTimestamp)
+    ).tz(PH_TIMEZONE);
+  }, []);
+
+  const syncPhilippineClock = useCallback(async () => {
+    const requestedAt = performance.now();
+
+    try {
+      const response = await fetch(`${API_ENDPOINTS.serverTime}?t=${requestedAt}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+      });
+      const receivedAt = performance.now();
+      const payload = await response.json().catch(() => ({}));
+      const serverTimestamp = getServerTimestampFromPayload(payload, response);
+
+      if (!serverTimestamp) {
+        throw new Error("Server date/time was not available.");
+      }
+
+      trustedClockRef.current = {
+        serverTimestamp:
+          serverTimestamp + Math.round((receivedAt - requestedAt) / 2),
+        performanceTimestamp: receivedAt,
+      };
+
+      const trustedNow = getTrustedPhilippineNow();
+
+      if (!trustedNow) {
+        throw new Error("Unable to start trusted Philippine Standard Time clock.");
+      }
+
+      setCurrentDate(trustedNow);
+      setTime(trustedNow.format("hh:mm:ss A"));
+
+      if (!trustedMonthInitializedRef.current) {
+        setCurrentMonth(trustedNow.startOf("month"));
+        trustedMonthInitializedRef.current = true;
+      }
+    } catch (error) {
+      trustedClockRef.current = null;
+      setCurrentDate(null);
+      setTime("");
+      console.error("Dashboard Philippine Standard Time sync failed:", error);
+    }
+  }, [getTrustedPhilippineNow]);
 
   const DEFAULT_SUM = {
     LVApplicationCount: 0,
@@ -75,23 +187,27 @@ const Dashboard = () => {
   <Timekeeping onBreakStart={startBreakCountdown} />;
 
   useEffect(() => {
-    const updateTime = () => {
-      const now = new Date();
-      const options = {
-        timeZone: "Asia/Manila",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: true,
-      };
-      setTime(new Intl.DateTimeFormat("en-US", options).format(now));
+    syncPhilippineClock();
+
+    const syncInterval = setInterval(
+      syncPhilippineClock,
+      SERVER_TIME_SYNC_INTERVAL_MS
+    );
+
+    const clockInterval = setInterval(() => {
+      const trustedNow = getTrustedPhilippineNow();
+
+      if (!trustedNow) return;
+
+      setCurrentDate(trustedNow);
+      setTime(trustedNow.format("hh:mm:ss A"));
+    }, 1000);
+
+    return () => {
+      clearInterval(syncInterval);
+      clearInterval(clockInterval);
     };
-
-    updateTime(); // Set initial time
-    const interval = setInterval(updateTime, 1000); // Update every second
-
-    return () => clearInterval(interval); // Cleanup on unmount
-  }, []);
+  }, [getTrustedPhilippineNow, syncPhilippineClock]);
   // If no user is logged in, return an empty container
   if (authLoading) {
     return <div className="p-6">Loading...</div>;
@@ -174,14 +290,6 @@ const Dashboard = () => {
     console.log("Approval Data:", approvalsum);
   }, [leaveApproval, otApproval, obApproval, approvalsum]);
 
-  // Current Date and Time
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentDate(dayjs());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   useEffect(() => {
     let countdown;
     if (isCounting && breakTime > 0) {
@@ -221,8 +329,9 @@ const Dashboard = () => {
     const startDay = currentMonth.startOf("month").day();
     const daysInMonth = currentMonth.daysInMonth();
     const prevMonthDays = currentMonth.subtract(1, "month").daysInMonth();
-    const today = dayjs().date();
-    const currentMonthNumber = dayjs().month();
+    const trustedToday = currentDate;
+    const today = trustedToday?.date();
+    const currentMonthNumber = trustedToday?.month();
 
     let days = [];
 
@@ -284,7 +393,10 @@ const Dashboard = () => {
       days.push({
         day: i,
         currentMonth: true,
-        isToday: i === today && currentMonth.month() === currentMonthNumber,
+        isToday:
+          trustedToday &&
+          i === today &&
+          currentMonth.month() === currentMonthNumber,
         isApprovedLeave: !!approved,
         isPendingLeave: !!pending,
         leaveType: approved?.type || pending?.type || null,
@@ -333,7 +445,7 @@ const Dashboard = () => {
               <span className="kanit-text">Today</span>
             </p>
             <h1 className="text-base sm:text-lg md:text-2xl font-extrabold text-white">
-              {currentDate.format("MMMM DD, YYYY")}
+              {currentDate ? currentDate.format("MMMM DD, YYYY") : "Verifying..."}
             </h1>
           </div>
 

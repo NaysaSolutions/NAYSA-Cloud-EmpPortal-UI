@@ -47,6 +47,58 @@ const ACCEPTABLE_ACCURACY_METERS = 300;
 const LOCATION_CACHE_MAX_AGE_MS = 120000;
 const LOCATION_QUICK_TIMEOUT_MS = 3500;
 const LOCATION_WATCH_TIMEOUT_MS = 8000;
+const SERVER_TIME_SYNC_INTERVAL_MS = 300000;
+
+const parseServerDateTime = (value) => {
+  if (value == null || value === "") return null;
+
+  if (typeof value === "number") {
+    return value < 1000000000000 ? value * 1000 : value;
+  }
+
+  const rawValue = String(value).trim();
+  const hasExplicitTimezone = /(?:Z|[+-]\d{2}:?\d{2})$/i.test(rawValue) ||
+    /\b(?:GMT|UTC)\b/i.test(rawValue);
+  const parsed = hasExplicitTimezone
+    ? dayjs(rawValue)
+    : dayjs.tz(rawValue, PH_TIMEZONE);
+
+  return parsed.isValid() ? parsed.valueOf() : null;
+};
+
+const getServerTimestampFromResponse = (response) => {
+  const data = response?.data || {};
+  const candidates = [
+    data.philippineStandardTime,
+    data.philippine_standard_time,
+    data.serverTime,
+    data.server_time,
+    data.currentDateTime,
+    data.current_datetime,
+    data.datetime,
+    data.timestamp,
+    response?.headers?.date,
+  ];
+
+  for (const candidate of candidates) {
+    const timestamp = parseServerDateTime(candidate);
+    if (timestamp) return timestamp;
+  }
+
+  return null;
+};
+
+const getFirstNonBlankValue = (source, keys) => {
+  for (const key of keys) {
+    const value = source?.[key];
+
+    if (value != null && String(value).trim() !== "") {
+      return String(value).trim();
+    }
+  }
+
+  return "";
+};
 
 const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   const toRad = (deg) => (deg * Math.PI) / 180;
@@ -114,6 +166,8 @@ const Timekeeping = ({ onBreakStart }) => {
 
   const isProcessingTimeEventRef = useRef(false);
   const pendingTimekeepingImagesRef = useRef(new Map());
+  const trustedClockRef = useRef(null);
+  const trustedDateRangeInitializedRef = useRef(false);
 
   const getBestCoords = async ({ forceFresh = false } = {}) => {
     if (!navigator.geolocation) {
@@ -340,7 +394,7 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   const [faceDetectionModelLoaded, setFaceDetectionModelLoaded] = useState(false);
   const [currentUserFaceDescriptor, setCurrentUserFaceDescriptor] = useState(null);
 
-  const [currentDate, setCurrentDate] = useState(dayjs().tz(PH_TIMEZONE));
+  const [currentDate, setCurrentDate] = useState(null);
   const [time, setTime] = useState("");
   const [timeIn, setTimeIn] = useState("");
   const [timeOut, setTimeOut] = useState("");
@@ -353,21 +407,27 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   const [capturing, setCapturing] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState({ show: false, message: "" });
+  const [clockSyncStatus, setClockSyncStatus] = useState("syncing");
 
   const [userLocation, setUserLocation] = useState(null);
   const [locationAddress, setLocationAddress] = useState("");
   const [locationAccuracy, setLocationAccuracy] = useState(null);
 
-  const [startDate, setStartDate] = useState(
-    dayjs().tz(PH_TIMEZONE).startOf("month").format("YYYY-MM-DD")
-  );
-  const [endDate, setEndDate] = useState(
-    dayjs().tz(PH_TIMEZONE).endOf("month").format("YYYY-MM-DD")
-  );
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   const [viewMode, setViewMode] = useState("cards");
   const [expandedRecord, setExpandedRecord] = useState(null);
   const [empBranchLoc, setEmpBranchLoc] = useState(null);
+  const [employeeShiftSchedule, setEmployeeShiftSchedule] = useState(
+    getFirstNonBlankValue(user, [
+      "shiftSchedule",
+      "shift_schedule",
+      "SHIFT_SCHEDULE",
+      "schedule",
+      "SCHEDULE",
+    ])
+  );
 
   const roundCoord = (n, p = 5) => Number(n).toFixed(p);
 
@@ -378,6 +438,79 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   const shouldShowGeofenceDetails = branchLocation
     ? isGeofenceEnabled(branchLocation)
     : isLocationRequired;
+  const isClockSynced = clockSyncStatus === "synced";
+
+  const getTrustedPhilippineNow = useCallback(() => {
+    const trustedClock = trustedClockRef.current;
+
+    if (
+      !trustedClock ||
+      !Number.isFinite(trustedClock.serverTimestamp) ||
+      !Number.isFinite(trustedClock.performanceTimestamp)
+    ) {
+      return null;
+    }
+
+    return dayjs(
+      trustedClock.serverTimestamp +
+        (performance.now() - trustedClock.performanceTimestamp)
+    ).tz(PH_TIMEZONE);
+  }, []);
+
+  const syncPhilippineClock = useCallback(async () => {
+    setClockSyncStatus("syncing");
+
+    const requestedAt = performance.now();
+
+    try {
+      const response = await axios.get(API_ENDPOINTS.serverTime, {
+        params: { t: String(requestedAt) },
+        headers: {
+          "Cache-Control": "no-cache",
+          Pragma: "no-cache",
+        },
+        timeout: 8000,
+        validateStatus: () => true,
+      });
+      const receivedAt = performance.now();
+      const serverTimestamp = getServerTimestampFromResponse(response);
+
+      if (!serverTimestamp) {
+        throw new Error(
+          "Server date/time was not available. Please expose serverTime JSON or the Date response header."
+        );
+      }
+
+      const networkAdjustedServerTimestamp =
+        serverTimestamp + Math.round((receivedAt - requestedAt) / 2);
+
+      trustedClockRef.current = {
+        serverTimestamp: networkAdjustedServerTimestamp,
+        performanceTimestamp: receivedAt,
+      };
+
+      const trustedNow = getTrustedPhilippineNow();
+
+      if (!trustedNow) {
+        throw new Error("Unable to start trusted Philippine Standard Time clock.");
+      }
+
+      setCurrentDate(trustedNow);
+      setTime(trustedNow.format("hh:mm:ss A"));
+
+      if (!trustedDateRangeInitializedRef.current) {
+        setStartDate(trustedNow.startOf("month").format("YYYY-MM-DD"));
+        setEndDate(trustedNow.endOf("month").format("YYYY-MM-DD"));
+        trustedDateRangeInitializedRef.current = true;
+      }
+
+      setClockSyncStatus("synced");
+    } catch (error) {
+      trustedClockRef.current = null;
+      setClockSyncStatus("failed");
+      console.error("Philippine Standard Time sync failed:", error);
+    }
+  }, [getTrustedPhilippineNow]);
 
   const reverseGeocode = async (lat, lon) => {
   const key = `${roundCoord(lat, 5)},${roundCoord(lon, 5)}`;
@@ -623,6 +756,46 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   }, [fetchEmpBranchLoc]);
 
   useEffect(() => {
+    if (!user?.empNo) return;
+
+    let cancelled = false;
+
+    const fetchEmployeeShiftSchedule = async () => {
+      try {
+        const response = await fetch(API_ENDPOINTS.dashBoard, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({ EMP_NO: user.empNo }),
+        });
+        const result = await response.json();
+        const employee = Array.isArray(result?.data) ? result.data[0] : null;
+        const shiftSchedule = getFirstNonBlankValue(employee, [
+          "shiftSchedule",
+          "shift_schedule",
+          "SHIFT_SCHEDULE",
+          "schedule",
+          "SCHEDULE",
+        ]);
+
+        if (!cancelled && shiftSchedule) {
+          setEmployeeShiftSchedule(shiftSchedule);
+        }
+      } catch (error) {
+        console.warn("Unable to fetch employee shift schedule:", error);
+      }
+    };
+
+    fetchEmployeeShiftSchedule();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.empNo]);
+
+  useEffect(() => {
     console.log("Current Branch Location:", branchLocation);
   }, [branchLocation]);
 
@@ -743,13 +916,27 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   }, [user?.empNo, faceDetectionModelLoaded, isImageCaptureRequired]);
 
   useEffect(() => {
+    syncPhilippineClock();
+
+    const syncInterval = setInterval(
+      syncPhilippineClock,
+      SERVER_TIME_SYNC_INTERVAL_MS
+    );
+
     const interval = setInterval(() => {
-      setTime(dayjs().tz(PH_TIMEZONE).format("hh:mm:ss A"));
-      setCurrentDate(dayjs().tz(PH_TIMEZONE));
+      const trustedNow = getTrustedPhilippineNow();
+
+      if (!trustedNow) return;
+
+      setTime(trustedNow.format("hh:mm:ss A"));
+      setCurrentDate(trustedNow);
     }, 1000);
 
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      clearInterval(interval);
+      clearInterval(syncInterval);
+    };
+  }, [getTrustedPhilippineNow, syncPhilippineClock]);
 
   const trackFaceMovement = async (videoElement) => {
     const result = await faceapi.detectSingleFace(videoElement).withFaceLandmarks();
@@ -1079,16 +1266,52 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   );
 
   const getRecordShiftTimeIn = useCallback((record) => {
-    return (
-      record?.shift_time_in ||
-      record?.shiftTimeIn ||
-      record?.SHIFT_TIME_IN ||
-      record?.SHIFTTIMEIN ||
-      record?.shiftIn ||
-      record?.shift_in ||
-      null
-    );
+    return getFirstNonBlankValue(record, [
+      "shift_time_in",
+      "shiftTimeIn",
+      "SHIFT_TIME_IN",
+      "SHIFTTIMEIN",
+      "shiftIn",
+      "shift_in",
+      "sched_in",
+      "schedIn",
+      "SCHED_IN",
+      "schedule_in",
+      "scheduleIn",
+      "SCHEDULE_IN",
+      "time_in_sched",
+      "timeInSched",
+      "TIME_IN_SCHED",
+    ]);
   }, []);
+
+  const getEmployeeShiftTimeIn = useCallback(() => {
+    const directShiftIn = getFirstNonBlankValue(user, [
+      "shift_time_in",
+      "shiftTimeIn",
+      "SHIFT_TIME_IN",
+      "SHIFTTIMEIN",
+      "shiftIn",
+      "shift_in",
+      "sched_in",
+      "schedIn",
+      "SCHED_IN",
+    ]);
+
+    if (directShiftIn) return directShiftIn;
+
+    const shiftSchedule =
+      employeeShiftSchedule ||
+      getFirstNonBlankValue(user, [
+        "shiftSchedule",
+        "shift_schedule",
+        "SHIFT_SCHEDULE",
+        "schedule",
+        "SCHEDULE",
+      ]);
+
+    return String(shiftSchedule || "").split(/\s*-\s*/)[0]?.trim() || "";
+  }, [employeeShiftSchedule, user]);
 
   const getRecordShiftTimeInDateTime = useCallback(
     (record) => {
@@ -1104,12 +1327,21 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
         return directDateTime.tz(PH_TIMEZONE);
       }
 
-      const timeMatch = rawShiftTime.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+      const timeMatch = rawShiftTime.match(
+        /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i
+      );
 
       if (!timeMatch) return null;
 
-      const [, hour, minute, second = "00"] = timeMatch;
-      const normalizedTime = `${hour.padStart(2, "0")}:${minute}:${second}`;
+      let hours = Number(timeMatch[1]);
+      const minute = timeMatch[2];
+      const second = timeMatch[3] || "00";
+      const meridiem = timeMatch[4]?.toUpperCase();
+
+      if (meridiem === "PM" && hours < 12) hours += 12;
+      if (meridiem === "AM" && hours === 12) hours = 0;
+
+      const normalizedTime = `${String(hours).padStart(2, "0")}:${minute}:${second}`;
       const shiftDateTime = dayjs.tz(
         `${recordDate} ${normalizedTime}`,
         PH_TIMEZONE
@@ -1120,9 +1352,48 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
     [getNormalizedRecordDate, getRecordShiftTimeIn, isValueBlank]
   );
 
+  const getShiftTimeInDateTime = useCallback(
+    (recordDate, shiftTimeIn) => {
+      if (!recordDate || isValueBlank(shiftTimeIn)) return null;
+
+      const rawShiftTime = String(shiftTimeIn).trim();
+      const directDateTime = dayjs(rawShiftTime);
+
+      if (directDateTime.isValid() && /\d{4}-\d{2}-\d{2}/.test(rawShiftTime)) {
+        return directDateTime.tz(PH_TIMEZONE);
+      }
+
+      const timeMatch = rawShiftTime.match(
+        /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i
+      );
+
+      if (!timeMatch) return null;
+
+      let hours = Number(timeMatch[1]);
+      const minutes = timeMatch[2];
+      const seconds = timeMatch[3] || "00";
+      const meridiem = timeMatch[4]?.toUpperCase();
+
+      if (meridiem === "PM" && hours < 12) hours += 12;
+      if (meridiem === "AM" && hours === 12) hours = 0;
+
+      const normalizedTime = `${String(hours).padStart(2, "0")}:${minutes}:${seconds}`;
+      const shiftDateTime = dayjs.tz(
+        `${recordDate} ${normalizedTime}`,
+        PH_TIMEZONE
+      );
+
+      return shiftDateTime.isValid() ? shiftDateTime : null;
+    },
+    [isValueBlank]
+  );
+
   const getActiveTimekeepingRecord = useCallback(
     (nextRecords) => {
-      const now = dayjs().tz(PH_TIMEZONE);
+      const now = getTrustedPhilippineNow();
+
+      if (!now) return null;
+
       const todayStr = now.format("YYYY-MM-DD");
       const today =
         nextRecords.find((record) => getNormalizedRecordDate(record) === todayStr) ||
@@ -1135,8 +1406,8 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
           return (
             recordDate &&
             recordDate < todayStr &&
-            !isValueBlank(record?.time_in) &&
-            isValueBlank(record?.time_out)
+            !isValueBlank(getDtrActualDateTimeValue(record, "timeIn")) &&
+            isValueBlank(getDtrActualDateTimeValue(record, "timeOut"))
           );
         })
         .sort((a, b) => {
@@ -1151,30 +1422,38 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
       if (!openPreviousRecord) return today;
 
       const openRecordDate = getNormalizedRecordDate(openPreviousRecord);
-      const nextShiftRecord = nextRecords
-        .filter((record) => {
-          const recordDate = getNormalizedRecordDate(record);
-          return recordDate && recordDate > openRecordDate;
-        })
-        .sort((a, b) => {
-          const dateA = getNormalizedRecordDate(a) || "";
-          const dateB = getNormalizedRecordDate(b) || "";
-
-          return dateA.localeCompare(dateB);
-        })
-        .find((record) => getRecordShiftTimeInDateTime(record));
-
-      const nextShiftTimeIn = nextShiftRecord
-        ? getRecordShiftTimeInDateTime(nextShiftRecord)
+      const openShiftTimeIn =
+        getRecordShiftTimeInDateTime(openPreviousRecord) ||
+        getShiftTimeInDateTime(openRecordDate, getEmployeeShiftTimeIn());
+      const nextShiftTimeIn = openShiftTimeIn
+        ? openShiftTimeIn.add(1, "day")
         : null;
 
-      if (!nextShiftTimeIn || now.isBefore(nextShiftTimeIn)) {
+      if (nextShiftTimeIn && now.isBefore(nextShiftTimeIn)) {
+        return openPreviousRecord;
+      }
+
+      const todayShiftTimeIn = getShiftTimeInDateTime(
+        todayStr,
+        getRecordShiftTimeIn(today) || getEmployeeShiftTimeIn()
+      );
+
+      if (todayShiftTimeIn && now.isBefore(todayShiftTimeIn)) {
         return openPreviousRecord;
       }
 
       return today;
     },
-    [getNormalizedRecordDate, getRecordShiftTimeInDateTime, isValueBlank]
+    [
+      getNormalizedRecordDate,
+      getDtrActualDateTimeValue,
+      getEmployeeShiftTimeIn,
+      getRecordShiftTimeIn,
+      getRecordShiftTimeInDateTime,
+      getShiftTimeInDateTime,
+      getTrustedPhilippineNow,
+      isValueBlank,
+    ]
   );
 
   const applyPendingTimekeepingImages = useCallback(
@@ -1278,6 +1557,11 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
     fetchDTRRecords();
   }, [fetchDTRRecords]);
 
+  useEffect(() => {
+    if (!isClockSynced) return;
+    setTodayRecord(getActiveTimekeepingRecord(records));
+  }, [getActiveTimekeepingRecord, isClockSynced, records]);
+
   const showSuccessToast = (title = "Success", description = "") => {
   toast.success(title, {
     description,
@@ -1341,6 +1625,23 @@ const showConfirmToast = ({
   }
 
   isProcessingTimeEventRef.current = true;
+
+  const trustedNow = getTrustedPhilippineNow();
+
+  if (!trustedNow) {
+    await syncPhilippineClock();
+  }
+
+  const syncedNow = getTrustedPhilippineNow();
+
+  if (!syncedNow) {
+    showErrorToast(
+      "Time Sync Required",
+      "Unable to verify Philippine Standard Time from the server. Please check your connection and try again."
+    );
+    isProcessingTimeEventRef.current = false;
+    return;
+  }
 
   if (!user?.empNo) {
     showErrorToast("Error", "Employee number not available. Please log in.");
@@ -1508,14 +1809,13 @@ capturedImageInfo = await captureImageProcess(type);
       distanceFromBranch = locationCheck?.distance ?? null;
     }
 
-    const now = dayjs().tz(PH_TIMEZONE);
-    const currentTime = now.format("HH:mm:ss");
-    const currentDateStr = now.format("YYYY-MM-DD");
+    const currentTime = syncedNow.format("HH:mm:ss");
+    const currentDateStr = syncedNow.format("YYYY-MM-DD");
     const eventDateStr =
       type === "TIME OUT"
         ? getNormalizedRecordDate(todayRecord) || currentDateStr
         : currentDateStr;
-    const displayTime = now.format("hh:mm:ss A");
+    const displayTime = syncedNow.format("hh:mm:ss A");
 
     let timeInImageIdToSend = null;
     let timeOutImageIdToSend = null;
@@ -1669,17 +1969,15 @@ capturedImageInfo = await captureImageProcess(type);
         );
 
         if (!hasMatchingRecord) {
-          return [createSavedEventRecord(), ...previousRecords];
+          const nextRecords = [createSavedEventRecord(), ...previousRecords];
+          setTodayRecord(getActiveTimekeepingRecord(nextRecords));
+          return nextRecords;
         }
 
-        return previousRecords.map(applySavedEventToRecord);
+        const nextRecords = previousRecords.map(applySavedEventToRecord);
+        setTodayRecord(getActiveTimekeepingRecord(nextRecords));
+        return nextRecords;
       });
-
-      setTodayRecord((previousRecord) =>
-        previousRecord
-          ? applySavedEventToRecord(previousRecord)
-          : createSavedEventRecord()
-      );
 
       showSuccessToast("Success", `${type} recorded successfully!`);
       fetchDTRRecords();
@@ -2766,7 +3064,7 @@ if (!confirm) return;
         <div className="min-w-0">
           <p className="text-[10px] sm:text-xs font-light leading-none">Today</p>
           <h1 className="text-sm sm:text-lg md:text-2xl font-extrabold leading-tight truncate">
-            {currentDate.format("MMMM DD, YYYY")}
+            {currentDate ? currentDate.format("MMMM DD, YYYY") : "Verifying..."}
           </h1>
         </div>
 
@@ -2779,6 +3077,14 @@ if (!confirm) return;
           </p>
         </div>
       </div>
+
+      {clockSyncStatus !== "synced" && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+          {clockSyncStatus === "syncing"
+            ? "Verifying server time..."
+            : "Philippine Standard Time could not be verified from the server. Timekeeping buttons are disabled until sync is restored."}
+        </div>
+      )}
 
       <div className="flex flex-col md:flex-row justify-center gap-6 w-full">
         <div className="flex flex-col items-center p-4 bg-white rounded-xl shadow-md flex-1">
@@ -2816,12 +3122,13 @@ if (!confirm) return;
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
               onClick={() => handleTimeEvent("TIME IN")}
               disabled={
-                isImageCaptureRequired
+                !isClockSynced ||
+                (isImageCaptureRequired
                   ? capturing ||
                     !faceDetectionModelLoaded ||
                     !currentUserFaceDescriptor ||
                     !!todayRecord?.time_in
-                  : !!todayRecord?.time_in
+                  : !!todayRecord?.time_in)
               }
             >
               Time In
@@ -2831,13 +3138,14 @@ if (!confirm) return;
               className="bg-red-600 hover:bg-red-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
               onClick={() => handleTimeEvent("BREAK IN")}
               disabled={
-                isImageCaptureRequired
+                !isClockSynced ||
+                (isImageCaptureRequired
                   ? capturing ||
                     !faceDetectionModelLoaded ||
                     !currentUserFaceDescriptor ||
                     !!todayRecord?.break_in ||
                     !todayRecord?.time_in
-                  : !!todayRecord?.break_in || !todayRecord?.time_in
+                  : !!todayRecord?.break_in || !todayRecord?.time_in)
               }
             >
               Break In
@@ -2847,13 +3155,14 @@ if (!confirm) return;
               className="bg-red-600 hover:bg-red-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
               onClick={() => handleTimeEvent("BREAK OUT")}
               disabled={
-                isImageCaptureRequired
+                !isClockSynced ||
+                (isImageCaptureRequired
                   ? capturing ||
                     !faceDetectionModelLoaded ||
                     !currentUserFaceDescriptor ||
                     !!todayRecord?.break_out ||
                     !todayRecord?.break_in
-                  : !!todayRecord?.break_out || !todayRecord?.break_in
+                  : !!todayRecord?.break_out || !todayRecord?.break_in)
               }
             >
               Break Out
@@ -2863,13 +3172,14 @@ if (!confirm) return;
               className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
               onClick={() => handleTimeEvent("TIME OUT")}
               disabled={
-                isImageCaptureRequired
+                !isClockSynced ||
+                (isImageCaptureRequired
                   ? capturing ||
                     !faceDetectionModelLoaded ||
                     !currentUserFaceDescriptor ||
                     !!todayRecord?.time_out ||
                     !todayRecord?.time_in
-                  : !!todayRecord?.time_out || !todayRecord?.time_in
+                  : !!todayRecord?.time_out || !todayRecord?.time_in)
               }
             >
               Time Out

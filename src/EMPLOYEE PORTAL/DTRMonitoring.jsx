@@ -1722,7 +1722,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           <PhotoThumb
             src={row.timeInImage}
             fallbackSrcs={row.timeInImageFallbacks}
-            label={`${row.empName || row.empNo} Time In`}
+            label={`TIME IN: ${row.empName || row.empNo}`}
             onOpen={openPhoto}
           />
         );
@@ -1731,7 +1731,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           <PhotoThumb
             src={row.timeOutImage}
             fallbackSrcs={row.timeOutImageFallbacks}
-            label={`${row.empName || row.empNo} Time Out`}
+            label={`TIME OUT: ${row.empName || row.empNo}`}
             onOpen={openPhoto}
           />
         );
@@ -1931,7 +1931,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           <PhotoThumb
             src={row.timeInImage}
             fallbackSrcs={row.timeInImageFallbacks}
-            label={`${row.empName || row.empNo} Time In`}
+            label={`TIME IN: ${row.empName || row.empNo}`}
             onOpen={openPhoto}
             size="lg"
           />
@@ -1944,7 +1944,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           <PhotoThumb
             src={row.timeOutImage}
             fallbackSrcs={row.timeOutImageFallbacks}
-            label={`${row.empName || row.empNo} Time Out`}
+            label={`TIME OUT: ${row.empName || row.empNo}`}
             onOpen={openPhoto}
             size="lg"
           />
@@ -1987,8 +1987,8 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             <div className="mt-2 flex flex-col items-center gap-2 text-center">
               <PhotoThumb
                 src={row.timeInImage}
-            fallbackSrcs={row.timeInImageFallbacks}
-                label={`${row.empName || row.empNo} Time In`}
+                fallbackSrcs={row.timeInImageFallbacks}
+                label={`TIME IN: ${row.empName || row.empNo}`}
                 onOpen={openPhoto}
                 size="lg"
               />
@@ -2000,8 +2000,8 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             <div className="mt-2 flex flex-col items-center gap-2 text-center">
               <PhotoThumb
                 src={row.timeOutImage}
-            fallbackSrcs={row.timeOutImageFallbacks}
-                label={`${row.empName || row.empNo} Time Out`}
+                fallbackSrcs={row.timeOutImageFallbacks}
+                label={`TIME OUT: ${row.empName || row.empNo}`}
                 onOpen={openPhoto}
                 size="lg"
               />
@@ -2487,7 +2487,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           onClick={() => setPhotoPreview(null)}
         >
           <div
-            className="relative max-h-[92vh] w-full max-w-[min(92vw,32rem)] overflow-hidden rounded-2xl bg-white p-2.5 shadow-2xl sm:max-w-3xl sm:p-3"
+            className="relative max-h-[92vh] w-full overflow-hidden rounded-2xl bg-white p-2.5 shadow-2xl max-w-xs sm:p-3"
             onClick={(event) => event.stopPropagation()}
           >
             <button
