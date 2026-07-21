@@ -535,7 +535,7 @@ const handleDateChange = (field, value) => {
             {/* <div className="flex flex-col">
               <span className="block font-semibold mb-1">Date</span>
               <div className="relative">
-                <input type="date" className="w-full p-2 border rounded" value={applicationDate} onChange={(e) => setApplicationDate(e.target.value)} />
+                <input type="date" className="w-full p-2 border rounded-xl" value={applicationDate} onChange={(e) => setApplicationDate(e.target.value)} />
               </div>
             </div> */}
             <div className="min-w-0">
@@ -623,14 +623,14 @@ const handleDateChange = (field, value) => {
             {/* Hours (auto) */}
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Number of Hours</span>
-              <input type="number" value={Number(obHrs || 0).toFixed(2)} readOnly className="w-full p-2 border rounded h-[42px] bg-gray-100 cursor-not-allowed" />
+              <input type="number" value={Number(obHrs || 0).toFixed(2)} readOnly className="w-full p-2 border rounded-xl h-[42px] bg-gray-100 cursor-not-allowed" />
             </div>
           </div>
 
           {/* Remarks */}
           <div className="mt-6">
             <span className="block font-semibold mb-1">Remarks</span>
-            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={4} className="w-full p-2 border rounded" placeholder="Enter Remarks" />
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={4} className="w-full p-2 border rounded-xl" placeholder="Enter Remarks" />
           </div>
 
           {/* Submit */}
@@ -660,11 +660,11 @@ const handleDateChange = (field, value) => {
             />
           </div>
           
-          <select value={searchFields.obStatus} onChange={(e) => setSearchFields((p) => ({ ...p, obStatus: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
+          <select value={searchFields.obStatus} onChange={(e) => setSearchFields((p) => ({ ...p, obStatus: e.target.value }))} className="w-full px-2 py-2 border rounded-xl text-sm bg-white">
             <option value="">All Status</option>
             {statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}
           </select>
-          <input type="text" value={searchFields.obRemarks} onChange={(e) => handleSearchChange(e, "obRemarks")} className="w-full px-2 py-2 border rounded text-sm" placeholder="Remarks contains…" />
+          <input type="text" value={searchFields.obRemarks} onChange={(e) => handleSearchChange(e, "obRemarks")} className="w-full px-2 py-2 border rounded-xl text-sm" placeholder="Remarks contains…" />
         </div>
         </div>
 

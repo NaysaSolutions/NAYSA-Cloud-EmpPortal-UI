@@ -28,6 +28,14 @@ const OvertimeApplication = () => {
 
   // view / pagination
   const [viewMode, setViewMode] = useState("card"); // card | accordion | table
+    useEffect(() => {
+      const mq = window.matchMedia("(min-width: 768px)");
+      const setByScreen = () => setViewMode(mq.matches ? "table" : "card");
+      setByScreen();
+      mq.addEventListener("change", setByScreen);
+      return () => mq.removeEventListener("change", setByScreen);
+    }, []);
+    
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 10;
 
@@ -450,11 +458,11 @@ const cancelApplication = async (entry) => {
             
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Number of Hours</span>
-              <input type="number" className="w-full p-2 border rounded" min="0" step="0.5" value={overtimeHours} onChange={(e) => { const v = parseFloat(e.target.value); setOvertimeHours(isNaN(v) || v < 0 ? 0 : v); }} placeholder="Enter Overtime hours" />
+              <input type="number" className="w-full p-2 border rounded-xl" min="0" step="0.5" value={overtimeHours} onChange={(e) => { const v = parseFloat(e.target.value); setOvertimeHours(isNaN(v) || v < 0 ? 0 : v); }} placeholder="Enter Overtime hours" />
             </div>
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Overtime Type</span>
-              <select className="w-full p-2 border rounded" value={otType} onChange={(e) => setOtType(e.target.value)}>
+              <select className="w-full p-2 border rounded-xl" value={otType} onChange={(e) => setOtType(e.target.value)}>
                 <option value="">Select Overtime Type</option>
                 <option value="REG">Regular Overtime</option>
                 <option value="HOL">Holiday</option>
@@ -465,7 +473,7 @@ const cancelApplication = async (entry) => {
 
           <div className="mt-6">
             <span className="block font-semibold mb-1">Remarks</span>
-            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows="4" className="w-full p-2 border rounded" placeholder="Enter Remarks" />
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows="4" className="w-full p-2 border rounded-xl" placeholder="Enter Remarks" />
           </div>
 
           <div className="mt-4 flex justify-center">
@@ -494,11 +502,11 @@ const cancelApplication = async (entry) => {
               className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
             />
           </div>        
-          <select value={searchFields.otType} onChange={(e) => setSearchFields((p) => ({ ...p, otType: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
+          <select value={searchFields.otType} onChange={(e) => setSearchFields((p) => ({ ...p, otType: e.target.value }))} className="w-full px-2 py-2 border rounded-xl text-sm bg-white">
             <option value="">All Overtime Types</option>
             {typeOptions.map((t) => (<option key={t} value={t}>{getOvertimeTypeLabel(t)}</option>))}
           </select>
-          <select value={searchFields.otStatus} onChange={(e) => setSearchFields((p) => ({ ...p, otStatus: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
+          <select value={searchFields.otStatus} onChange={(e) => setSearchFields((p) => ({ ...p, otStatus: e.target.value }))} className="w-full px-2 py-2 border rounded-xl text-sm bg-white">
             <option value="">All Status</option>
             {statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}
           </select>
@@ -536,7 +544,7 @@ const cancelApplication = async (entry) => {
                     </div>
                     {entry?.otStatus === "Pending" && (
                       <div className="mt-3 text-right">
-                        <button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button>
+                        <button className="px-3 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button>
                       </div>
                     )}
                   </div>
@@ -560,7 +568,7 @@ const cancelApplication = async (entry) => {
                       <div><div className="text-gray-500 font-semibold">Remarks</div><div>{entry.otRemarks || "N/A"}</div></div>
                       <div><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="text-blue-800">{entry.appRemarks || "N/A"}</div></div>
                       {entry?.otStatus === "Pending" && (
-                        <div className="pt-2 text-right"><button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button></div>
+                        <div className="pt-2 text-right"><button className="px-3 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button></div>
                       )}
                     </div>
                   </details>
@@ -619,7 +627,7 @@ const cancelApplication = async (entry) => {
                         <td className="global-td text-center whitespace-nowrap"><span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span></td>
                         <td className="global-td text-center whitespace-nowrap">
                           {entry?.otStatus === "Pending" ? (
-                            <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button>
+                            <button className="px-2 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button>
                           ) : ("—")}
                         </td>
                       </tr>

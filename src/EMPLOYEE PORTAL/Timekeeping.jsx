@@ -14,11 +14,11 @@ import fetchApi from "@/fetchApi.js";
 import {
   ChevronDown,
   ChevronUp,
-  Calendar,
   MapPin,
   Camera,
   Download,
   Image as ImageIcon,
+  CircleCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -2532,7 +2532,7 @@ if (!confirm) return;
                         {canOffset && (
                           <button
                             onClick={() => handleOffsetClick(record)}
-                            className="w-32 lg:w-40 py-2 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all font-bold shadow-sm"
+                            className="w-32 lg:w-40 py-2 text-xs bg-blue-800 hover:bg-blue-700 text-white rounded-xl transition-all font-bold shadow-sm"
                           >
                             Offset
                           </button>
@@ -2711,7 +2711,7 @@ if (!confirm) return;
                   {canOffset && (
                     <button
                       onClick={() => handleOffsetClick(record)}
-                      className="px-3 py-1 text-[11px] bg-blue-600 hover:bg-blue-700 text-white rounded font-medium shadow-sm transition-colors"
+                      className="px-3 py-1 text-[11px] bg-blue-800 hover:bg-blue-700 text-white rounded font-medium shadow-sm transition-colors"
                     >
                       Offset
                     </button>
@@ -3058,7 +3058,7 @@ if (!confirm) return;
   };
 
   return (
-    <div className="ml-0 lg:ml-[200px] mt-[70px] p-4 sm:p-6 bg-gray-100 min-h-screen">
+    <div className="ml-0 lg:ml-[200px] mt-[70px] p-2 sm:p-4 bg-gray-100 min-h-screen">
 
       <div className="bg-blue-800 mt-2 px-3 py-2 sm:p-3 rounded-xl text-white flex flex-row items-center justify-between gap-3 mb-3 w-full shadow-lg">
         <div className="min-w-0">
@@ -3119,7 +3119,7 @@ if (!confirm) return;
 
           <div className="w-full grid grid-cols-2 gap-4">
             <button
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
+              className="bg-blue-800 hover:bg-blue-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
               onClick={() => handleTimeEvent("TIME IN")}
               disabled={
                 !isClockSynced ||
@@ -3169,7 +3169,7 @@ if (!confirm) return;
             </button>
 
             <button
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
+              className="bg-blue-800 hover:bg-blue-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
               onClick={() => handleTimeEvent("TIME OUT")}
               disabled={
                 !isClockSynced ||
@@ -3300,13 +3300,11 @@ if (!confirm) return;
                     Start Date
                   </label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4 pointer-events-none" />
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                      className="w-full sm:w-48 lg:w-64 h-10 pl-9 pr-3 border border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 text-[14px] text-gray-700 outline-none bg-white cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden"
+                      className="w-full min-w-0 sm:w-48 lg:w-64 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
                     />
                   </div>
                 </div>
@@ -3316,13 +3314,12 @@ if (!confirm) return;
                     End Date
                   </label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4 pointer-events-none" />
                     <input
                       type="date"
                       value={endDate}
+                      min={startDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      onClick={(e) => e.target.showPicker && e.target.showPicker()}
-                      className="w-full sm:w-48 lg:w-64 h-10 pl-9 pr-3 border border-gray-300 rounded-xl focus:ring-blue-500 focus:border-blue-500 text-[14px] text-gray-700 outline-none bg-white cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden"
+                      className="w-full min-w-0 sm:w-48 lg:w-64 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
                     />
                   </div>
                 </div>
@@ -3331,31 +3328,31 @@ if (!confirm) return;
               <div className="flex flex-wrap items-center gap-3 mt-4 xl:mt-0">
                 <button
                   onClick={handleExport}
-                  className="flex-1 sm:flex-none h-10 px-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 text-sm font-medium shadow-sm whitespace-nowrap"
+                  className="flex-1 sm:flex-none h-10 px-3 bg-green-700 text-white rounded-xl hover:bg-green-600 transition-colors flex items-center justify-center gap-2 text-sm font-medium shadow-sm whitespace-nowrap"
                 >
-                  <Download size={16} />
+                  <Download size={18} />
                   Export
                 </button>
 
                 {/* <button
                   onClick={() => navigate("/offsetApplication", { state: { fromDTR: true } })}
-                  className="flex-1 sm:flex-none h-10 px-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                  className="flex-1 sm:flex-none h-10 px-4 bg-blue-800 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
                 >
                   Offset Application
                 </button> */}
 
                 <button
                   onClick={() => navigate("/timekeepingAdj")}
-                  className="flex-1 sm:flex-none h-10 px-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                  className="flex-1 sm:flex-none h-10 px-3 bg-blue-800 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
                 >
                   DTR Adjustment
                 </button>
 
                 <button
                   onClick={handleDtrConfirmation}
-                  className="flex-1 sm:flex-none h-10 px-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                  className="flex-1 sm:flex-none h-10 px-3 bg-blue-800 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
                 >
-                  DTR Confirmation
+                  <CircleCheck size={20} className="text-white inline mr-2" />DTR Confirmation
                 </button>
               </div>
             </div>
@@ -3365,7 +3362,7 @@ if (!confirm) return;
                 onClick={() => setViewMode("cards")}
                 className={`py-2 text-sm font-medium transition-all ${
                   viewMode === "cards"
-                    ? "bg-blue-600 text-white"
+                    ? "bg-blue-800 text-white"
                     : "bg-white text-gray-600 hover:bg-gray-50 border-r border-gray-200"
                 }`}
               >
@@ -3376,7 +3373,7 @@ if (!confirm) return;
                 onClick={() => setViewMode("table")}
                 className={`py-2 text-sm font-medium transition-all ${
                   viewMode === "table"
-                    ? "bg-blue-600 text-white"
+                    ? "bg-blue-800 text-white"
                     : "bg-white text-gray-600 hover:bg-gray-50 border-r border-gray-200"
                 }`}
               >
@@ -3387,7 +3384,7 @@ if (!confirm) return;
                 onClick={() => setViewMode("tableSummary")}
                 className={`py-2 text-sm font-medium transition-all ${
                   viewMode === "tableSummary"
-                    ? "bg-blue-600 text-white"
+                    ? "bg-blue-800 text-white"
                     : "bg-white text-gray-600 hover:bg-gray-50 border-r border-gray-200"
                 }`}
               >
@@ -3398,7 +3395,7 @@ if (!confirm) return;
                 onClick={() => setViewMode("summary")}
                 className={`py-2 text-sm font-medium transition-all ${
                   viewMode === "summary"
-                    ? "bg-blue-600 text-white"
+                    ? "bg-blue-800 text-white"
                     : "bg-white text-gray-600 hover:bg-gray-50"
                 }`}
               >

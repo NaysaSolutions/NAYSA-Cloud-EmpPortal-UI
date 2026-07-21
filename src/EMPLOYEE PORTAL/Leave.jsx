@@ -791,7 +791,7 @@ const getLeaveStamp = (row) => {
                   type="date"
                   value={applicationDate}
                   onChange={(e) => setApplicationDate(e.target.value)}
-                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
                 />
               </div>
             </div>
@@ -800,7 +800,7 @@ const getLeaveStamp = (row) => {
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Leave Type</span>
               <select
-                className="w-full p-2 border rounded"
+                className="w-full p-2 border rounded-xl"
                 value={leaveType}
                 onChange={handleLeaveTypeChange}
                 disabled={loading}
@@ -822,7 +822,7 @@ const getLeaveStamp = (row) => {
                   value={selectedStartDate}
                   onChange={(e) => handleStartDateChange(e.target.value)}
                   onBlur={(e) => handleStartDateChange(e.target.value)}  // optional: re-check on blur
-                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
                 />
               </div>
             </div>
@@ -837,7 +837,7 @@ const getLeaveStamp = (row) => {
                   onChange={(e) => handleEndDateChange(e.target.value)}  // allow free typing
                   onBlur={validateEndDate}                               // validate when done
                   onKeyDown={(e) => { if (e.key === "Enter") validateEndDate(); }}
-                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
                 />
               </div>
             </div>
@@ -852,7 +852,7 @@ const getLeaveStamp = (row) => {
             <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance in Days</span>
             <input
               type="number"
-              className="w-full p-2 border rounded text-red-600 font-semibold"
+              className="w-full p-2 border rounded-xl text-red-600 font-semibold"
               min="0"
               step="0.01"
               value={leaveBalDays}
@@ -864,7 +864,7 @@ const getLeaveStamp = (row) => {
             <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance in Hours</span>
             <input
               type="number"
-              className="w-full p-2 border rounded text-red-600 font-semibold"
+              className="w-full p-2 border rounded-xl text-red-600 font-semibold"
               min="0"
               step="0.25"
               value={leaveBalHours}
@@ -879,11 +879,11 @@ const getLeaveStamp = (row) => {
           {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4"> */}
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Number of Days</span>
-              <input type="number" className="w-full p-2 border rounded" min="0" step="1" value={leaveDays} onChange={handleDaysChange} placeholder="Enter leave days" />
+              <input type="number" className="w-full p-2 border rounded-xl" min="0" step="1" value={leaveDays} onChange={handleDaysChange} placeholder="Enter leave days" />
             </div>
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Number of Hours</span>
-              <input type="number" className="w-full p-2 border rounded" min="0" step="0.5" value={leaveHours} onChange={handleHoursChange} placeholder="Enter leave hours" />
+              <input type="number" className="w-full p-2 border rounded-xl" min="0" step="0.5" value={leaveHours} onChange={handleHoursChange} placeholder="Enter leave hours" />
             </div>
           </div>
 
@@ -896,7 +896,7 @@ const getLeaveStamp = (row) => {
 
           <div className="mt-6">
             <span className="block font-semibold mb-1">Remarks</span>
-            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows="4" className="w-full p-2 border rounded" placeholder="Enter Remarks"></textarea>
+            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows="4" className="w-full p-2 border rounded-xl" placeholder="Enter Remarks"></textarea>
           </div>
 
           <div className="mt-4 flex justify-center">
@@ -917,7 +917,7 @@ const getLeaveStamp = (row) => {
                 type="date"
                 value={searchFields.leaveDateStart}
                 onChange={(e) => setSearchFields((p) => ({ ...p, leaveDateStart: e.target.value }))}
-                className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
               />
             </div>
           </div>
@@ -930,7 +930,7 @@ const getLeaveStamp = (row) => {
                 value={searchFields.leaveDateEnd}
                 min={searchFields.leaveDateStart}
                 onChange={(e) => setSearchFields((p) => ({ ...p, leaveDateEnd: e.target.value }))}
-                className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
               />
             </div>
           </div>
@@ -939,7 +939,7 @@ const getLeaveStamp = (row) => {
           <select
             value={searchFields.leaveType}
             onChange={(e) => setSearchFields((p) => ({ ...p, leaveType: e.target.value }))}
-            className="w-full px-2 py-2 border rounded text-sm bg-white"
+            className="w-full px-2 py-2 border rounded-xl text-sm bg-white"
           >
             <option value="">All Leave Types</option>
             {typeOptions.map((t) => (
@@ -953,7 +953,7 @@ const getLeaveStamp = (row) => {
           <select
             value={searchFields.leaveStatus}
             onChange={(e) => setSearchFields((p) => ({ ...p, leaveStatus: e.target.value }))}
-            className="w-full px-2 py-2 border rounded text-sm bg-white"
+            className="w-full px-2 py-2 border rounded-xl text-sm bg-white"
           >
             <option value="">All Status</option>
             {statusOptions.map((s) => (
@@ -1030,7 +1030,7 @@ const getLeaveStamp = (row) => {
                       {entry?.leaveStatus === "Pending" && (
                         <div className="mt-3 text-right">
                           <button
-                            className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700"
+                            className="px-3 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700"
                             onClick={() => cancelLeaveApplication(entry)}
                           >
                             Cancel
@@ -1083,7 +1083,7 @@ const getLeaveStamp = (row) => {
                       {entry?.leaveStatus === "Pending" && (
                         <div className="pt-2 text-right">
                           <button
-                            className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700"
+                            className="px-3 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700"
                             onClick={() => cancelLeaveApplication(entry)}
                           >
                             Cancel
@@ -1252,7 +1252,7 @@ const getLeaveStamp = (row) => {
                           <td className="global-td text-center whitespace-nowrap">
                             {entry?.leaveStatus === "Pending" ? (
                               <button
-                                className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700"
+                                className="px-2 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700"
                                 onClick={() => cancelLeaveApplication(entry)}
                               >
                                 Cancel

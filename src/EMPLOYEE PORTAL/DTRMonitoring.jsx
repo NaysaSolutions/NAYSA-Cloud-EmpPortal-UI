@@ -966,31 +966,15 @@ const getRemarksBadgeClass = (remarks) => {
   return "bg-slate-50 text-slate-700 ring-slate-200";
 };
 
-const DateInput = ({ value, onChange }) => (
+const DateInput = ({ value, onChange, min }) => (
   <div className="relative">
     <input
       type="date"
       value={value}
+      min={min}
       onChange={onChange}
-      className="dtr-date-input h-10 w-full rounded-xl border border-gray-200 bg-white px-3 pr-10 text-xs text-gray-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
     />
-    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 24 24"
-        className="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M8 2v4" />
-        <path d="M16 2v4" />
-        <path d="M3 10h18" />
-        <path d="M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
-      </svg>
-    </span>
   </div>
 );
 
@@ -1779,14 +1763,14 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   );
 
   const renderTableView = () => (
-    <div className="min-w-0 w-full max-w-full overflow-x-auto max-h-[500px] rounded-md border border-gray-200">
+    <div className="min-w-0 w-full max-w-full overflow-x-auto max-h-[460px] rounded-xl border border-gray-200">
       <table className="w-full min-w-[1280px]  border-collapse text-left">
         <thead className="sticky top-0 z-10 bg-blue-800 shadow-sm">
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
-                className={`border-b border-blue-900 bg-blue-800 px-3 py-3 text-[11px] font-semibold text-white ${
+                className={`border-b border-blue-900 bg-blue-800 px-2 py-2 text-[11px] font-semibold text-white ${
                   column.numeric ? "text-right" : "text-left"
                 } ${
                   column.key === "empName"
@@ -1799,7 +1783,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                   type="button"
                   disabled={column.sortable === false}
                   onClick={() => handleSort(column.key, column.sortable !== false)}
-                  className={`inline-flex w-full items-center gap-1.5 ${
+                  className={`inline-flex w-full items-center gap-1 ${
                     column.numeric ? "justify-end" : "justify-start"
                   } disabled:cursor-default`}
                 >
@@ -1832,7 +1816,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                           [column.key]: event.target.value,
                         }))
                       }
-                      placeholder={`Filter ${column.label}`}
+                      placeholder={`Filter`}
                       className="h-8 w-full rounded-xl border border-gray-200 bg-white px-2 text-[11px] font-normal text-gray-700 outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     />
                   )}
@@ -2183,7 +2167,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 type="button"
                 onClick={exportExcel}
                 disabled={!sortedRows.length}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-800 px-2.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:px-4 sm:text-xs"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-green-800 px-2.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:px-4 sm:text-xs"
               >
                 <FileSpreadsheet className="h-4 w-4 shrink-0" />
                 <span className="truncate">Export</span>
@@ -2192,7 +2176,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white px-2.5 py-2 text-[13px] font-semibold text-gray-700 transition hover:bg-gray-50 sm:gap-2 sm:px-4 sm:text-xs"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-300 px-2.5 py-2 text-[13px] font-semibold text-white transition bg-blue-800 hover:bg-blue-700 sm:gap-2 sm:px-4 sm:text-xs"
               >
                 <RotateCcw className="h-4 w-4 shrink-0" />
                 <span className="truncate">Reset</span>
@@ -2207,7 +2191,11 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-gray-600">End Date</label>
-              <DateInput value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+              <DateInput
+                value={endDate}
+                min={startDate}
+                onChange={(event) => setEndDate(event.target.value)}
+              />
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-gray-600">DTR View</label>
@@ -2399,7 +2387,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         )}
 
         <section className="min-w-0 overflow-hidden rounded-xl bg-white shadow-lg">
-          <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-base font-semibold text-gray-900">DTR Records</div>
               <div className="mt-0.5 text-[11px] text-gray-500">
@@ -2523,17 +2511,6 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         </div>
       )}
 
-      <style>{`
-        .dtr-date-input::-webkit-calendar-picker-indicator {
-          display: none;
-          opacity: 0;
-        }
-
-        .dtr-date-input::-webkit-inner-spin-button,
-        .dtr-date-input::-webkit-clear-button {
-          display: none;
-        }
-      `}</style>
     </div>
   );
 }
