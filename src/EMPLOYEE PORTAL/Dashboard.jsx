@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Tooltip } from "react-tooltip";
 import dayjs from "dayjs";
 import advancedFormat from "dayjs/plugin/advancedFormat";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import Swal from "sweetalert2";
@@ -16,11 +17,75 @@ import Timekeeping from "./Timekeeping"; // Adjust the path as needed
 import TimekeepingFaceEnroll from "./TimekeepingFaceEnrollment"; // Adjust the path as needed
 
 dayjs.extend(advancedFormat);
+dayjs.extend(customParseFormat);
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
 const PH_TIMEZONE = "Asia/Manila";
 const SERVER_TIME_SYNC_INTERVAL_MS = 300000;
+const toDashboardNumber = (value) => {
+  const numericValue = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(numericValue) ? numericValue : 0;
+};
+
+const formatDashboardNumber = (value, digits = 2) =>
+  toDashboardNumber(value).toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+
+const parseDashboardDate = (value) => {
+  if (!value) return null;
+
+  const parsed = dayjs(
+    String(value).trim(),
+    ["YYYY-MM-DD", "YYYY/MM/DD", "MM/DD/YYYY", "M/D/YYYY", "MM-DD-YYYY", "M-D-YYYY"],
+    true
+  );
+
+  if (parsed.isValid()) return parsed;
+
+  const fallback = dayjs(value);
+  return fallback.isValid() ? fallback : null;
+};
+
+const getHolidayDate = (holiday) =>
+  parseDashboardDate(
+    holiday?.holdate ||
+      holiday?.holDate ||
+      holiday?.holidayDate ||
+      holiday?.date ||
+      holiday?.HOL_DATE ||
+      holiday?.HOLDATE
+  );
+
+const getHolidayName = (holiday) =>
+  String(
+    holiday?.holtype ||
+      holiday?.holidayName ||
+      holiday?.description ||
+      holiday?.HOLTYPE ||
+      "Holiday"
+  ).trim();
+
+const getLeaveDateRange = (leave) => {
+  const rawDate = String(leave?.dateapplied || leave?.leaveDate || "").trim();
+  const [startRaw, endRaw] = rawDate.split(" - ");
+  const startDate = parseDashboardDate(startRaw);
+  const endDate = parseDashboardDate(endRaw || startRaw);
+
+  if (!startDate || !endDate || !startDate.isValid() || !endDate.isValid()) {
+    return null;
+  }
+
+  return { startDate, endDate };
+};
+
+const formatCalendarDateRange = (startDate, endDate) => {
+  if (!startDate || !endDate) return "N/A";
+  if (startDate.isSame(endDate, "day")) return startDate.format("MMM DD, YYYY");
+  return `${startDate.format("MMM DD")} - ${endDate.format("MMM DD, YYYY")}`;
+};
 
 const parseServerDateTime = (value) => {
   if (value == null || value === "") return null;
@@ -331,7 +396,6 @@ const Dashboard = () => {
     const prevMonthDays = currentMonth.subtract(1, "month").daysInMonth();
     const trustedToday = currentDate;
     const today = trustedToday?.date();
-    const currentMonthNumber = trustedToday?.month();
 
     let days = [];
 
@@ -340,31 +404,24 @@ const Dashboard = () => {
     const approvedLeaveDays = new Map();
     const pendingLeaveDays = new Map();
 
-    const holidayDays = new Set();
+    const holidayDays = new Map();
 
     holidays.forEach((holiday) => {
-      const holidayDate = dayjs(holiday.holdate);
-      if (holidayDate.month() === currentMonth.month()) {
-        holidayDays.add(holidayDate.date());
+      const holidayDate = getHolidayDate(holiday);
+      if (holidayDate?.isValid() && holidayDate.isSame(currentMonth, "month")) {
+        holidayDays.set(holidayDate.format("YYYY-MM-DD"), holiday);
       }
     });
 
     leaveApplication.forEach((leave) => {
-      const dates = leave.dateapplied.split(" - ");
-      let startDate, endDate;
-
-      if (dates.length === 1) {
-        startDate = dayjs(dates[0], "MM/DD/YYYY");
-        endDate = dayjs(dates[0], "MM/DD/YYYY");
-      } else if (dates.length === 2) {
-        startDate = dayjs(dates[0], "MM/DD/YYYY");
-        endDate = dayjs(dates[1], "MM/DD/YYYY");
-      }
+      const range = getLeaveDateRange(leave);
+      const startDate = range?.startDate;
+      const endDate = range?.endDate;
 
       if (startDate && endDate && startDate.isValid() && endDate.isValid()) {
         let current = startDate;
         while (current.isBefore(endDate) || current.isSame(endDate, "day")) {
-          if (current.month() === currentMonth.month()) {
+          if (current.isSame(currentMonth, "month")) {
             const day = current.date();
             const leaveData = {
               type: leave.leavetype,
@@ -389,18 +446,23 @@ const Dashboard = () => {
     for (let i = 1; i <= daysInMonth; i++) {
       const approved = approvedLeaveDays.get(i);
       const pending = pendingLeaveDays.get(i);
+      const currentCalendarDate = currentMonth.date(i);
+      const calendarDateKey = currentCalendarDate.format("YYYY-MM-DD");
+      const holiday = holidayDays.get(calendarDateKey);
 
       days.push({
         day: i,
         currentMonth: true,
+        dateKey: calendarDateKey,
+        holiday,
         isToday:
           trustedToday &&
           i === today &&
-          currentMonth.month() === currentMonthNumber,
+          currentCalendarDate.isSame(trustedToday, "day"),
         isApprovedLeave: !!approved,
         isPendingLeave: !!pending,
         leaveType: approved?.type || pending?.type || null,
-        isHoliday: holidayDays.has(i),
+        isHoliday: !!holiday,
       });
     }
 
@@ -413,6 +475,121 @@ const Dashboard = () => {
 
     return days;
   };
+
+  const leaveCreditInsights = useMemo(() => {
+    const rows = leaveCredit.map((leave, index) => {
+      const description =
+        String(leave?.description || leave?.lvdesc || leave?.lvtype || `Leave ${index + 1}`).trim();
+      const credit = toDashboardNumber(leave?.credit);
+      const applied = toDashboardNumber(leave?.applied);
+      const used = toDashboardNumber(leave?.availed);
+      const remaining = toDashboardNumber(leave?.rembal);
+      const actual = toDashboardNumber(leave?.balance);
+      const available = actual > 0 ? actual : remaining > 0 ? remaining : 0;
+
+      return {
+        description,
+        credit,
+        applied,
+        used,
+        remaining,
+        actual,
+        available,
+      };
+    });
+
+    const totals = rows.reduce(
+      (sum, leave) => ({
+        credit: sum.credit + leave.credit,
+        used: sum.used + leave.used,
+        remaining: sum.remaining + (leave.actual || leave.remaining),
+        applied: sum.applied + leave.applied,
+      }),
+      { credit: 0, used: 0, remaining: 0, applied: 0 }
+    );
+
+    const utilization = totals.credit > 0 ? (totals.used / totals.credit) * 100 : 0;
+    const chartData = rows
+      .filter((leave) => leave.used > 0 || leave.available > 0)
+      .map((leave) => ({
+        name: leave.description,
+        used: leave.used,
+        available: leave.available,
+      }));
+    const chartMaxValue = Math.max(
+      1,
+      ...chartData.flatMap((leave) => [leave.used, leave.available])
+    );
+    const lowBalanceCount = rows.filter(
+      (leave) => (leave.actual || leave.remaining) > 0 && (leave.actual || leave.remaining) <= 1
+    ).length;
+
+    return {
+      rows,
+      totals,
+      utilization,
+      chartData,
+      chartMaxValue,
+      lowBalanceCount,
+    };
+  }, [leaveCredit]);
+
+  const personalCalendarLists = useMemo(() => {
+    const today = currentDate?.startOf("day");
+
+    if (!today) {
+      return {
+        upcomingHolidays: [],
+        upcomingLeaves: [],
+        pendingLeaves: [],
+      };
+    }
+
+    const upcomingHolidays = holidays
+      .map((holiday) => {
+        const date = getHolidayDate(holiday);
+        return date?.isValid()
+          ? {
+              date,
+              name: getHolidayName(holiday),
+            }
+          : null;
+      })
+      .filter((holiday) => holiday && !holiday.date.isBefore(today, "day"))
+      .sort((left, right) => left.date.valueOf() - right.date.valueOf())
+      .slice(0, 5);
+
+    const leaveRows = leaveApplication
+      .map((leave) => {
+        const range = getLeaveDateRange(leave);
+        if (!range) return null;
+
+        return {
+          startDate: range.startDate,
+          endDate: range.endDate,
+          type: leave?.leavetype || "Leave",
+          status: String(leave?.leavestatus || "").trim(),
+          duration: leave?.duration || "",
+        };
+      })
+      .filter((leave) => leave && !leave.endDate.isBefore(today, "day"));
+
+    const upcomingLeaves = leaveRows
+      .filter((leave) => leave.status.toLowerCase() === "approved")
+      .sort((left, right) => left.startDate.valueOf() - right.startDate.valueOf())
+      .slice(0, 5);
+
+    const pendingLeaves = leaveRows
+      .filter((leave) => leave.status.toLowerCase() === "pending")
+      .sort((left, right) => left.startDate.valueOf() - right.startDate.valueOf())
+      .slice(0, 5);
+
+    return {
+      upcomingHolidays,
+      upcomingLeaves,
+      pendingLeaves,
+    };
+  }, [currentDate, holidays, leaveApplication]);
 
   // Calculate totals for stat cards
   // const pendingLeaveCount = leaveApplication.filter(
@@ -614,61 +791,183 @@ const Dashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-2">
         {/* Leave Credit Section */}
-        <div className="bg-white p-6 sm:p-4 rounded-xl shadow-lg w-full">
-          <h2 className="dashboard-text-header">Leave Credit</h2>
-          {/* <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span> */}
+        <div className="bg-white p-4 rounded-xl shadow-lg w-full lg:col-span-2">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="dashboard-text-header">Leave Credit</h2>
+              <span className="dashboard-text-span">Available credits by leave type</span>
+            </div>
+            <button
+              onClick={() => navigate("/leave")}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              File Leave
+            </button>
+          </div>
 
-          {/* Table Structure */}
-          <div className="mt-4 overflow-x-auto">
-            <table className="dashboard-table">
-              <thead className="dashboard-thead">
-                <tr className="dashboard-thead ">
-                  <th className="dashboard-th cursor-pointer text-left">
-                    Leave Type
-                  </th>
-                  <th className="dashboard-th cursor-pointer">Credit</th>
-                  <th className="dashboard-th cursor-pointer">Applied</th>
-                  <th className="dashboard-th cursor-pointer">Used</th>
-                  <th className="dashboard-th cursor-pointer">Remaining</th>
-                  <th className="dashboard-th cursor-pointer">Actual</th>
-                </tr>
-              </thead>
-              <tbody className="dashboard-tbody">
-                {leaveCredit.length > 0 ? (
-                  leaveCredit.map((leave, index) => (
-                    <tr key={index} className="dashboard-tbody dashboard-tr">
-                      <td className="dashboard-td whitespace-nowrap">
-                        {leave.description}
-                      </td>
-                      <td className="dashboard-td text-center">
-                        {leave.credit}
-                      </td>
-                      <td className="dashboard-td text-center">
-                        {leave.applied}
-                      </td>
-                      <td className="dashboard-td text-center">
-                        {leave.availed}
-                      </td>
-                      <td className="dashboard-td text-center">
-                        {leave.rembal}
-                      </td>
-                      <td className="dashboard-td text-center">
-                        {leave.balance}
+          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+              <p className="text-[11px] font-semibold uppercase text-blue-700">Total Credit</p>
+              <p className="mt-1 text-lg font-bold text-blue-900">
+                {formatDashboardNumber(leaveCreditInsights.totals.credit)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-green-100 bg-green-50 p-3">
+              <p className="text-[11px] font-semibold uppercase text-green-700">Available</p>
+              <p className="mt-1 text-lg font-bold text-green-800">
+                {formatDashboardNumber(leaveCreditInsights.totals.remaining)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-yellow-100 bg-yellow-50 p-3">
+              <p className="text-[11px] font-semibold uppercase text-yellow-700">Used</p>
+              <p className="mt-1 text-lg font-bold text-yellow-700">
+                {formatDashboardNumber(leaveCreditInsights.totals.used)}
+              </p>
+            </div>
+            <div className="rounded-xl border border-red-100 bg-red-50 p-3">
+              <p className="text-[11px] font-semibold uppercase text-red-700">Low Balance</p>
+              <p className="mt-1 text-lg font-bold text-red-700">
+                {leaveCreditInsights.lowBalanceCount}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(420px,1fr)_minmax(360px,0.9fr)]">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold text-blue-900">Used vs Available</p>
+                  <p className="text-xs text-gray-500">Leave credit usage by type</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[11px] font-semibold uppercase text-gray-500">Used Rate</p>
+                  <p className="text-sm font-bold text-blue-900">
+                    {formatDashboardNumber(leaveCreditInsights.utilization, 1)}%
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 w-full">
+                {leaveCreditInsights.chartData.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-end gap-4 text-[11px] font-semibold text-gray-600">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-sm bg-yellow-600" />
+                        Used
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-sm bg-blue-800" />
+                        Available
+                      </span>
+                    </div>
+
+                    {leaveCreditInsights.chartData.map((leave) => {
+                      const usedWidth = `${Math.max(
+                        2,
+                        (leave.used / leaveCreditInsights.chartMaxValue) * 100
+                      )}%`;
+                      const availableWidth = `${Math.max(
+                        2,
+                        (leave.available / leaveCreditInsights.chartMaxValue) * 100
+                      )}%`;
+
+                      return (
+                        <div key={leave.name} className="grid grid-cols-[96px_1fr] items-center gap-3 sm:grid-cols-[140px_1fr]">
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-gray-700" title={leave.name}>
+                              {leave.name}
+                            </p>
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <div className="h-3 flex-1 rounded-full bg-yellow-100">
+                                <div
+                                  className="h-3 rounded-full bg-yellow-600"
+                                  style={{ width: usedWidth }}
+                                  title={`Used: ${formatDashboardNumber(leave.used)} day(s)`}
+                                />
+                              </div>
+                              <span className="w-12 text-right text-[11px] font-semibold text-yellow-700">
+                                {formatDashboardNumber(leave.used)}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="h-3 flex-1 rounded-full bg-blue-100">
+                                <div
+                                  className="h-3 rounded-full bg-blue-800"
+                                  style={{ width: availableWidth }}
+                                  title={`Available: ${formatDashboardNumber(leave.available)} day(s)`}
+                                />
+                              </div>
+                              <span className="w-12 text-right text-[11px] font-semibold text-blue-800">
+                                {formatDashboardNumber(leave.available)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="flex min-h-48 items-center justify-center text-center text-sm text-gray-500">
+                    No leave credits to chart.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Table Structure */}
+            <div className="overflow-x-auto">
+              <table className="dashboard-table">
+                <thead className="dashboard-thead">
+                  <tr className="dashboard-thead ">
+                    <th className="dashboard-th cursor-pointer text-left">
+                      Leave Type
+                    </th>
+                    <th className="dashboard-th cursor-pointer">Credit</th>
+                    <th className="dashboard-th cursor-pointer">Applied</th>
+                    <th className="dashboard-th cursor-pointer">Used</th>
+                    <th className="dashboard-th cursor-pointer">Remaining</th>
+                    <th className="dashboard-th cursor-pointer">Actual</th>
+                  </tr>
+                </thead>
+                <tbody className="dashboard-tbody">
+                  {leaveCreditInsights.rows.length > 0 ? (
+                    leaveCreditInsights.rows.map((leave, index) => (
+                      <tr key={index} className="dashboard-tbody dashboard-tr">
+                        <td className="dashboard-td whitespace-nowrap">
+                          {leave.description}
+                        </td>
+                        <td className="dashboard-td text-center">
+                          {formatDashboardNumber(leave.credit)}
+                        </td>
+                        <td className="dashboard-td text-center">
+                          {formatDashboardNumber(leave.applied)}
+                        </td>
+                        <td className="dashboard-td text-center">
+                          {formatDashboardNumber(leave.used)}
+                        </td>
+                        <td className="dashboard-td text-center">
+                          {formatDashboardNumber(leave.remaining)}
+                        </td>
+                        <td className="dashboard-td text-center">
+                          {formatDashboardNumber(leave.actual)}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan="6"
+                        className="p-4 text-center text-gray-600 text-sm"
+                      >
+                        No leave credits found.
                       </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="4"
-                      className="p-4 text-center text-gray-600 text-sm"
-                    >
-                      No leave credits found.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* View All Button
@@ -736,12 +1035,7 @@ const Dashboard = () => {
                 style = "bg-gray-300 text-black rounded-full";
               } else if (day.isHoliday) {
                 style = "text-red-500 font-bold";
-                const holiday = holidays.find(
-                  (h) =>
-                    dayjs(h.holdate).date() === day.day &&
-                    dayjs(h.holdate).month() === currentMonth.month(),
-                );
-                tooltipText = holiday?.holtype || "Holiday";
+                tooltipText = getHolidayName(day.holiday);
               } else if (day.isApprovedLeave) {
                 style = "bg-blue-300 text-black rounded-full";
                 tooltipText = `Approved: ${day.leaveType}`;
@@ -790,6 +1084,89 @@ const Dashboard = () => {
             <div className="flex items-center text-yellow-400 font-bold">
               <span className="w-4 h-4 rounded-xl bg-yellow-400 inline-block mr-1"></span>{" "}
               Pending Leave
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-3">
+            <div className="rounded-xl border border-red-100 bg-red-50 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-xs font-bold uppercase text-red-700">
+                  Upcoming Holidays
+                </h3>
+                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-red-600">
+                  {personalCalendarLists.upcomingHolidays.length}
+                </span>
+              </div>
+              {personalCalendarLists.upcomingHolidays.length > 0 ? (
+                <div className="space-y-2">
+                  {personalCalendarLists.upcomingHolidays.map((holiday, index) => (
+                    <div key={`${holiday.date.format("YYYY-MM-DD")}-${holiday.name}-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="min-w-0 truncate font-medium text-gray-800">
+                        {holiday.name}
+                      </span>
+                      <span className="shrink-0 font-semibold text-red-700">
+                        {holiday.date.format("MMM DD, YYYY")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">No upcoming holidays found.</p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-xs font-bold uppercase text-blue-700">
+                  Upcoming Leaves
+                </h3>
+                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-blue-700">
+                  {personalCalendarLists.upcomingLeaves.length}
+                </span>
+              </div>
+              {personalCalendarLists.upcomingLeaves.length > 0 ? (
+                <div className="space-y-2">
+                  {personalCalendarLists.upcomingLeaves.map((leave, index) => (
+                    <div key={`${leave.startDate.format("YYYY-MM-DD")}-${leave.type}-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="min-w-0 truncate font-medium text-gray-800">
+                        {leave.type}
+                      </span>
+                      <span className="shrink-0 font-semibold text-blue-700">
+                        {formatCalendarDateRange(leave.startDate, leave.endDate)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">No upcoming approved leaves.</p>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-yellow-100 bg-yellow-50 p-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-xs font-bold uppercase text-yellow-700">
+                  Pending Leaves
+                </h3>
+                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-yellow-700">
+                  {personalCalendarLists.pendingLeaves.length}
+                </span>
+              </div>
+              {personalCalendarLists.pendingLeaves.length > 0 ? (
+                <div className="space-y-2">
+                  {personalCalendarLists.pendingLeaves.map((leave, index) => (
+                    <div key={`${leave.startDate.format("YYYY-MM-DD")}-${leave.type}-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                      <span className="min-w-0 truncate font-medium text-gray-800">
+                        {leave.type}
+                      </span>
+                      <span className="shrink-0 font-semibold text-yellow-700">
+                        {formatCalendarDateRange(leave.startDate, leave.endDate)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-500">No pending leaves found.</p>
+              )}
             </div>
           </div>
         </div>
