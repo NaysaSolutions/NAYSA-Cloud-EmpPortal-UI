@@ -572,16 +572,31 @@ const Dashboard = () => {
           duration: leave?.duration || "",
         };
       })
-      .filter((leave) => leave && !leave.endDate.isBefore(today, "day"));
+      .filter(Boolean);
 
     const upcomingLeaves = leaveRows
-      .filter((leave) => leave.status.toLowerCase() === "approved")
+      .filter(
+        (leave) =>
+          leave.status.toLowerCase() === "approved" &&
+          !leave.endDate.isBefore(today, "day")
+      )
       .sort((left, right) => left.startDate.valueOf() - right.startDate.valueOf())
       .slice(0, 10);
 
     const pendingLeaves = leaveRows
       .filter((leave) => leave.status.toLowerCase() === "pending")
-      .sort((left, right) => left.startDate.valueOf() - right.startDate.valueOf())
+      .sort((left, right) => {
+        const leftIsLate = left.endDate.isBefore(today, "day");
+        const rightIsLate = right.endDate.isBefore(today, "day");
+
+        if (leftIsLate !== rightIsLate) return leftIsLate ? -1 : 1;
+
+        return left.startDate.valueOf() - right.startDate.valueOf();
+      })
+      .map((leave) => ({
+        ...leave,
+        isLateFiled: leave.endDate.isBefore(today, "day"),
+      }))
       .slice(0, 10);
 
     return {
@@ -879,11 +894,11 @@ const Dashboard = () => {
                       return (
                         <div key={leave.name} className="grid grid-cols-[96px_1fr] items-center gap-3 sm:grid-cols-[140px_1fr]">
                           <div className="min-w-0">
-                            <p className="truncate text-xs font-semibold text-gray-700" title={leave.name}>
+                            <p className="truncate text-xs text-wrap font-semibold text-gray-700" title={leave.name}>
                               {leave.name}
                             </p>
                           </div>
-                          <div className="space-y-1.5">
+                          <div className="space-y-[-1px]">
                             <div className="flex items-center gap-2">
                               <div className="h-3 flex-1 rounded-full bg-yellow-100">
                                 <div
@@ -892,7 +907,7 @@ const Dashboard = () => {
                                   title={`Used: ${formatDashboardNumber(leave.used)} day(s)`}
                                 />
                               </div>
-                              <span className="w-12 text-right text-[11px] font-semibold text-yellow-700">
+                              <span className="w-12 text-right text-[10px] font-semibold text-yellow-700">
                                 {formatDashboardNumber(leave.used)}
                               </span>
                             </div>
@@ -904,7 +919,7 @@ const Dashboard = () => {
                                   title={`Available: ${formatDashboardNumber(leave.available)} day(s)`}
                                 />
                               </div>
-                              <span className="w-12 text-right text-[11px] font-semibold text-blue-800">
+                              <span className="w-12 text-right text-[10px] font-semibold text-blue-800">
                                 {formatDashboardNumber(leave.available)}
                               </span>
                             </div>
@@ -1027,14 +1042,14 @@ const Dashboard = () => {
             Personal Calendar
           </h2> */}
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(320px,420px)_1fr] lg:items-start">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(320px,330px)_1fr] lg:items-start">
             <div>
           {/* Navigation */}
           <div className="flex justify-between items-center mb-2">
             <button onClick={handlePrevMonth} className="text-gray-400">
               ◀
             </button>
-            <h3 className="text-sm sm:text-base font-semibold">
+            <h3 className="text-sm font-semibold">
               {currentMonth.format("MMMM YYYY")}
             </h3>
             <button onClick={handleNextMonth} className="text-gray-600">
@@ -1044,7 +1059,7 @@ const Dashboard = () => {
 
           {/* <div className="items-center justify-center"> */}
           {/* Weekday Names */}
-          <div className="grid grid-cols-7 text-center font-semibold text-gray-600 mb-1 mx-auto text-[0.80rem] sm:text-[0.80rem] md:text-[0.90rem] lg:text-[15px]">
+          <div className="grid grid-cols-7 text-center font-semibold text-gray-600 mb-1 mx-auto text-[0.80rem] sm:text-[0.80rem] md:text-[0.90rem] lg:text-[13px]">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
               (day, idx) => (
                 <div
@@ -1058,7 +1073,7 @@ const Dashboard = () => {
           </div>
 
           {/* Calendar Days */}
-          <div className="grid grid-cols-7 gap-1 text-center mt-2 mx-auto text-[0.70rem] sm:text-[0.70rem] md:text-[0.80rem] lg:text-[13px]">
+          <div className="grid grid-cols-7 gap-1 text-center mt-2 mx-auto text-[0.70rem] sm:text-[0.70rem] md:text-[0.80rem] lg:text-[11px]">
             {generateCalendar().map((day, index) => {
               let baseClasses =
                 "aspect-square w-full max-w-9 mx-auto flex items-center justify-center font-semibold";
@@ -1107,7 +1122,7 @@ const Dashboard = () => {
           {/* </div> */}
 
           {/* Calendar Legend */}
-          <div className="flex flex-wrap justify-center gap-3 text-xs md:text-sm mt-4">
+          <div className="flex flex-wrap justify-center gap-4 text-[11px] md:text-xs mt-4">
             {/* <div className="flex items-center"><span className="w-4 h-4 rounded-xl bg-red-400 inline-block mr-1"></span> Holiday</div> */}
             <div className="flex items-center text-red-500 font-bold">
               <span className="w-4 h-4 rounded-xl bg-red-500 inline-block mr-1"></span>
@@ -1124,7 +1139,7 @@ const Dashboard = () => {
           </div>
             </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-[minmax(300px,1.2fr)_minmax(210px,0.9fr)_minmax(210px,0.9fr)]">
             <div className="rounded-xl border border-red-100 bg-red-50 p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <h3 className="text-xs font-bold uppercase text-red-700">
@@ -1135,13 +1150,16 @@ const Dashboard = () => {
                 </span>
               </div>
               {personalCalendarLists.upcomingHolidays.length > 0 ? (
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {personalCalendarLists.upcomingHolidays.map((holiday, index) => (
-                    <div key={`${holiday.date.format("YYYY-MM-DD")}-${holiday.name}-${index}`} className="flex items-center justify-between gap-3 text-[11px] sm:text-xs">
+                    <div key={`${holiday.date.format("YYYY-MM-DD")}-${holiday.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_55px_60px] items-center gap-2 text-[10px] sm:text-[10px]">
                       <span className="min-w-0 truncate font-medium text-gray-800">
                         {holiday.name}
                       </span>
-                      <span className="shrink-0 font-semibold text-red-700">
+                      <span className="text-center font-semibold text-red-700">
+                        {holiday.date.format("dddd")}
+                      </span>
+                      <span className="text-right font-semibold text-red-700">
                         {holiday.date.format("MMM DD, YYYY")}
                       </span>
                     </div>
@@ -1164,7 +1182,7 @@ const Dashboard = () => {
               {personalCalendarLists.upcomingLeaves.length > 0 ? (
                 <div className="space-y-2">
                   {personalCalendarLists.upcomingLeaves.map((leave, index) => (
-                    <div key={`${leave.startDate.format("YYYY-MM-DD")}-${leave.type}-${index}`} className="flex items-center justify-between gap-3 text-[11px] sm:text-xs">
+                    <div key={`${leave.startDate.format("YYYY-MM-DD")}-${leave.type}-${index}`} className="flex items-center justify-between gap-3 text-[10px] sm:text-[10px]">
                       <span className="min-w-0 truncate font-medium text-gray-800">
                         {leave.type}
                       </span>
@@ -1191,9 +1209,16 @@ const Dashboard = () => {
               {personalCalendarLists.pendingLeaves.length > 0 ? (
                 <div className="space-y-2">
                   {personalCalendarLists.pendingLeaves.map((leave, index) => (
-                    <div key={`${leave.startDate.format("YYYY-MM-DD")}-${leave.type}-${index}`} className="flex items-center justify-between gap-3 text-[11px] sm:text-xs">
-                      <span className="min-w-0 truncate font-medium text-gray-800">
-                        {leave.type}
+                    <div key={`${leave.startDate.format("YYYY-MM-DD")}-${leave.type}-${index}`} className="flex items-center justify-between gap-3 text-[10px] sm:text-[10px]">
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate font-medium text-gray-800">
+                          {leave.type}
+                        </span>
+                        {leave.isLateFiled && (
+                          <span className="shrink-0 rounded-full bg-red-100 px-1.5 py-0.5 text-[9px] font-bold text-red-700">
+                            Late Filed
+                          </span>
+                        )}
                       </span>
                       <span className="shrink-0 font-semibold text-yellow-700">
                         {formatCalendarDateRange(leave.startDate, leave.endDate)}
@@ -1368,15 +1393,15 @@ const Dashboard = () => {
 
                   return (
                     <div key={loan.loanType} className="grid grid-cols-[96px_1fr] items-center gap-3 sm:grid-cols-[140px_1fr]">
-                      <p className="truncate text-[10px] sm:text-xs text-wrap font-semibold text-gray-700" title={loan.loanType}>
+                      <p className="truncate text-[10px] sm:text-[11px] text-wrap font-semibold text-gray-700" title={loan.loanType}>
                         {loan.loanType}
                       </p>
-                      <div className="space-y-1.5">
+                      <div className="space-y-[-1px]">
                         <div className="flex items-center gap-2">
                           <div className="h-2.5 flex-1 rounded-full bg-blue-100">
                             <div className="h-2.5 rounded-full bg-blue-800" style={{ width: loanAmountWidth }} />
                           </div>
-                          <span className="w-20 text-right text-[11px] font-semibold text-blue-800">
+                          <span className="w-20 text-right text-[10px] font-semibold text-blue-800">
                             {formatDashboardNumber(loan.loanAmount)}
                           </span>
                         </div>
@@ -1384,7 +1409,7 @@ const Dashboard = () => {
                           <div className="h-2.5 flex-1 rounded-full bg-green-100">
                             <div className="h-2.5 rounded-full bg-green-700" style={{ width: totalPaidWidth }} />
                           </div>
-                          <span className="w-20 text-right text-[11px] font-semibold text-green-700">
+                          <span className="w-20 text-right text-[10px] font-semibold text-green-700">
                             {formatDashboardNumber(loan.totalPaid)}
                           </span>
                         </div>
@@ -1392,7 +1417,7 @@ const Dashboard = () => {
                           <div className="h-2.5 flex-1 rounded-full bg-red-100">
                             <div className="h-2.5 rounded-full bg-red-600" style={{ width: balanceWidth }} />
                           </div>
-                          <span className="w-20 text-right text-[11px] font-semibold text-red-700">
+                          <span className="w-20 text-right text-[10px] font-semibold text-red-700">
                             {formatDashboardNumber(loan.balance)}
                           </span>
                         </div>

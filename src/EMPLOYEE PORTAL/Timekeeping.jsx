@@ -2485,8 +2485,8 @@ if (!confirm) return;
               </div>
 
               <div className="bg-gray-50 rounded-xl px-4 py-2 mb-6 flex justify-between items-center border border-gray-100">
-                <span className="text-sm text-gray-500">Break</span>
-                <span className="text-sm font-medium text-gray-700 font-mono">
+                <span className="text-[10px] sm:text-sm text-gray-500">Break</span>
+                <span className="text-[10px] sm:text-sm font-medium text-gray-700 font-mono">
                   {record.break_in
                     ? formatDtrBreakDateTime(record, "breakIn")
                     : "N/A"}
