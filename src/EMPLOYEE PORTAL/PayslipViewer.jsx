@@ -7,6 +7,51 @@ import { FileText, Download, Printer, Calendar, User, Building, MapPin, Clock, A
 import '@/index.css';
 import API_ENDPOINTS from "@/apiConfig.jsx";
 
+const normalizeApiPayload = (payload) => {
+  if (payload == null) return {};
+
+  if (typeof payload === "string") {
+    const trimmed = payload.trim();
+    if (!trimmed) return {};
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? parsed
+        : {};
+    } catch {
+      return {};
+    }
+  }
+
+  return payload && typeof payload === "object" && !Array.isArray(payload)
+    ? payload
+    : {};
+};
+
+const normalizeArray = (value) => (Array.isArray(value) ? value : []);
+
+const toFiniteNumber = (value) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : 0;
+};
+
+const formatAmount = (value, minimumFractionDigits = 2, maximumFractionDigits = 2) =>
+  toFiniteNumber(value).toLocaleString(undefined, {
+    minimumFractionDigits,
+    maximumFractionDigits,
+  });
+
+const fetchPayslipPayload = async (endpoint, params, label) => {
+  try {
+    const response = await axios.get(endpoint, { params });
+    return normalizeApiPayload(response.data);
+  } catch (error) {
+    console.warn(`Unable to load ${label} payslip data.`, error);
+    return {};
+  }
+};
+
 const PayslipViewer = () => {
   const { user } = useAuth();
   const [cutoff, setCutoff] = useState('');
@@ -34,20 +79,21 @@ useEffect(() => {
 const fetchAllPayslipsInRange = async () => {
     try {
         const results = await Promise.all(range.map(async (cut) => {
+            const params = { empno: user.empNo, cutoff: cut.CUT_OFF };
             const [main, lv, ln, ytd] = await Promise.all([
-                axios.get(API_ENDPOINTS.payslipMain, { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
-                axios.get(API_ENDPOINTS.payslipLV, { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
-                axios.get(API_ENDPOINTS.payslipLN, { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
-                axios.get(API_ENDPOINTS.payslipYTD, { params: { empno: user.empNo, cutoff: cut.CUT_OFF } }),
+                fetchPayslipPayload(API_ENDPOINTS.payslipMain, params, "main"),
+                fetchPayslipPayload(API_ENDPOINTS.payslipLV, params, "leave"),
+                fetchPayslipPayload(API_ENDPOINTS.payslipLN, params, "loan"),
+                fetchPayslipPayload(API_ENDPOINTS.payslipYTD, params, "YTD"),
             ]);
 
             return {
                 cutoffName: cut.CUTOFFNAME,
                 cutoffCode: cut.CUT_OFF,
-                main: main.data,
-                lv: lv.data,
-                ln: ln.data,
-                ytd: ytd.data
+                main,
+                lv,
+                ln,
+                ytd
             };
         }));
 
@@ -73,7 +119,8 @@ const fetchAllPayslipsInRange = async () => {
       const res = await axios.get(API_ENDPOINTS.payslipCutoff, {
   params: { empno: user.empNo },
 });
-      setCutoffOptions(res.data?.employeecutoff || []);
+      const cutoffData = normalizeApiPayload(res.data);
+      setCutoffOptions(normalizeArray(cutoffData.employeecutoff));
     } catch (err) {
       console.error("Error fetching cutoff options:", err);
       setError('Failed to load cutoff options.');
@@ -207,17 +254,18 @@ const handleExportPDF = () => {
 
 {payslipList.map((data, index) => {
   const { main, lv, ln, ytd, cutoffName, cutoffCode } = data;
-  if (!main.success) return null;
+  const mainData = normalizeApiPayload(main);
+  if (!mainData.success || !mainData.employee) return null;
 
-  const employee = main.employee;
-  const earnings = main.earnings || [];
-  const deductions = main.deductions || [];
-  const net_pay = main.net_pay || 0;
-  const total_earnings = main.total_earnings || 0;
-  const total_deductions = main.total_deductions || 0;
-  const employeelv = lv?.employeelv || [];
-  const employeeln = ln?.employeeln || [];
-  const employeeytd = ytd?.employeeytd || [];
+  const employee = normalizeApiPayload(mainData.employee);
+  const earnings = normalizeArray(mainData.earnings);
+  const deductions = normalizeArray(mainData.deductions);
+  const net_pay = toFiniteNumber(mainData.net_pay);
+  const total_earnings = toFiniteNumber(mainData.total_earnings);
+  const total_deductions = toFiniteNumber(mainData.total_deductions);
+  const employeelv = normalizeArray(normalizeApiPayload(lv).employeelv);
+  const employeeln = normalizeArray(normalizeApiPayload(ln).employeeln);
+  const employeeytd = normalizeArray(normalizeApiPayload(ytd).employeeytd);
 
   return (
     // <div key={index} ref={index === 0 ? payslipRef : null} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden mb-6">
@@ -297,10 +345,10 @@ const handleExportPDF = () => {
                       <div className="grid grid-cols-3 gap-2 py-1 last:border-b-0">
                       <span className="text-gray-700">{item.DESCRIP}</span>
                       <span className="font-mono font-semibold text-blue-700 text-right">
-                        {Number(item.HOURS || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {formatAmount(item.HOURS)}
                       </span>
                       <span className="font-mono font-semibold text-blue-700 text-right">
-                        {Number(item.AMOUNT).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        {formatAmount(item.AMOUNT)}
                       </span>
                     </div>
                     ))}
@@ -317,7 +365,7 @@ const handleExportPDF = () => {
                       <div key={item.TRANS_CODE} className="flex justify-between items-center py-1 last:border-b-0">
                         <span className="text-gray-700">{item.DESCRIP}</span>
                         <span className="font-mono font-semibold text-red-700">
-                          {Number(item.AMOUNT).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {formatAmount(item.AMOUNT)}
                         </span>
                       </div>
                     ))}
