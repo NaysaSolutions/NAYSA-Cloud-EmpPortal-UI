@@ -900,7 +900,7 @@ const getLeaveStamp = (row) => {
           </div>
 
           <div className="mt-4 flex justify-center">
-            <button className="bg-blue-800 text-white px-12 py-2 rounded-md text-md sm:text-base hover:bg-blue-700 w-full sm:w-auto mx-auto" onClick={handleSubmit}>
+            <button className="bg-blue-800 text-white px-12 py-2 rounded-xl text-md sm:text-base hover:bg-blue-700 w-full sm:w-auto mx-auto" onClick={handleSubmit}>
               Submit
             </button>
           </div>

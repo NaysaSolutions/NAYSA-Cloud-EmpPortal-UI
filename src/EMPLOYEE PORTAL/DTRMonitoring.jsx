@@ -972,9 +972,9 @@ const DateInput = ({ value, onChange }) => (
       type="date"
       value={value}
       onChange={onChange}
-      className="dtr-date-input h-10 w-full rounded-xl border border-slate-300 bg-white px-3 pr-10 text-xs text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+      className="dtr-date-input h-10 w-full rounded-xl border border-gray-200 bg-white px-3 pr-10 text-xs text-gray-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
     />
-    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-500">
+    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">
       <svg
         aria-hidden="true"
         viewBox="0 0 24 24"
@@ -1016,7 +1016,7 @@ const PhotoThumb = ({
   if (!currentSrc || failed) {
     return (
       <div
-        className={`${sizeClass} inline-flex shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 text-slate-400`}
+        className={`${sizeClass} inline-flex shrink-0 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 text-gray-400`}
         title={`${label}: No picture`}
       >
         <ImageIcon className="h-5 w-5" aria-hidden="true" />
@@ -1028,7 +1028,7 @@ const PhotoThumb = ({
     <button
       type="button"
       onClick={() => onOpen?.(currentSrc, label)}
-      className={`${sizeClass} group relative shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-400`}
+      className={`${sizeClass} group relative shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400`}
       title={`View ${label}`}
     >
       <img
@@ -1046,24 +1046,24 @@ const PhotoThumb = ({
 };
 
 const METRIC_ACCENTS = {
-  slate: "bg-slate-100 text-slate-600",
-  sky: "bg-sky-100 text-sky-700",
-  emerald: "bg-emerald-100 text-emerald-700",
-  amber: "bg-amber-100 text-amber-700",
-  rose: "bg-rose-100 text-rose-700",
+  slate: "bg-blue-50 text-blue-800",
+  sky: "bg-blue-100 text-blue-800",
+  emerald: "bg-blue-50 text-blue-700",
+  amber: "bg-yellow-100 text-yellow-700",
+  rose: "bg-red-100 text-red-700",
 };
 
 const MetricCard = ({ label, value, icon: Icon, accent = "slate" }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-sm transition hover:border-slate-300 sm:p-4">
+  <div className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-sm transition hover:border-blue-200 hover:shadow-md sm:p-4">
     <div className="flex items-center justify-between gap-3">
-      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{label}</div>
       {Icon && (
         <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${METRIC_ACCENTS[accent] || METRIC_ACCENTS.slate}`}>
           <Icon className="h-3.5 w-3.5" aria-hidden="true" />
         </span>
       )}
     </div>
-    <div className="mt-1.5 truncate text-lg font-bold text-slate-800 sm:text-xl">{value}</div>
+    <div className="mt-1.5 truncate text-lg font-bold text-blue-900 sm:text-xl">{value}</div>
   </div>
 );
 
@@ -1699,12 +1699,12 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   const renderSortIcon = (column) => {
     if (column.sortable === false) return null;
     if (sortConfig.key !== column.key) {
-      return <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />;
+      return <ArrowUpDown className="h-3.5 w-3.5 text-blue-100" />;
     }
     return sortConfig.direction === "asc" ? (
-      <ArrowUp className="h-3.5 w-3.5 text-sky-700" />
+      <ArrowUp className="h-3.5 w-3.5 text-white" />
     ) : (
-      <ArrowDown className="h-3.5 w-3.5 text-sky-700" />
+      <ArrowDown className="h-3.5 w-3.5 text-white" />
     );
   };
 
@@ -1739,7 +1739,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           />
         );
       case "workedHours":
-        return <span className="font-bold text-slate-800">{formatHours(row.workedHours)}</span>;
+        return <span className="font-bold text-blue-900">{formatHours(row.workedHours)}</span>;
       case "remarks":
         return (
           <span
@@ -1758,12 +1758,12 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   const renderTableRecordRow = (row, rowIndex = 0) => (
     <tr
       key={row.__id}
-      className={`transition hover:bg-sky-50/60 ${rowIndex % 2 === 1 ? "bg-slate-50/60" : "bg-white"}`}
+      className={`transition hover:bg-blue-50/70 ${rowIndex % 2 === 1 ? "bg-blue-50/40" : "bg-white"}`}
     >
       {columns.map((column) => (
         <td
           key={column.key}
-          className={`border-b border-slate-100 px-3 py-2.5 align-middle text-[11px] text-slate-600 ${
+          className={`border-b border-gray-100 px-3 py-2.5 align-middle text-[11px] text-gray-700 ${
             column.numeric ? "text-right" : "text-left"
           } ${
             column.key === "empName"
@@ -1779,14 +1779,14 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   );
 
   const renderTableView = () => (
-    <div className="min-w-0 w-full max-w-full overflow-x-auto max-h-[500px] rounded-xl">
+    <div className="min-w-0 w-full max-w-full overflow-x-auto max-h-[500px] rounded-md border border-gray-200">
       <table className="w-full min-w-[1280px]  border-collapse text-left">
-        <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
+        <thead className="sticky top-0 z-10 bg-blue-800 shadow-sm">
           <tr>
             {columns.map((column) => (
               <th
                 key={column.key}
-                className={`border-b border-slate-200 bg-slate-100 px-3 py-3 text-[11px] font-semibold text-slate-700 ${
+                className={`border-b border-blue-900 bg-blue-800 px-3 py-3 text-[11px] font-semibold text-white ${
                   column.numeric ? "text-right" : "text-left"
                 } ${
                   column.key === "empName"
@@ -1811,17 +1811,17 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           </tr>
 
           {showColumnFilters && (
-            <tr className="bg-white">
+            <tr className="bg-blue-50">
               {columns.map((column) => (
                 <th
                   key={`filter-${column.key}`}
-                  className={`border-b border-slate-200 bg-white px-2 py-2 ${
+                  className={`border-b border-blue-100 bg-blue-50 px-2 py-2 ${
                     column.key === "empName" ? "sticky left-0 z-30 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]" : ""
                   }`}
                   style={{ minWidth: column.minWidth }}
                 >
                   {column.filterable === false ? (
-                    <div className="h-8 rounded-lg bg-slate-100" />
+                    <div className="h-8 rounded-xl bg-blue-100" />
                   ) : (
                     <input
                       type="text"
@@ -1833,7 +1833,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                         }))
                       }
                       placeholder={`Filter ${column.label}`}
-                      className="h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-[11px] font-normal text-slate-700 outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                      className="h-8 w-full rounded-xl border border-gray-200 bg-white px-2 text-[11px] font-normal text-gray-700 outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                     />
                   )}
                 </th>
@@ -1862,37 +1862,37 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               const expanded = expandedGroups[group.id] !== false;
               return (
                 <Fragment key={group.id}>
-                  <tr className="bg-sky-50">
-                    <td colSpan={columns.length} className="border-b border-sky-100 px-3 py-2.5">
+                  <tr className="bg-blue-50">
+                    <td colSpan={columns.length} className="border-b border-blue-100 px-3 py-2.5">
                       <button
                         type="button"
                         onClick={() => toggleGroup(group.id)}
                         className="flex w-full items-center gap-2 text-left"
                       >
                         {expanded ? (
-                          <ChevronDown className="h-4 w-4 text-sky-700" />
+                          <ChevronDown className="h-4 w-4 text-blue-800" />
                         ) : (
-                          <ChevronRight className="h-4 w-4 text-sky-700" />
+                          <ChevronRight className="h-4 w-4 text-blue-800" />
                         )}
-                        <span className="font-semibold text-sky-900">{group.label}</span>
-                        <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                        <span className="font-semibold text-blue-900">{group.label}</span>
+                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
                           {group.rows.length} records
                         </span>
-                        <span className="ml-auto text-xs font-bold text-sky-900">
+                        <span className="ml-auto text-xs font-bold text-blue-900">
                           {formatHours(group.workedHours)} hrs
                         </span>
                       </button>
                     </td>
                   </tr>
                   {expanded && group.rows.map(renderTableRecordRow)}
-                  <tr className="bg-slate-50">
-                    <td colSpan={10} className="border-b border-slate-200 px-3 py-2 text-right text-[11px] font-semibold text-slate-600">
+                  <tr className="bg-blue-50/50">
+                    <td colSpan={10} className="border-b border-blue-100 px-3 py-2 text-right text-[11px] font-semibold text-gray-700">
                       Subtotal Worked Hours
                     </td>
-                    <td className="border-b border-slate-200 px-3 py-2 text-right text-xs font-bold text-slate-800">
+                    <td className="border-b border-blue-100 px-3 py-2 text-right text-xs font-bold text-blue-900">
                       {formatHours(group.workedHours)}
                     </td>
-                    <td className="border-b border-slate-200" />
+                    <td className="border-b border-blue-100" />
                   </tr>
                 </Fragment>
               );
@@ -1901,12 +1901,12 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         </tbody>
 
         {sortedRows.length > 0 && (
-          <tfoot className="sticky bottom-0 z-10 bg-gray-100">
+          <tfoot className="sticky bottom-0 z-10 bg-blue-50">
             <tr>
-              <td colSpan={10} className="px-1 py-1 text-right text-[11px] font-semibold">
+              <td colSpan={10} className="px-1 py-1 text-right text-[11px] font-semibold text-blue-900">
                 Total Worked Hours
               </td>
-              <td className="px-2 py-2 text-right text-[11px] font-bold">
+              <td className="px-2 py-2 text-right text-[11px] font-bold text-blue-900">
                 {formatHours(totalWorkedHours)}
               </td>
               <td className="px-1 py-1" />
@@ -1958,8 +1958,8 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   );
 
   const renderRecordCard = (row) => (
-    <article key={row.__id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
-      <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-3.5 sm:p-4">
+    <article key={row.__id} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:border-blue-200 hover:shadow-md">
+      <div className="flex items-start justify-between gap-3 border-b border-gray-100 p-3.5 sm:p-4">
         <div className="min-w-0">
           <div className="truncate font-bold text-slate-800">{row.empName || "Unknown Employee"}</div>
           <div className="mt-0.5 truncate text-[11px] text-slate-500">
@@ -1980,7 +1980,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           </div>
           <div className="text-right">
             <div className="text-[11px] font-semibold text-slate-500">Worked Hours</div>
-            <div className="mt-0.5 text-2xl font-bold text-sky-800">{formatHours(row.workedHours)}</div>
+            <div className="mt-0.5 text-2xl font-bold text-blue-800">{formatHours(row.workedHours)}</div>
           </div>
         </div>
 
@@ -2036,16 +2036,16 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         {pageItems.map((group) => {
           const expanded = expandedGroups[group.id] !== false;
           return (
-            <section key={group.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+            <section key={group.id} className="overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
               <button
                 type="button"
                 onClick={() => toggleGroup(group.id)}
-                className="flex w-full items-center gap-2 bg-sky-50 px-4 py-3 text-left"
+                className="flex w-full items-center gap-2 bg-blue-50 px-4 py-3 text-left"
               >
-                {expanded ? <ChevronDown className="h-4 w-4 text-sky-700" /> : <ChevronRight className="h-4 w-4 text-sky-700" />}
-                <span className="font-semibold text-sky-900">{group.label}</span>
-                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-sky-700">{group.rows.length}</span>
-                <span className="ml-auto text-xs font-bold text-sky-900">{formatHours(group.workedHours)} hrs</span>
+                {expanded ? <ChevronDown className="h-4 w-4 text-blue-800" /> : <ChevronRight className="h-4 w-4 text-blue-800" />}
+                <span className="font-semibold text-blue-900">{group.label}</span>
+                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-blue-800">{group.rows.length}</span>
+                <span className="ml-auto text-xs font-bold text-blue-900">{formatHours(group.workedHours)} hrs</span>
               </button>
               {expanded && (
                 <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 2xl:grid-cols-3">
@@ -2065,14 +2065,14 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   const renderAccordionRow = (row) => {
     const expanded = Boolean(expandedRows[row.__id]);
     return (
-      <article key={row.__id} className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+      <article key={row.__id} className="overflow-hidden rounded-xl border border-gray-200 bg-white">
         <button
           type="button"
           onClick={() => toggleRecord(row.__id)}
-          className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-slate-50 active:bg-slate-100"
+          className="flex w-full items-center gap-3 p-4 text-left transition hover:bg-blue-50 active:bg-blue-100"
         >
-          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">
-            {expanded ? <ChevronDown className="h-4 w-4 text-sky-700" /> : <ChevronRight className="h-4 w-4" />}
+          <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-800">
+            {expanded ? <ChevronDown className="h-4 w-4 text-blue-800" /> : <ChevronRight className="h-4 w-4" />}
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
@@ -2085,13 +2085,13 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           </div>
           <div className="shrink-0 text-right">
             <div className="hidden text-[11px] text-slate-500 sm:block">{formatDtrActualDateTime(row, "timeIn")} – {formatDtrActualDateTime(row, "timeOut")}</div>
-            <div className="font-bold text-sky-800">{formatHours(row.workedHours)} <span className="text-[10px] font-semibold text-slate-400">hrs</span></div>
+            <div className="font-bold text-blue-800">{formatHours(row.workedHours)} <span className="text-[10px] font-semibold text-gray-400">hrs</span></div>
           </div>
         </button>
         {expanded && (
           <div className="space-y-3 border-t border-slate-100 p-4">
             {renderRecordDetails(row)}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-blue-50 p-3">
               <span className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold ring-1 ${getRemarksBadgeClass(row.remarks)}`}>{(row.remarks)}</span>
               <span className="font-bold text-slate-800">Worked Hours: {formatHours(row.workedHours)}</span>
             </div>
@@ -2114,16 +2114,16 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         {pageItems.map((group) => {
           const expanded = expandedGroups[group.id] !== false;
           return (
-            <section key={group.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <section key={group.id} className="overflow-hidden rounded-xl border border-gray-200 bg-white">
               <button
                 type="button"
                 onClick={() => toggleGroup(group.id)}
-                className="flex w-full items-center gap-2 bg-sky-50 px-4 py-3 text-left"
+                className="flex w-full items-center gap-2 bg-blue-50 px-4 py-3 text-left"
               >
-                {expanded ? <ChevronDown className="h-4 w-4 text-sky-700" /> : <ChevronRight className="h-4 w-4 text-sky-700" />}
-                <span className="font-semibold text-sky-900">{group.label}</span>
-                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-sky-700">{group.rows.length}</span>
-                <span className="ml-auto text-xs font-bold text-sky-900">{formatHours(group.workedHours)} hrs</span>
+                {expanded ? <ChevronDown className="h-4 w-4 text-blue-800" /> : <ChevronRight className="h-4 w-4 text-blue-800" />}
+                <span className="font-semibold text-blue-900">{group.label}</span>
+                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-blue-800">{group.rows.length}</span>
+                <span className="ml-auto text-xs font-bold text-blue-900">{formatHours(group.workedHours)} hrs</span>
               </button>
               {expanded && <div className="space-y-2 p-3">{group.rows.map(renderAccordionRow)}</div>}
               <div className="border-t border-slate-200 px-4 py-2 text-right text-xs font-semibold text-slate-700">
@@ -2154,12 +2154,16 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           : "lg:ml-0 lg:w-full lg:max-w-[100vw]"
       }`}
     >
-      <div className="mx-auto min-w-0 w-full max-w-full space-y-2 transition-all">
-        <section className="min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex flex-col gap-4 2xl:flex-row 2xl:items-center 2xl:justify-between">
+      <div className="mx-auto min-w-0 w-full max-w-full space-y-4 transition-all">
+        <div className="global-div-header-ui">
+          <h1 className="global-div-headertext-ui">DTR Monitoring</h1>
+        </div>
+
+        <section className="min-w-0 max-w-full rounded-xl bg-white p-4 shadow-md sm:p-5">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
             <div className="min-w-0">
-              <h1 className="text-xl font-bold text-slate-800 sm:text-xl">DTR Monitoring</h1>
-              <p className="mt-1 text-xs text-slate-500">
+              <h2 className="text-base font-semibold text-gray-900">Filter DTR Records</h2>
+              <p className="mt-1 text-xs text-gray-500">
                 Review attendance, worked hours, and timekeeping photos in one responsive view.
               </p>
             </div>
@@ -2169,7 +2173,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 type="button"
                 onClick={() => fetchAllDTR()}
                 disabled={loading}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-sky-700 px-2.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:px-4 sm:text-xs"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-800 px-2.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:px-4 sm:text-xs"
               >
                 <RefreshCw className={`h-4 w-4 shrink-0 ${loading || isRefreshing ? "animate-spin" : ""}`} />
                 <span className="truncate">{loading ? "Loading..." : isRefreshing ? "Refreshing..." : "Load"}</span>
@@ -2179,7 +2183,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 type="button"
                 onClick={exportExcel}
                 disabled={!sortedRows.length}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 px-2.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:px-4 sm:text-xs"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-800 px-2.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:px-4 sm:text-xs"
               >
                 <FileSpreadsheet className="h-4 w-4 shrink-0" />
                 <span className="truncate">Export</span>
@@ -2188,7 +2192,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-2.5 py-2 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50 sm:gap-2 sm:px-4 sm:text-xs"
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-gray-300 bg-white px-2.5 py-2 text-[13px] font-semibold text-gray-700 transition hover:bg-gray-50 sm:gap-2 sm:px-4 sm:text-xs"
               >
                 <RotateCcw className="h-4 w-4 shrink-0" />
                 <span className="truncate">Reset</span>
@@ -2196,17 +2200,17 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <div>
-              <label className="mb-1 block text-[11px] font-semibold text-slate-500">Start Date</label>
+              <label className="mb-1 block text-[11px] font-semibold text-gray-600">Start Date</label>
               <DateInput value={startDate} onChange={(event) => setStartDate(event.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-semibold text-slate-500">End Date</label>
+              <label className="mb-1 block text-[11px] font-semibold text-gray-600">End Date</label>
               <DateInput value={endDate} onChange={(event) => setEndDate(event.target.value)} />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-semibold text-slate-500">DTR View</label>
+              <label className="mb-1 block text-[11px] font-semibold text-gray-600">DTR View</label>
               <select
                 value={employeeScope}
                 onChange={(event) => {
@@ -2215,7 +2219,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 }}
                 /* Temporarily enabled while HR flag validation is being checked. */
                 /* disabled={!isHrUser} */
-                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-100"
+                className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
               >
                 <option value="MY">My DTR</option>
                 {/* Temporarily bypass HR flag validation for Employee DTR option. */}
@@ -2223,13 +2227,13 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-semibold text-slate-500">Employee Name</label>
+              <label className="mb-1 block text-[11px] font-semibold text-gray-600">Employee Name</label>
               <select
                 value={selectedEmployeeNo}
                 onChange={(event) => setSelectedEmployeeNo(event.target.value)}
                 /* Temporarily bypass HR flag validation; keep disabled until Employee DTR is selected. */
                 disabled={employeeScope !== "EMPLOYEE"}
-                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:bg-slate-100"
+                className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
               >
                 <option value="">All Employees</option>
                 {employeeOptions.map((employee) => (
@@ -2240,11 +2244,11 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-semibold text-slate-500">Type</label>
+              <label className="mb-1 block text-[11px] font-semibold text-gray-600">Type</label>
               <select
                 value={sourceFilter}
                 onChange={(event) => setSourceFilter(event.target.value)}
-                className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
               >
                 {sourceOptions.map((source) => (
                   <option key={source} value={source}>
@@ -2255,23 +2259,23 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             </div>
           </div>
 
-          <div className="mt-3 flex flex-col gap-3 2xl:flex-row 2xl:items-end">
+          <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-end">
             <div className="min-w-0 flex-1">
-              <label className="mb-1 block text-[11px] font-semibold text-slate-500">Search</label>
+              <label className="mb-1 block text-[11px] font-semibold text-gray-600">Search</label>
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
                   value={searchText}
                   onChange={(event) => setSearchText(event.target.value)}
                   placeholder="Search employee, department, date, type, time, or remarks..."
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white pl-9 pr-9 text-xs text-slate-700 outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 text-xs text-gray-700 outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 />
                 {searchText && (
                   <button
                     type="button"
                     onClick={() => setSearchText("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -2281,14 +2285,14 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-4 2xl:flex">
               <div className="sm:w-[150px]">
-                <label className="mb-1 block text-[11px] font-semibold text-slate-500">Group By</label>
+                <label className="mb-1 block text-[11px] font-semibold text-gray-600">Group By</label>
                 <select
                   value={groupBy}
                   onChange={(event) => {
                     setGroupBy(event.target.value);
                     setExpandedGroups({});
                   }}
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   {groupOptions.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
@@ -2297,11 +2301,11 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               </div>
 
               <div className="sm:w-[140px]">
-                <label className="mb-1 block text-[11px] font-semibold text-slate-500">Layout</label>
+                <label className="mb-1 block text-[11px] font-semibold text-gray-600">Layout</label>
                 <select
                   value={layoutMode}
                   onChange={(event) => setLayoutMode(event.target.value)}
-                  className="h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-xs text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                 >
                   <option value="auto">Auto Responsive</option>
                   <option value="table">Table</option>
@@ -2315,8 +2319,8 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 onClick={() => setShowColumnFilters((previous) => !previous)}
                 className={`mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl border px-3 text-xs font-semibold transition ${
                   showColumnFilters
-                    ? "border-sky-300 bg-sky-50 text-sky-700"
-                    : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                    ? "border-blue-800 bg-blue-800 text-white"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                 }`}
                 title="Show or hide per-column filters"
               >
@@ -2328,7 +2332,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 type="button"
                 onClick={clearAllFilters}
                 disabled={!hasActiveFilters}
-                className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <FilterX className="h-4 w-4" />
                 Clear Filters
@@ -2337,17 +2341,17 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           </div>
 
           {showColumnFilters && effectiveLayout !== "table" && (
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-3">
+            <div className="mt-4 rounded-xl border border-gray-200 bg-gray-50 p-3">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs font-semibold text-slate-700">Column Filters</div>
-                  <div className="text-[11px] text-slate-500">Available in Card and Accordion layouts.</div>
+                  <div className="text-xs font-semibold text-gray-800">Column Filters</div>
+                  <div className="text-[11px] text-gray-500">Available in Card and Accordion layouts.</div>
                 </div>
                 {Object.values(columnFilters).some((value) => normalizeText(value) !== "") && (
                   <button
                     type="button"
                     onClick={() => setColumnFilters({})}
-                    className="text-[11px] font-semibold text-sky-700 hover:underline"
+                    className="text-[11px] font-semibold text-blue-800 hover:underline"
                   >
                     Clear Column Filters
                   </button>
@@ -2358,7 +2362,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                   .filter((column) => column.filterable !== false)
                   .map((column) => (
                     <div key={`responsive-filter-${column.key}`}>
-                      <label className="mb-1 block text-[11px] font-semibold text-slate-500">
+                      <label className="mb-1 block text-[11px] font-semibold text-gray-600">
                         {column.label}
                       </label>
                       <input
@@ -2371,7 +2375,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                           }))
                         }
                         placeholder={`Filter ${column.label}`}
-                        className="h-9 w-full rounded-lg border border-slate-300 bg-white px-2.5 text-[11px] text-slate-700 outline-none placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                        className="h-9 w-full rounded-xl border border-gray-200 bg-white px-2.5 text-[11px] text-gray-700 outline-none placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                       />
                     </div>
                   ))}
@@ -2389,16 +2393,16 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         </section>
 
         {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-red-700">
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-medium text-red-700">
             {error}
           </div>
         )}
 
-        <section className="min-w-0 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <section className="min-w-0 overflow-hidden rounded-xl bg-white shadow-lg">
+          <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-xs font-semibold text-slate-800">DTR Records</div>
-              <div className="mt-0.5 text-[11px] text-slate-500">
+              <div className="text-base font-semibold text-gray-900">DTR Records</div>
+              <div className="mt-0.5 text-[11px] text-gray-500">
                 Photos are displayed on-screen but are excluded from Excel export.
               </div>
             </div>
@@ -2409,7 +2413,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                   <button
                     type="button"
                     onClick={() => setAllGroupsExpanded(true)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-2.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
                   >
                     <ChevronsDown className="h-3.5 w-3.5" />
                     Expand All
@@ -2417,7 +2421,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                   <button
                     type="button"
                     onClick={() => setAllGroupsExpanded(false)}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-xl border border-gray-300 bg-white px-2.5 text-[11px] font-semibold text-gray-700 hover:bg-gray-50"
                   >
                     <ChevronsUp className="h-3.5 w-3.5" />
                     Collapse All
@@ -2426,7 +2430,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               )}
 
               <div
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-[11px] font-semibold text-sky-700"
+                className="flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-2 py-1.5 text-[11px] font-semibold text-blue-800"
                 title={`Current layout: ${effectiveLayout}`}
               >
                 {effectiveLayout === "table" && <Table2 className="h-3.5 w-3.5" />}
@@ -2439,8 +2443,8 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
 
           {renderDataView()}
 
-          <div className="flex flex-col gap-3 border-t border-slate-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="text-[11px] text-slate-600">
+          <div className="flex flex-col gap-3 border-t border-gray-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="text-[11px] text-gray-600">
               Showing <b>{displayedStart}-{displayedEnd}</b> of {pageCollection.length} {paginationLabel}
               {groupBy !== "none" && (
                 <span className="ml-1">({filteredRows.length} total records)</span>
@@ -2448,12 +2452,12 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <label className="flex items-center gap-2 text-[11px] text-slate-600">
+              <label className="flex items-center gap-2 text-[11px] text-gray-600">
                 {groupBy === "none" ? "Rows" : "Groups"} per page
                 <select
                   value={rowsPerPage}
                   onChange={(event) => setRowsPerPage(Number(event.target.value))}
-                  className="h-8 rounded-lg border border-slate-300 bg-white px-2 text-[11px] text-slate-700 outline-none focus:border-sky-500"
+                  className="h-8 rounded-xl border border-gray-300 bg-white px-2 text-[11px] text-gray-700 outline-none focus:border-blue-500"
                 >
                   {[10, 20, 50, 100, 200].map((value) => (
                     <option key={value} value={value}>{value}</option>
@@ -2461,23 +2465,23 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 </select>
               </label>
 
-              <div className="flex items-center overflow-hidden rounded-lg border border-slate-300 bg-white text-[11px]">
+              <div className="flex items-center overflow-hidden rounded-xl border border-gray-300 bg-white text-[11px]">
                 <button
                   type="button"
                   onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                   disabled={safePage <= 1}
-                  className="h-8 px-3 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                  className="h-8 px-3 font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300"
                 >
                   Previous
                 </button>
-                <span className="border-x border-slate-300 px-3 py-2 text-slate-600">
+                <span className="border-x border-gray-300 px-3 py-2 text-gray-600">
                   Page <b>{safePage}</b> of <b>{totalPages}</b>
                 </span>
                 <button
                   type="button"
                   onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                   disabled={safePage >= totalPages}
-                  className="h-8 px-3 font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-300"
+                  className="h-8 px-3 font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:text-gray-300"
                 >
                   Next
                 </button>
