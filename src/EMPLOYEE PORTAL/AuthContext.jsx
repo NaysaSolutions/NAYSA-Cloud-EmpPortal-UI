@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 const AuthContext = createContext(null);
 const STORAGE_KEY = "naysa_auth_user";
@@ -20,6 +20,7 @@ const saveStoredUser = (userData) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(userData));
   } else {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem("token");
   }
 };
 
@@ -46,6 +47,22 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(() => {
     saveStoredUser(null);
     setUserState(null);
+  }, []);
+
+  useEffect(() => {
+    const syncAuthFromStorage = () => {
+      setUserState(getStoredUser());
+    };
+
+    window.addEventListener("pageshow", syncAuthFromStorage);
+    window.addEventListener("focus", syncAuthFromStorage);
+    window.addEventListener("storage", syncAuthFromStorage);
+
+    return () => {
+      window.removeEventListener("pageshow", syncAuthFromStorage);
+      window.removeEventListener("focus", syncAuthFromStorage);
+      window.removeEventListener("storage", syncAuthFromStorage);
+    };
   }, []);
 
   const value = useMemo(

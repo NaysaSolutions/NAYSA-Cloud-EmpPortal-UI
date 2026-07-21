@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -41,6 +41,25 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
+  useEffect(() => {
+    const cacheDirectives = [
+      ["Cache-Control", "no-store, no-cache, must-revalidate, max-age=0"],
+      ["Pragma", "no-cache"],
+      ["Expires", "0"],
+    ];
+    const createdMetaTags = cacheDirectives.map(([httpEquiv, content]) => {
+      const meta = document.createElement("meta");
+      meta.httpEquiv = httpEquiv;
+      meta.content = content;
+      document.head.appendChild(meta);
+      return meta;
+    });
+
+    return () => {
+      createdMetaTags.forEach((meta) => meta.remove());
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <Toaster
@@ -117,7 +136,7 @@ const Layout = ({ children }) => (
 
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
-  return user ? children : <Navigate to="/" />;
+  return user ? children : <Navigate to="/" replace />;
 };
 
 export default App;

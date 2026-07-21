@@ -69,7 +69,7 @@ const handleSubmit = async (e) => {
         confirmButtonText: "OK",
       });
 
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } else {
       Swal.fire({
         title: "Login Failed",
@@ -114,7 +114,7 @@ const handleSubmit = async (e) => {
         duration: 2500,
       });
 
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } else {
       toast.error("Login Failed", {
         id: loadingToast,

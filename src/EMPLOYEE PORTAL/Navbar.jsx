@@ -8,7 +8,7 @@ import { useSidebarStore } from "./useSidebarStore";
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth(); // Get user from context
+  const { user, logout } = useAuth(); // Get user from context
   const { isOpen: isSidebarOpen, toggleSidebar } = useSidebarStore();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -18,6 +18,12 @@ const Navbar = () => {
 
   const toggleDropdown = () => setIsDropdownOpen(prev => !prev);
   const toggleMobileMenu = () => setIsMobileMenuOpen(prev => !prev);
+  const handleLogout = () => {
+    logout();
+    setIsDropdownOpen(false);
+    setIsMobileMenuOpen(false);
+    navigate("/", { replace: true });
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -176,7 +182,7 @@ const Navbar = () => {
             <div className="absolute right-0 mt-12 w-48 bg-white rounded-lg py-2 z-30 shadow-lg">
               <button
                 className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
-                onClick={() => navigate("/")}
+                onClick={handleLogout}
               >
                 Logout
               </button>
