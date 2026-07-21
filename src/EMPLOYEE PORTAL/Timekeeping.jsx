@@ -1265,6 +1265,53 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
     ]
   );
 
+  const formatDtrBreakDateTime = useCallback(
+    (record, type) => {
+      const valueKeys =
+        type === "breakIn"
+          ? ["break_in_datetime", "breakInDateTime", "BREAK_IN_DATETIME", "break_in", "breakIn"]
+          : ["break_out_datetime", "breakOutDateTime", "BREAK_OUT_DATETIME", "break_out", "breakOut"];
+      const dateKeys =
+        type === "breakIn"
+          ? ["break_in_date", "breakInDate", "BREAK_IN_DATE"]
+          : ["break_out_date", "breakOutDate", "BREAK_OUT_DATE"];
+
+      const actualValue = getFirstNonBlankValue(record, valueKeys);
+      const actualDate =
+        getFirstNonBlankValue(record, dateKeys) ||
+        getNormalizedRecordDate(record) ||
+        record?.date;
+      let parsedDateTime = parseDtrDateTime(actualDate, actualValue);
+
+      if (
+        type === "breakOut" &&
+        parsedDateTime &&
+        !getFirstNonBlankValue(record, dateKeys) &&
+        !/\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(actualValue)
+      ) {
+        const parsedBreakIn = parseDtrDateTime(
+          getFirstNonBlankValue(record, ["break_in_date", "breakInDate", "BREAK_IN_DATE"]) ||
+            getNormalizedRecordDate(record) ||
+            record?.date,
+          getFirstNonBlankValue(record, [
+            "break_in_datetime",
+            "breakInDateTime",
+            "BREAK_IN_DATETIME",
+            "break_in",
+            "breakIn",
+          ])
+        );
+
+        if (parsedBreakIn && parsedDateTime.isBefore(parsedBreakIn)) {
+          parsedDateTime = parsedDateTime.add(1, "day");
+        }
+      }
+
+      return parsedDateTime ? parsedDateTime.format("MM/DD/YYYY hh:mm A") : "N/A";
+    },
+    [getNormalizedRecordDate, parseDtrDateTime]
+  );
+
   const getRecordShiftTimeIn = useCallback((record) => {
     return getFirstNonBlankValue(record, [
       "shift_time_in",
@@ -2061,8 +2108,8 @@ capturedImageInfo = await captureImageProcess(type);
       }
 
       row.push(
-        `"${record.break_in ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}"`,
-        `"${record.break_out ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A") : "N/A"}"`,
+        `"${record.break_in ? formatDtrBreakDateTime(record, "breakIn") : "N/A"}"`,
+        `"${record.break_out ? formatDtrBreakDateTime(record, "breakOut") : "N/A"}"`,
         `"${record.time_out ? formatDtrActualDateTime(record, "timeOut") : "N/A"}"`
       );
 
@@ -2441,11 +2488,11 @@ if (!confirm) return;
                 <span className="text-sm text-gray-500">Break</span>
                 <span className="text-sm font-medium text-gray-700 font-mono">
                   {record.break_in
-                    ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm A")
+                    ? formatDtrBreakDateTime(record, "breakIn")
                     : "N/A"}
                   {" • "}
                   {record.break_out
-                    ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm A")
+                    ? formatDtrBreakDateTime(record, "breakOut")
                     : "N/A"}
                 </span>
               </div>
@@ -2601,11 +2648,11 @@ if (!confirm) return;
                   <div className="text-sm font-medium text-gray-700 mb-2">Break Time</div>
                   <div className="text-sm text-gray-600">
                     {record.break_in
-                      ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A")
+                      ? formatDtrBreakDateTime(record, "breakIn")
                       : "N/A"}{" "}
                     -{" "}
                     {record.break_out
-                      ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A")
+                      ? formatDtrBreakDateTime(record, "breakOut")
                       : "N/A"}
                   </div>
                 </div>
@@ -2658,10 +2705,10 @@ if (!confirm) return;
               ? formatDtrActualDateTime(record, "timeOut")
               : "Missing";
             const breakInDisplay = record.break_in
-              ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm:ss A")
+              ? formatDtrBreakDateTime(record, "breakIn")
               : "N/A";
             const breakOutDisplay = record.break_out
-              ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm:ss A")
+              ? formatDtrBreakDateTime(record, "breakOut")
               : "N/A";
 
             return (
@@ -2797,8 +2844,8 @@ if (!confirm) return;
 
                   <Row
                     label="Break:"
-                    value={`${record.break_in ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm A") : "N/A"} – ${
-                      record.break_out ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm A") : "N/A"
+                    value={`${record.break_in ? formatDtrBreakDateTime(record, "breakIn") : "N/A"} – ${
+                      record.break_out ? formatDtrBreakDateTime(record, "breakOut") : "N/A"
                     }`}
                   />
 
@@ -2886,11 +2933,11 @@ if (!confirm) return;
                       )}
                       <td className="px-3 py-3 align-top whitespace-nowrap">
                         {record.break_in
-                          ? dayjs(record.break_in, "HH:mm:ss").format("hh:mm A")
+                          ? formatDtrBreakDateTime(record, "breakIn")
                           : "N/A"}{" "}
                         –{" "}
                         {record.break_out
-                          ? dayjs(record.break_out, "HH:mm:ss").format("hh:mm A")
+                          ? formatDtrBreakDateTime(record, "breakOut")
                           : "N/A"}
                       </td>
                       <td className="px-3 py-3 align-top whitespace-nowrap">
@@ -3247,7 +3294,7 @@ if (!confirm) return;
           <p className="text-red-800 text-[14px] md:text-lg mb-2">
             <span className="font-extrabold">🕐 Break In:</span>{" "}
             {todayRecord?.break_in
-              ? dayjs(todayRecord.break_in, "HH:mm:ss").format("hh:mm:ss A")
+              ? formatDtrBreakDateTime(todayRecord, "breakIn")
               : "Not Recorded"}
           </p>
 
@@ -3261,7 +3308,7 @@ if (!confirm) return;
           <p className="text-red-800 text-[14px] md:text-lg mb-2">
             <span className="font-extrabold">🕐 Break Out:</span>{" "}
             {todayRecord?.break_out
-              ? dayjs(todayRecord.break_out, "HH:mm:ss").format("hh:mm:ss A")
+              ? formatDtrBreakDateTime(todayRecord, "breakOut")
               : "Not Recorded"}
           </p>
 

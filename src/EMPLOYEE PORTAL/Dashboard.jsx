@@ -557,7 +557,7 @@ const Dashboard = () => {
       })
       .filter((holiday) => holiday && !holiday.date.isBefore(today, "day"))
       .sort((left, right) => left.date.valueOf() - right.date.valueOf())
-      .slice(0, 5);
+      .slice(0, 10);
 
     const leaveRows = leaveApplication
       .map((leave) => {
@@ -577,12 +577,12 @@ const Dashboard = () => {
     const upcomingLeaves = leaveRows
       .filter((leave) => leave.status.toLowerCase() === "approved")
       .sort((left, right) => left.startDate.valueOf() - right.startDate.valueOf())
-      .slice(0, 5);
+      .slice(0, 10);
 
     const pendingLeaves = leaveRows
       .filter((leave) => leave.status.toLowerCase() === "pending")
       .sort((left, right) => left.startDate.valueOf() - right.startDate.valueOf())
-      .slice(0, 5);
+      .slice(0, 10);
 
     return {
       upcomingHolidays,
@@ -590,6 +590,37 @@ const Dashboard = () => {
       pendingLeaves,
     };
   }, [currentDate, holidays, leaveApplication]);
+
+  const loanBalanceInsights = useMemo(() => {
+    const rows = loanBalance.map((loan, index) => {
+      const loanType =
+        String(loan?.loantype || loan?.loanType || loan?.description || `Loan ${index + 1}`).trim();
+      const loanAmount = toDashboardNumber(loan?.loanamt || loan?.loanAmount);
+      const totalPaid = toDashboardNumber(loan?.totalpaid || loan?.totalPaid);
+      const balance = toDashboardNumber(loan?.balance);
+
+      return {
+        loanType,
+        loanAmount,
+        totalPaid,
+        balance,
+      };
+    });
+
+    const chartRows = rows.filter(
+      (loan) => loan.loanAmount > 0 || loan.totalPaid > 0 || loan.balance > 0
+    );
+    const maxValue = Math.max(
+      1,
+      ...chartRows.flatMap((loan) => [loan.loanAmount, loan.totalPaid, loan.balance])
+    );
+
+    return {
+      rows,
+      chartRows,
+      maxValue,
+    };
+  }, [loanBalance]);
 
   // Calculate totals for stat cards
   // const pendingLeaveCount = leaveApplication.filter(
@@ -789,7 +820,7 @@ const Dashboard = () => {
       {/* Main Content */}
       {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 p-2"> */}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-2">
         {/* Leave Credit Section */}
         <div className="bg-white p-4 rounded-xl shadow-lg w-full lg:col-span-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -805,35 +836,9 @@ const Dashboard = () => {
             </button>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
-              <p className="text-[11px] font-semibold uppercase text-blue-700">Total Credit</p>
-              <p className="mt-1 text-lg font-bold text-blue-900">
-                {formatDashboardNumber(leaveCreditInsights.totals.credit)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-green-100 bg-green-50 p-3">
-              <p className="text-[11px] font-semibold uppercase text-green-700">Available</p>
-              <p className="mt-1 text-lg font-bold text-green-800">
-                {formatDashboardNumber(leaveCreditInsights.totals.remaining)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-yellow-100 bg-yellow-50 p-3">
-              <p className="text-[11px] font-semibold uppercase text-yellow-700">Used</p>
-              <p className="mt-1 text-lg font-bold text-yellow-700">
-                {formatDashboardNumber(leaveCreditInsights.totals.used)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-red-100 bg-red-50 p-3">
-              <p className="text-[11px] font-semibold uppercase text-red-700">Low Balance</p>
-              <p className="mt-1 text-lg font-bold text-red-700">
-                {leaveCreditInsights.lowBalanceCount}
-              </p>
-            </div>
-          </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(420px,1fr)_minmax(360px,0.9fr)]">
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+          <div className="mt-4 grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[minmax(420px,1fr)_minmax(420px,0.95fr)]">
+            <div className="h-full rounded-xl border border-gray-200 bg-gray-50 p-4">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-bold text-blue-900">Used vs Available</p>
@@ -916,8 +921,36 @@ const Dashboard = () => {
               </div>
             </div>
 
-            {/* Table Structure */}
-            <div className="overflow-x-auto">
+            <div className="flex h-full min-w-0 flex-col gap-3">
+              <div className="grid grid-cols-3 gap-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3">
+                <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+                  <p className="text-[10px] sm:text-[11px] font-semibold uppercase text-blue-700">Total Credit</p>
+                  <p className="mt-1 text-[14px] sm:text-lg font-bold text-blue-900">
+                    {formatDashboardNumber(leaveCreditInsights.totals.credit)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-green-100 bg-green-50 p-3">
+                  <p className="text-[10px] sm:text-[11px] font-semibold uppercase text-green-700">Total Available</p>
+                  <p className="mt-1 text-[14px] sm:text-lg font-bold text-green-800">
+                    {formatDashboardNumber(leaveCreditInsights.totals.remaining)}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-yellow-100 bg-yellow-50 p-3">
+                  <p className="text-[10px] sm:text-[11px] font-semibold uppercase text-yellow-700">Total Used</p>
+                  <p className="mt-1 text-[14px] sm:text-lg font-bold text-yellow-700">
+                    {formatDashboardNumber(leaveCreditInsights.totals.used)}
+                  </p>
+                </div>
+                {/* <div className="rounded-xl border border-red-100 bg-red-50 p-3">
+                  <p className="text-[10px] sm:text-[11px] font-semibold uppercase text-red-700">Low Balance</p>
+                  <p className="mt-1 text-[14px] sm:text-lg font-bold text-red-700">
+                    {leaveCreditInsights.lowBalanceCount}
+                  </p>
+                </div> */}
+              </div>
+
+              {/* Table Structure */}
+              <div className="min-w-0 flex-1 overflow-x-auto">
               <table className="dashboard-table">
                 <thead className="dashboard-thead">
                   <tr className="dashboard-thead ">
@@ -967,6 +1000,7 @@ const Dashboard = () => {
                   )}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
 
@@ -988,11 +1022,13 @@ const Dashboard = () => {
         </div>
 
         {/* Personal Calendar */}
-        <div className="bg-white p-3 sm:p-4 rounded-xl shadow-lg w-full">
-          <h2 className="text-base sm:text-base font-semibold mb-2 text-blue-800 text-center">
+        <div className="bg-white p-3 sm:p-4 rounded-xl shadow-lg w-full lg:col-span-2">
+          {/* <h2 className="text-base sm:text-base font-semibold mb-2 text-blue-800 text-center">
             Personal Calendar
-          </h2>
+          </h2> */}
 
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(320px,420px)_1fr] lg:items-start">
+            <div>
           {/* Navigation */}
           <div className="flex justify-between items-center mb-2">
             <button onClick={handlePrevMonth} className="text-gray-400">
@@ -1008,12 +1044,12 @@ const Dashboard = () => {
 
           {/* <div className="items-center justify-center"> */}
           {/* Weekday Names */}
-          <div className="grid grid-cols-7 text-center font-semibold text-gray-600 mb-1 ml-6 mx-auto text-[0.80rem] sm:text-[0.80rem] md:text-[0.90rem] lg:text-[15px]">
+          <div className="grid grid-cols-7 text-center font-semibold text-gray-600 mb-1 mx-auto text-[0.80rem] sm:text-[0.80rem] md:text-[0.90rem] lg:text-[15px]">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
               (day, idx) => (
                 <div
                   key={idx}
-                  className="w-8 h-5 flex items-center justify-center "
+                  className="h-5 flex items-center justify-center "
                 >
                   {day}
                 </div>
@@ -1022,10 +1058,10 @@ const Dashboard = () => {
           </div>
 
           {/* Calendar Days */}
-          <div className="grid grid-cols-7 gap-1 text-center mt-2 ml-6 mx-auto text-[0.70rem] sm:text-[0.70rem] md:text-[0.80rem] lg:text-[13px]">
+          <div className="grid grid-cols-7 gap-1 text-center mt-2 mx-auto text-[0.70rem] sm:text-[0.70rem] md:text-[0.80rem] lg:text-[13px]">
             {generateCalendar().map((day, index) => {
               let baseClasses =
-                "w-6 h-6 sm:w-7 <md:w-7></md:w-7> lg:w-7 sm:h-8 md:h-6 lg:h-7 flex items-center justify-center font-semibold";
+                "aspect-square w-full max-w-9 mx-auto flex items-center justify-center font-semibold";
               let style = "";
               let tooltipText = "";
 
@@ -1071,7 +1107,7 @@ const Dashboard = () => {
           {/* </div> */}
 
           {/* Calendar Legend */}
-          <div className="flex justify-between text-xs md:text-sm mt-4">
+          <div className="flex flex-wrap justify-center gap-3 text-xs md:text-sm mt-4">
             {/* <div className="flex items-center"><span className="w-4 h-4 rounded-xl bg-red-400 inline-block mr-1"></span> Holiday</div> */}
             <div className="flex items-center text-red-500 font-bold">
               <span className="w-4 h-4 rounded-xl bg-red-500 inline-block mr-1"></span>
@@ -1086,8 +1122,9 @@ const Dashboard = () => {
               Pending Leave
             </div>
           </div>
+            </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
             <div className="rounded-xl border border-red-100 bg-red-50 p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <h3 className="text-xs font-bold uppercase text-red-700">
@@ -1100,7 +1137,7 @@ const Dashboard = () => {
               {personalCalendarLists.upcomingHolidays.length > 0 ? (
                 <div className="space-y-2">
                   {personalCalendarLists.upcomingHolidays.map((holiday, index) => (
-                    <div key={`${holiday.date.format("YYYY-MM-DD")}-${holiday.name}-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                    <div key={`${holiday.date.format("YYYY-MM-DD")}-${holiday.name}-${index}`} className="flex items-center justify-between gap-3 text-[11px] sm:text-xs">
                       <span className="min-w-0 truncate font-medium text-gray-800">
                         {holiday.name}
                       </span>
@@ -1127,7 +1164,7 @@ const Dashboard = () => {
               {personalCalendarLists.upcomingLeaves.length > 0 ? (
                 <div className="space-y-2">
                   {personalCalendarLists.upcomingLeaves.map((leave, index) => (
-                    <div key={`${leave.startDate.format("YYYY-MM-DD")}-${leave.type}-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                    <div key={`${leave.startDate.format("YYYY-MM-DD")}-${leave.type}-${index}`} className="flex items-center justify-between gap-3 text-[11px] sm:text-xs">
                       <span className="min-w-0 truncate font-medium text-gray-800">
                         {leave.type}
                       </span>
@@ -1154,7 +1191,7 @@ const Dashboard = () => {
               {personalCalendarLists.pendingLeaves.length > 0 ? (
                 <div className="space-y-2">
                   {personalCalendarLists.pendingLeaves.map((leave, index) => (
-                    <div key={`${leave.startDate.format("YYYY-MM-DD")}-${leave.type}-${index}`} className="flex items-center justify-between gap-3 text-xs">
+                    <div key={`${leave.startDate.format("YYYY-MM-DD")}-${leave.type}-${index}`} className="flex items-center justify-between gap-3 text-[11px] sm:text-xs">
                       <span className="min-w-0 truncate font-medium text-gray-800">
                         {leave.type}
                       </span>
@@ -1169,11 +1206,12 @@ const Dashboard = () => {
               )}
             </div>
           </div>
+          </div>
         </div>
       </div>
 
       <hr className="mt-2 mb-2" />
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-2 min-h-screen">
+      <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-2 min-h-screen">
         {/* Daily Time Record Section */}
         <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
           <h2 className="dashboard-text-header">Daily Time Record</h2>
@@ -1262,27 +1300,18 @@ const Dashboard = () => {
                 </tr>
               </thead>
               <tbody className="dashboard-tbody">
-                {loanBalance.length > 0 ? (
-                  loanBalance.slice(0, 5).map((loan, index) => (
+                {loanBalanceInsights.rows.length > 0 ? (
+                  loanBalanceInsights.rows.slice(0, 5).map((loan, index) => (
                     <tr key={index} className="dashboard-tbody dashboard-tr">
-                      <td className="dashboard-td">{loan.loantype}</td>
+                      <td className="dashboard-td">{loan.loanType}</td>
                       <td className="dashboard-td text-right">
-                        {loan.loanamt.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        {formatDashboardNumber(loan.loanAmount)}
                       </td>
                       <td className="dashboard-td text-right">
-                        {loan.balance.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        {formatDashboardNumber(loan.balance)}
                       </td>
                       <td className="dashboard-td text-right">
-                        {loan.totalpaid.toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        {formatDashboardNumber(loan.totalPaid)}
                       </td>
                     </tr>
                   ))
@@ -1297,6 +1326,86 @@ const Dashboard = () => {
                 )}
               </tbody>
             </table>
+          </div>
+
+          <div className="mt-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-bold text-blue-900">Loan Repayment</p>
+                <p className="text-xs text-gray-500">Loan amount, paid amount, and remaining balance</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-gray-600">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-blue-800" />
+                  Loan Amount
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-green-700" />
+                  Total Paid
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-red-600" />
+                  Balance
+                </span>
+              </div>
+            </div>
+
+            {loanBalanceInsights.chartRows.length > 0 ? (
+              <div className="space-y-3">
+                {loanBalanceInsights.chartRows.slice(0, 5).map((loan) => {
+                  const loanAmountWidth = `${Math.max(
+                    2,
+                    (loan.loanAmount / loanBalanceInsights.maxValue) * 100
+                  )}%`;
+                  const totalPaidWidth = `${Math.max(
+                    2,
+                    (loan.totalPaid / loanBalanceInsights.maxValue) * 100
+                  )}%`;
+                  const balanceWidth = `${Math.max(
+                    2,
+                    (loan.balance / loanBalanceInsights.maxValue) * 100
+                  )}%`;
+
+                  return (
+                    <div key={loan.loanType} className="grid grid-cols-[96px_1fr] items-center gap-3 sm:grid-cols-[140px_1fr]">
+                      <p className="truncate text-[10px] sm:text-xs text-wrap font-semibold text-gray-700" title={loan.loanType}>
+                        {loan.loanType}
+                      </p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2.5 flex-1 rounded-full bg-blue-100">
+                            <div className="h-2.5 rounded-full bg-blue-800" style={{ width: loanAmountWidth }} />
+                          </div>
+                          <span className="w-20 text-right text-[11px] font-semibold text-blue-800">
+                            {formatDashboardNumber(loan.loanAmount)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="h-2.5 flex-1 rounded-full bg-green-100">
+                            <div className="h-2.5 rounded-full bg-green-700" style={{ width: totalPaidWidth }} />
+                          </div>
+                          <span className="w-20 text-right text-[11px] font-semibold text-green-700">
+                            {formatDashboardNumber(loan.totalPaid)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="h-2.5 flex-1 rounded-full bg-red-100">
+                            <div className="h-2.5 rounded-full bg-red-600" style={{ width: balanceWidth }} />
+                          </div>
+                          <span className="w-20 text-right text-[11px] font-semibold text-red-700">
+                            {formatDashboardNumber(loan.balance)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex min-h-32 items-center justify-center text-center text-sm text-gray-500">
+                No loan balances to chart.
+              </div>
+            )}
           </div>
 
           {/* View All Button - Fixed on Small Screens
@@ -1726,16 +1835,16 @@ const Dashboard = () => {
                           <td className="dashboard-td text-nowrap">
                             {ob.empname}
                           </td>
-                          <td className="dashboard-td">
+                          <td className="dashboard-td text-center">
                             <span
-                              className={`inline-block w-[80px] px-3 py-1 rounded-full text-center text-xs sm:text-sm font-medium
-                      ${
-                        ob.obstatus === "Pending"
-                          ? "bg-yellow-100 text-yellow-600"
-                          : ob.obstatus === "Approved"
-                            ? "bg-blue-100 text-blue-600"
-                            : "bg-red-100 text-red-600"
-                      }`}
+                              className={`inline-block w-[90px] px-2 py-1 rounded-full 
+                              ${
+                                ob.obstatus === "Pending"
+                                  ? "bg-yellow-100 text-yellow-600"
+                                  : ob.obstatus === "Approved"
+                                    ? "bg-blue-100 text-blue-600"
+                                    : "bg-red-100 text-red-600"
+                              }`}
                             >
                               {ob.obstatus}
                             </span>
