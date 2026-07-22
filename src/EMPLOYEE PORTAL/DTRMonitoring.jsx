@@ -191,6 +191,17 @@ const getUserHrFlag = (user) =>
     ]),
   );
 
+const getUserApprover = (user) =>
+  normalizeText(
+    findFirstValue(user, [
+      "approver",
+      "APPROVER",
+      "Approver",
+      "appFlag",
+      "APP_FLAG",
+    ]),
+  );
+
 const getKnownStoredUser = () => {
   const keys = [
     "authUser",
@@ -1141,8 +1152,12 @@ export default function DTRMonitoring() {
     [authUser],
   );
   const currentEmpNo = normalizeText(getUserEmpNo(resolvedUser));
+  const currentEmpName = normalizeText(getUserName(resolvedUser)) || currentEmpNo;
   const currentHrFlag = normalizeFlag(getUserHrFlag(resolvedUser));
+  const currentApprover = normalizeText(getUserApprover(resolvedUser));
+  const isApprover = currentApprover === "1";
   const isHrUser = currentHrFlag === "Y";
+  const canUseEmployeeDtr = isApprover && isHrUser;
 
   const [startDate, setStartDate] = useState(firstDayOfMonth());
   const [endDate, setEndDate] = useState(lastDayOfMonth());
@@ -1169,22 +1184,29 @@ export default function DTRMonitoring() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState("");
   const [photoPreview, setPhotoPreview] = useState(null);
+  const employeeNameValue =
+    employeeScope === "MY" ? currentEmpNo : selectedEmployeeNo;
 
   const isFetchingRef = useRef(false);
   const fetchRequestIdRef = useRef(0);
   const recordsSignatureRef = useRef("");
   const hasEmployeeScopeMountedRef = useRef(false);
   const assetOrigin = useMemo(() => getApiAssetOrigin(), []);
-  // Temporary bypass: selecting Employee DTR should use the approver/HR DTR endpoint
-  // while the hr_flag validation issue is being checked.
-  const shouldUseApproverDtrEndpoint = isHrUser || employeeScope === "EMPLOYEE";
+  const shouldUseApproverDtrEndpoint =
+    canUseEmployeeDtr && employeeScope === "EMPLOYEE";
 
   useEffect(() => {
-    if (!isHrUser) {
+    if (!canUseEmployeeDtr) {
       setEmployeeScope("MY");
-      setSelectedEmployeeNo("");
+      setSelectedEmployeeNo(currentEmpNo);
     }
-  }, [isHrUser]);
+  }, [canUseEmployeeDtr, currentEmpNo]);
+
+  useEffect(() => {
+    if (employeeScope === "MY") {
+      setSelectedEmployeeNo(currentEmpNo);
+    }
+  }, [employeeScope, currentEmpNo]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -1222,6 +1244,14 @@ export default function DTRMonitoring() {
   const employeeOptions = useMemo(() => {
     const employees = new Map();
 
+    if (currentEmpNo) {
+      employees.set(currentEmpNo, {
+        empNo: currentEmpNo,
+        empName: currentEmpName || currentEmpNo,
+        department: "",
+      });
+    }
+
     normalizedRows.forEach((row) => {
       if (!row.empNo) return;
       if (!employees.has(row.empNo)) {
@@ -1239,7 +1269,7 @@ export default function DTRMonitoring() {
         sensitivity: "base",
       }),
     );
-  }, [normalizedRows]);
+  }, [normalizedRows, currentEmpNo, currentEmpName]);
 
   const sourceOptions = useMemo(() => {
     const values = new Set();
@@ -1522,7 +1552,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
     setSearchText("");
     setSourceFilter("ALL");
     setEmployeeScope("MY");
-    setSelectedEmployeeNo("");
+    setSelectedEmployeeNo(currentEmpNo);
     setColumnFilters({});
     setShowColumnFilters(true);
     setGroupBy("none");
@@ -1550,7 +1580,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   const clearAllFilters = () => {
     setSearchText("");
     setSourceFilter("ALL");
-    setSelectedEmployeeNo("");
+    setSelectedEmployeeNo(employeeScope === "MY" ? currentEmpNo : "");
     setColumnFilters({});
     setCurrentPage(1);
   };
@@ -1558,7 +1588,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   const hasActiveFilters =
     Boolean(searchText.trim()) ||
     sourceFilter !== "ALL" ||
-    Boolean(selectedEmployeeNo) ||
+    (employeeScope === "EMPLOYEE" && Boolean(selectedEmployeeNo)) ||
     Object.values(columnFilters).some((value) => normalizeText(value) !== "");
 
   const setAllGroupsExpanded = (expanded) => {
@@ -2184,7 +2214,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             </div>
           </div>
 
-          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[10rem_10rem_12rem_minmax(18rem,1fr)_10rem]">
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-gray-600">Start Date</label>
               <DateInput value={startDate} onChange={(event) => setStartDate(event.target.value)} />
@@ -2202,31 +2232,30 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               <select
                 value={employeeScope}
                 onChange={(event) => {
-                  setEmployeeScope(event.target.value);
-                  setSelectedEmployeeNo("");
+                  if (!canUseEmployeeDtr) return;
+                  const nextScope = event.target.value;
+                  setEmployeeScope(nextScope);
+                  setSelectedEmployeeNo(nextScope === "MY" ? currentEmpNo : "");
                 }}
-                /* Temporarily enabled while HR flag validation is being checked. */
-                /* disabled={!isHrUser} */
+                disabled={!canUseEmployeeDtr}
                 className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
               >
                 <option value="MY">My DTR</option>
-                {/* Temporarily bypass HR flag validation for Employee DTR option. */}
                 <option value="EMPLOYEE">Employee DTR</option>
               </select>
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-gray-600">Employee Name</label>
               <select
-                value={selectedEmployeeNo}
+                value={employeeNameValue}
                 onChange={(event) => setSelectedEmployeeNo(event.target.value)}
-                /* Temporarily bypass HR flag validation; keep disabled until Employee DTR is selected. */
-                disabled={employeeScope !== "EMPLOYEE"}
+                disabled={!canUseEmployeeDtr || employeeScope !== "EMPLOYEE"}
                 className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
               >
                 <option value="">All Employees</option>
                 {employeeOptions.map((employee) => (
                   <option key={employee.empNo} value={employee.empNo}>
-                    {employee.empName} ({employee.empNo})
+                    ({employee.empNo}) - {employee.empName}
                   </option>
                 ))}
               </select>

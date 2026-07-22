@@ -1442,6 +1442,7 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
       if (!now) return null;
 
       const todayStr = now.format("YYYY-MM-DD");
+      const yesterdayStr = now.subtract(1, "day").format("YYYY-MM-DD");
       const today =
         nextRecords.find((record) => getNormalizedRecordDate(record) === todayStr) ||
         null;
@@ -1452,7 +1453,7 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
 
           return (
             recordDate &&
-            recordDate < todayStr &&
+            recordDate === yesterdayStr &&
             !isValueBlank(getDtrActualDateTimeValue(record, "timeIn")) &&
             isValueBlank(getDtrActualDateTimeValue(record, "timeOut"))
           );

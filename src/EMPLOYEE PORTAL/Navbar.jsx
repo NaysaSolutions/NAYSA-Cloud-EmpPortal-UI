@@ -36,22 +36,22 @@ const Navbar = () => {
   }, []);
 
   const isActive = (path) => location.pathname === path;
+  const isApprover = String(user?.approver) === "1";
+  const timekeepingChildren = [
+    { path: "/timekeeping", label: "Timekeeping (In and Out)" },
+    ...(isApprover
+      ? [{ path: "/timekeepingAdjApproval", label: "Timekeeping for Approval" }]
+      : []),
+    { path: "/dtrMonitoring", label: "DTR Monitoring" },
+  ];
 
   // Build nav items only if user is loaded
   const navItems = user ? [
     { path: "/dashboard", label: "Inquiry" },
-    ...(user.approver !== "1"
-      ? [{ path: "/timekeeping", label: "Timekeeping" }]
-      : [{
-        label: "Timekeeping",
-        children: [
-          { path: "/timekeeping", label: "Timekeeping (In and Out)" },
-          { path: "/timekeepingAdjApproval", label: "Timekeeping for Approval" },
-          { path: "/dtrMonitoring", label: "DTR Monitoring" }
-          // { path: "/offsetApproval", label: "Offset for Approval" }   // ✅ ADDED
-        ]
-      }]
-    ),
+    {
+      label: "Timekeeping",
+      children: timekeepingChildren
+    },
     { path: "/payslipviewer", label: "Payslip" }, // ← Insert here
     ...(user.approver !== "1"
       ? [{ path: "/overtime", label: "Overtime" }]
