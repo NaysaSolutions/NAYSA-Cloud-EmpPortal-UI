@@ -1157,7 +1157,7 @@ export default function DTRMonitoring() {
   const currentApprover = normalizeText(getUserApprover(resolvedUser));
   const isApprover = currentApprover === "1";
   const isHrUser = currentHrFlag === "Y";
-  const canUseEmployeeDtr = isApprover && isHrUser;
+  const canUseEmployeeDtr = isApprover || isHrUser;
 
   const [startDate, setStartDate] = useState(firstDayOfMonth());
   const [endDate, setEndDate] = useState(lastDayOfMonth());

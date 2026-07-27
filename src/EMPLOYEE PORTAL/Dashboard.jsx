@@ -1152,7 +1152,7 @@ const Dashboard = () => {
               {personalCalendarLists.upcomingHolidays.length > 0 ? (
                 <div className="space-y-2.5">
                   {personalCalendarLists.upcomingHolidays.map((holiday, index) => (
-                    <div key={`${holiday.date.format("YYYY-MM-DD")}-${holiday.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_55px_60px] items-center gap-2 text-[10px] sm:text-[10px]">
+                    <div key={`${holiday.date.format("YYYY-MM-DD")}-${holiday.name}-${index}`} className="grid grid-cols-[minmax(0,1fr)_55px_70px] items-center gap-2 text-[10px] sm:text-[10px]">
                       <span className="min-w-0 truncate font-medium text-gray-800">
                         {holiday.name}
                       </span>
@@ -1262,12 +1262,12 @@ const Dashboard = () => {
                       </td>
                       <td className="dashboard-td text-center">
                         {record.time_in
-                          ? dayjs(record.time_in).format("hh:mm A")
+                          ? dayjs(record.time_in).format("MM/DD/YYYY hh:mm A")
                           : "N/A"}
                       </td>
                       <td className="dashboard-td text-center">
                         {record.time_out
-                          ? dayjs(record.time_out).format("hh:mm A")
+                          ? dayjs(record.time_out).format("MM/DD/YYYY hh:mm A")
                           : "N/A"}
                       </td>
                       <td className="dashboard-td text-right">
@@ -1448,8 +1448,18 @@ const Dashboard = () => {
 
         {/* Overtime Applications */}
         <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
-          <h2 className="dashboard-text-header">My Overtime Applications</h2>
-          <span className="dashboard-text-span">Recent Transactions</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="dashboard-text-header">My Overtime Applications</h2>
+              <span className="dashboard-text-span">Recent Transactions</span>
+            </div>
+            <button
+              onClick={() => navigate("/overtime")}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              File OT
+            </button>
+          </div>
 
           {/* Responsive Table */}
           <div className="mt-2 overflow-x-auto flex-grow">
@@ -1515,8 +1525,18 @@ const Dashboard = () => {
         </div>
 
         <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
-          <h2 className="dashboard-text-header">My Leave Applications</h2>
-          <span className="dashboard-text-span">Recent Transactions</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="dashboard-text-header">My Leave Applications</h2>
+              <span className="dashboard-text-span">Recent Transactions</span>
+            </div>
+            <button
+              onClick={() => navigate("/leave")}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              File Leave
+            </button>
+          </div>
 
           {/* Responsive Table */}
           <div className="mt-2 overflow-x-auto flex-grow">
@@ -1583,10 +1603,20 @@ const Dashboard = () => {
         {/* Official Business Applications */}
 
         <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
-          <h2 className="dashboard-text-header">
-            My Official Business Applications
-          </h2>
-          <span className="dashboard-text-span">Recent Transactions</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="dashboard-text-header">
+                My Official Business Applications
+              </h2>
+              <span className="dashboard-text-span">Recent Transactions</span>
+            </div>
+            <button
+              onClick={() => navigate("/official-business")}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              File OB
+            </button>
+          </div>
 
           {/* Responsive Table */}
           <div className="mt-2 overflow-x-auto flex-grow">
@@ -1687,13 +1717,13 @@ const Dashboard = () => {
                           <td className="dashboard-td text-left">
                             {dayjs(ot.dateapplied).format("MM/DD/YYYY")}
                           </td>
-                          <td className="dashboard-td text-left">
+                          <td className="dashboard-td text-left text-nowrap">
                             {ot.ottype}
                           </td>
                           <td className="dashboard-td text-right">
                             {ot.duration}
                           </td>
-                          <td className="dashboard-td text-left">
+                          <td className="dashboard-td text-left text-wrap">
                             {ot.empname}
                           </td>
                           <td className="dashboard-td text-center">
@@ -1775,7 +1805,7 @@ const Dashboard = () => {
                           <td className="dashboard-td">{leave.dateapplied}</td>
                           <td className="dashboard-td">{leave.leavetype}</td>
                           <td className="dashboard-td">{leave.duration}</td>
-                          <td className="dashboard-td">{leave.empname}</td>
+                          <td className="dashboard-td text-wrap">{leave.empname}</td>
                           <td className="dashboard-td text-center">
                             <span
                               className={`inline-block w-[90px] px-2 py-1 rounded-full 
@@ -1857,7 +1887,7 @@ const Dashboard = () => {
                           <td className="dashboard-td text-right">
                             {ob.duration} hr(s)
                           </td>
-                          <td className="dashboard-td text-nowrap">
+                          <td className="dashboard-td text-wrap">
                             {ob.empname}
                           </td>
                           <td className="dashboard-td text-center">

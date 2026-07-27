@@ -107,15 +107,16 @@ if (result.success && Array.isArray(result.data) && result.data.length > 0) {
             className="w-[100px] h-[100px] rounded-full object-cover mb-4"
             />
 
-          <h2 className="text-[14px] font-semibold text-[#1c394e] break-words">
-            Welcome Back,<br /> {employeeInfo?.empName || "Employee"}!
+          <h2 className="text-[12px] font-semibold text-[#1c394e] break-words">
+            {/* Welcome Back,<br />  */}
+            {employeeInfo?.empName || "Employee"}
           </h2>
         </div>
 
         <hr className="my-2" />
 
         {/* Employee Details Section */}
-        <div className="text-[13px] text-gray-700 space-y-2">
+        <div className="text-[12px] text-gray-700 space-y-2">
           <DetailItem label="Employee No." value={employeeInfo?.empNo} />
           <DetailItem label="Branch" value={employeeInfo?.branchName} />
           <DetailItem label="Payroll Group" value={employeeInfo?.payrollGroup} />
