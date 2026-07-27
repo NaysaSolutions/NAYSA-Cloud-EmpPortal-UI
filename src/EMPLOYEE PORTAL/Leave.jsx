@@ -4,6 +4,7 @@ import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import axios from "axios";
+import { approvalUser, approvalDateTime, approvalRemarks, applicationFileDate, approvalLabels } from "./approvalDisplayUtils";
 
 
 const Leave = () => {
@@ -15,7 +16,6 @@ const Leave = () => {
   const [error, setError] = useState(null);
 
   // --- Form state ---
-  const [applicationDate, setApplicationDate] = useState("");
   const [selectedStartDate, setSelectedStartDate] = useState("");
   const [selectedEndDate, setSelectedEndDate] = useState("");
   const [leaveHours, setLeaveHours] = useState("");
@@ -133,19 +133,19 @@ useEffect(() => {
 
     const fetchLeaveApplications = async () => {
       try {
-        const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
         const response = await fetch(API_ENDPOINTS.fetchLeaveApplications, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             EMP_NO: user.empNo,
-            START_DATE: startDate,
-            END_DATE: "2030-01-01",
+            START_DATE: searchFields.leaveDateStart,
+            END_DATE: searchFields.leaveDateEnd,
           }),
         });
         const result = await response.json();
         if (result?.success && result?.data?.length > 0) {
           const parsed = JSON.parse(result.data[0].result) || [];
+          setError(null);
           setLeaveApplications(parsed);
           setFilteredApplications(parsed);
         } else {
@@ -160,12 +160,11 @@ useEffect(() => {
     };
 
     fetchLeaveApplications();
-  }, [user]);
+  }, [user?.empNo, searchFields.leaveDateStart, searchFields.leaveDateEnd]);
 
   // --- Init defaults ---
   useEffect(() => {
     const today = dayjs().format("YYYY-MM-DD");
-    setApplicationDate(today);
     setSelectedStartDate(today);
     setSelectedEndDate(today);
   }, []);
@@ -568,14 +567,13 @@ const clampRequestToBalance = (days, hours) => {
     setLeaveDays("");
 
     try {
-      const startDate = dayjs().subtract(1, "year").format("YYYY-MM-DD");
       const response = await fetch(API_ENDPOINTS.fetchLeaveApplications, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           EMP_NO: user.empNo,
-          START_DATE: startDate,
-          END_DATE: "2030-01-01",
+          START_DATE: searchFields.leaveDateStart,
+          END_DATE: searchFields.leaveDateEnd,
         }),
       });
       const refresh = await response.json();
@@ -611,8 +609,8 @@ const clampRequestToBalance = (days, hours) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         EMP_NO: user.empNo,
-        START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"),
-        END_DATE: "2099-12-31",
+        START_DATE: searchFields.leaveDateStart,
+        END_DATE: searchFields.leaveDateEnd,
       }),
     });
     const jj = await r.json();
@@ -782,19 +780,7 @@ const getLeaveStamp = (row) => {
 
         {/* Form Card */}
         <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-xl text-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-
-            <div className="min-w-0">
-              <label className="block font-semibold mb-1">Filing Date</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={applicationDate}
-                  onChange={(e) => setApplicationDate(e.target.value)}
-                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
-                />
-              </div>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
 
             {/* Leave Type */}
             <div className="flex flex-col">
@@ -849,7 +835,7 @@ const getLeaveStamp = (row) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
           
           <div className="flex flex-col">
-            <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance in Days</span>
+            <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance (days)</span>
             <input
               type="number"
               className="w-full p-2 border rounded-xl text-red-600 font-semibold"
@@ -861,7 +847,7 @@ const getLeaveStamp = (row) => {
             />
           </div>
           <div className="flex flex-col">
-            <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance in Hours</span>
+            <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance (hrs)</span>
             <input
               type="number"
               className="w-full p-2 border rounded-xl text-red-600 font-semibold"
@@ -1017,13 +1003,20 @@ const getLeaveStamp = (row) => {
                         </div>
                         <br />
                         <div>
-                          <div className="text-gray-500 font-semibold">Employee Remarks:</div>
+                          <div className="text-gray-500 font-semibold">Filing Date:</div>
+                          <div>{applicationFileDate(entry)}</div>
+                          <div className="text-gray-500 font-semibold mt-2">Employee Remarks:</div>
                           <div className="font-normal break-words text-black">{entry.leaveRemarks || "N/A"}</div>
                         </div>
                         <br />
                         <div>
-                          <div className="text-gray-500 font-semibold">Approver's Remarks:</div>
-                          <div className="font-normal break-words text-blue-700">{entry.appRemarks || "N/A"}</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.leaveStatus).actor}:</div>
+                          <div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.leaveStatus).date}:</div>
+                          <div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div>
+                          <div className="text-gray-500 font-semibold mt-2">Approver's Remarks:</div>
+                          <div className="font-normal break-words text-blue-700">{approvalRemarks(entry)}</div>
+                          
                         </div>
                       </div>
                       {/* Existing card body … */}
@@ -1072,11 +1065,17 @@ const getLeaveStamp = (row) => {
                       <div className="mt-3 space-y-2">
                         <div>
                           <div className="text-gray-500 font-semibold">Remarks</div>
+                          <div className="text-gray-500 font-semibold">Filing Date</div>
+                          <div>{applicationFileDate(entry)}</div>
                           <div>{entry.leaveRemarks || "N/A"}</div>
                         </div>
                         <div>
                           <div className="text-gray-500 font-semibold">Approver's Remarks</div>
-                          <div className="text-blue-800">{entry.appRemarks || "N/A"}</div>
+                          <div className="font-normal break-words text-blue-700">{approvalRemarks(entry)}</div>
+                          <div className="text-gray-500 font-semibold">{approvalLabels(entry.leaveStatus).actor}</div>
+                          <div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div>
+                          <div className="text-gray-500 font-semibold">{approvalLabels(entry.leaveStatus).date}</div>
+                          <div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div>
                         </div>
                       </div>
                       {/* Inside <details> content */}
@@ -1238,11 +1237,14 @@ const getLeaveStamp = (row) => {
                           <td className="global-td text-center whitespace-nowrap">{dayjs(entry.leaveEnd).format("MM/DD/YYYY")}</td>
                           <td className="global-td text-right whitespace-nowrap">{entry.leaveDays} day(s)</td>
                           <td className="global-td text-left whitespace-nowrap">{entry.leaveDesc}</td>
-                          <td className="global-td text-left max-w-[240px] truncate" title={entry.leaveRemarks || "N/A"}>
-                            {entry.leaveRemarks || "N/A"}
+                          <td className="global-td text-left max-w-[240px]">
+                            <div className="truncate">{entry.leaveRemarks || "N/A"}</div>
+                            <div className="text-xs text-slate-600">Filing Date: {applicationFileDate(entry)}</div>
                           </td>
-                          <td className="global-td text-left max-w-[240px] truncate" title={entry.appRemarks || "N/A"}>
-                            {entry.appRemarks || "N/A"}
+                          <td className="global-td text-left max-w-[240px]" title={entry.appRemarks || "N/A"}>
+                            <div className="truncate">{entry.appRemarks || "N/A"}</div>
+                            <div className="mt-1 text-xs text-slate-600">{approvalLabels(entry.leaveStatus).actor}: {approvalUser(entry)}</div>
+                            <div className="text-xs text-slate-600">{approvalLabels(entry.leaveStatus).date}: {approvalDateTime(entry)}</div>
                           </td>
                           <td className="global-td text-center whitespace-nowrap">
                             <span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-xl ${statusClass}`}>

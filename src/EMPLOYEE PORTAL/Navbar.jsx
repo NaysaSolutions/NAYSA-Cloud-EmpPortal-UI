@@ -39,6 +39,7 @@ const Navbar = () => {
   const isApprover = String(user?.approver) === "1";
   const timekeepingChildren = [
     { path: "/timekeeping", label: "Timekeeping (In and Out)" },
+    { path: "/timekeepingAdj", label: "Timekeeping (Adjustment)" },
     ...(isApprover
       ? [{ path: "/timekeepingAdjApproval", label: "Timekeeping for Approval" }]
       : []),
@@ -198,9 +199,9 @@ const Navbar = () => {
             {navItems.map((item, index) => (
               <div key={index}>
                 {item.children ? (
-                  <div className="mb-2">
+                  <div className="mb-0">
                     <p className="font-semibold text-blue-800">{item.label}</p>
-                    <div className="ml-4">
+                    <div className="ml-8">
                       {item.children.map((child, idx) => (
                         <span
                           key={idx}
@@ -208,7 +209,7 @@ const Navbar = () => {
                             navigate(child.path);
                             setIsMobileMenuOpen(false);
                           }}
-                          className={`block py-1 cursor-pointer ${isActive(child.path) ? "text-blue-900 font-bold" : "text-gray-700"
+                          className={`block py-1.5 cursor-pointer ${isActive(child.path) ? "text-blue-900 font-bold" : "text-gray-700"
                             }`}
                         >
                           {child.label}

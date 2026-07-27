@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { FaCalendarAlt } from "react-icons/fa";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
+import { approvalUser, approvalDateTime, approvalRemarks, applicationFileDate, approvalLabels } from "./approvalDisplayUtils";
 
 /**
  * Official Business Application — with Cancel Pending
@@ -80,6 +81,7 @@ const OfficialBusiness = () => {
     obHrs: row.obHrs ?? row.OB_HRS ?? row.ob_hrs ?? row.hours ?? 0,
     obRemarks: row.obRemarks ?? row.OB_REMARKS ?? row.remarks ?? "",
     appRemarks: row.appRemarks ?? row.APP_REMARKS ?? row.approverRemarks ?? "",
+    fileDate: row.fileDate ?? row.filedate ?? row.FILE_DATE ?? row.file_date ?? null,
     obStatus: (row.obStatus ?? row.OB_STATUS ?? row.status ?? "").toString().trim(),
     // stamp variations we may receive from backend
     obStamp: row.obStamp || row.OB_STAMP || row.ob_stamp || row.stamp || row.guid || null,
@@ -165,8 +167,8 @@ const OfficialBusiness = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           EMP_NO: user.empNo,
-          START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"),
-          END_DATE: "2030-01-01",
+          START_DATE: searchFields.obDateStart,
+          END_DATE: searchFields.obDateEnd,
         }),
       });
       const result = await response.json();
@@ -174,6 +176,7 @@ const OfficialBusiness = () => {
       if (result?.success && Array.isArray(result.data) && result.data[0]?.result) {
         const parsed = JSON.parse(result.data[0].result) ?? [];
         const normalized = parsed.map(normalize);
+        setError(null);
         setOBApplications(normalized);
         setFilteredApplications(normalized);
       } else {
@@ -201,7 +204,7 @@ const OfficialBusiness = () => {
       mq.removeEventListener("change", setByScreen);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user?.empNo, searchFields.obDateStart, searchFields.obDateEnd]);
 
   // Apply filters whenever searchFields or data changes
   useEffect(() => {
@@ -694,13 +697,37 @@ const handleDateChange = (field, value) => {
                         <div className="font-semibold">{toDispDate(entry.obDate)}</div>
                         <span className={`inline-flex justify-center items-center text-sm w-28 py-1 rounded-xl ${statusClass}`}>{entry.obStatus || "N/A"}</span>
                       </div>
+
                       <div className="space-y-1 text-[12px] md:text-sm">
-                        <div className="flex justify-between"><span className="text-gray-500 font-semibold">Start</span><span className="font-medium">{toDispDateTime(entry.obStart)}</span></div>
-                        <div className="flex justify-between"><span className="text-gray-500 font-semibold">End</span><span className="font-medium">{toDispDateTime(entry.obEnd)}</span></div>
-                        <div className="flex justify-between"><span className="text-gray-500 font-semibold">Duration</span><span className="font-medium">{entry.obHrs} hr(s)</span></div>
-                        <div className="mt-2"><div className="text-gray-500 font-semibold">Employee Remarks:</div><div className="font-normal break-words text-black">{entry.obRemarks || "N/A"}</div></div>
-                        <div className="mt-2"><div className="text-gray-500 font-semibold">Approver's Remarks:</div><div className="font-normal break-words text-blue-700">{entry.appRemarks || "N/A"}</div></div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-semibold">OB Hours</span>
+                          <span className="font-medium">{entry.obHrs} hr(s)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-semibold">OB Date</span>
+                          <span className="font-medium">{toDispDate(entry.obDate)}</span>
+                        </div>
+                        <div className="flex justify-between"><span className="text-gray-500 font-semibold">Filing Date</span><span>{applicationFileDate(entry)}</span></div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-semibold">OB Time</span>
+                          <span className="font-medium">{toDispDateTime(entry.obStart)} - {toDispDateTime(entry.obEnd)}</span>
+                        </div>
+                        <br />
+                        <div>
+                          <div className="text-gray-500 font-semibold">Employee Remarks:</div>
+                          <div className="font-normal break-words text-black">{entry.obRemarks || "N/A"}</div>
+                        </div>
+                        <br />
+                        <div>
+                          <div className="text-gray-500 font-semibold">Approver's Remarks:</div>
+                          <div className="font-normal break-words text-blue-700">{approvalRemarks(entry)}</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.obStatus).actor}:</div>
+                          <div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.obStatus).date}:</div>
+                          <div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div>
+                        </div>
                       </div>
+
                       {entry?.obStatus === "Pending" && (
                         <div className="mt-3 text-right">
                           <button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelOB(entry)}>Cancel</button>
@@ -728,8 +755,11 @@ const handleDateChange = (field, value) => {
                         <span className={`inline-flex justify-center items-center w-28 py-1 rounded-xl ${statusClass}`}>{entry.obStatus || "N/A"}</span>
                       </summary>
                       <div className="mt-3 space-y-2">
+                        <div><div className="text-gray-500 font-semibold">Filing Date</div><div>{applicationFileDate(entry)}</div></div>
                         <div><div className="text-gray-500 font-semibold">Remarks</div><div>{entry.obRemarks || "N/A"}</div></div>
-                        <div><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="text-blue-800">{entry.appRemarks || "N/A"}</div></div>
+                        <div><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="font-normal break-words text-blue-700">{approvalRemarks(entry)}</div></div>
+                        <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.obStatus).actor}</div><div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div></div>
+                        <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.obStatus).date}</div><div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div></div>
                         {entry?.obStatus === "Pending" && (
                           <div className="pt-2 text-right"><button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelOB(entry)}>Cancel</button></div>
                         )}
@@ -756,6 +786,8 @@ const handleDateChange = (field, value) => {
                       { key: "obHrs", label: "Duration" },
                       { key: "obRemarks", label: "Remarks" },
                       { key: "appRemarks", label: "Approver's Remarks" },
+                      { key: "appUser", label: "Action By" },
+                      { key: "appDateTime", label: "Action Date" },
                       { key: "obStatus", label: "Status" },
                       { key: "actions", label: "Actions" },
                     ].map(({ key, label }) => (
@@ -809,6 +841,8 @@ const handleDateChange = (field, value) => {
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
                       <input type="text" value={searchFields.appRemarks} onChange={(e) => handleSearchChange(e, "appRemarks")} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800" placeholder="Filter..." />
                     </td>
+                    <td className="px-1 py-2 bg-white whitespace-nowrap"><input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100" placeholder="N/A..." disabled readonly /></td>
+                    <td className="px-1 py-2 bg-white whitespace-nowrap"><input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100" placeholder="N/A..." disabled readonly /></td>
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
                       <select value={searchFields.obStatus} onChange={(e) => handleSearchChange(e, "obStatus")} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-white">
                         <option value="">All</option>
@@ -832,8 +866,10 @@ const handleDateChange = (field, value) => {
                           <td className="global-td whitespace-nowrap text-left">{toDispDateTime(entry.obStart)}</td>
                           <td className="global-td whitespace-nowrap text-left">{toDispDateTime(entry.obEnd)}</td>
                           <td className="global-td whitespace-nowrap text-right">{entry.obHrs} hr(s)</td>
-                          <td className="global-td text-left max-w-[190px] truncate" title={entry.obRemarks || "N/A"}>{entry.obRemarks || "N/A"}</td>
+                          <td className="global-td text-left max-w-[190px]"><div className="truncate">{entry.obRemarks || "N/A"}</div><div className="text-xs text-slate-600">Filing Date: {applicationFileDate(entry)}</div></td>
                           <td className="global-td text-left max-w-[190px] truncate" title={entry.appRemarks || "N/A"}>{entry.appRemarks || "N/A"}</td>
+                          <td className="global-td text-left whitespace-nowrap"><span className="text-xs text-slate-600">{approvalLabels(entry.obStatus).actor}: </span>{approvalUser(entry)}</td>
+                          <td className="global-td text-left whitespace-nowrap"><span className="text-xs text-slate-600">{approvalLabels(entry.obStatus).date}: </span>{approvalDateTime(entry)}</td>
                           <td className="global-td text-center whitespace-nowrap"><span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-xl ${badgeClass}`}>{entry.obStatus || "N/A"}</span></td>
                           <td className="global-td text-center whitespace-nowrap">
                             {entry?.obStatus === "Pending" ? (

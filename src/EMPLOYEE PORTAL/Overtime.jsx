@@ -3,6 +3,7 @@ import dayjs from "dayjs";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
+import { approvalUser, approvalDateTime, approvalRemarks, applicationFileDate, approvalLabels } from "./approvalDisplayUtils";
 
 const overtimeTypeMap = {
   REG: "Regular Overtime",
@@ -19,7 +20,6 @@ const OvertimeApplication = () => {
   const [error, setError] = useState(null);
 
   // form
-  const [applicationDate, setApplicationDate] = useState("");
   const [otDate, setOTDate] = useState("");
   const [otDay, setOtDay] = useState("");
   const [overtimeHours, setOvertimeHours] = useState("");
@@ -74,13 +74,14 @@ const OvertimeApplication = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             EMP_NO: user.empNo,
-            START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"),
-            END_DATE: "2030-01-01",
+            START_DATE: searchFields.otDateStart,
+            END_DATE: searchFields.otDateEnd,
           }),
         });
         const j = await res.json();
         if (j?.success && j.data?.length) {
           const rows = JSON.parse(j.data[0].result || "[]");
+          setError(null);
           setOvertimeApplications(rows);
           setFilteredApplications(rows);
         } else {
@@ -94,7 +95,7 @@ const OvertimeApplication = () => {
       }
     };
     run();
-  }, [user?.empNo]);
+  }, [user?.empNo, searchFields.otDateStart, searchFields.otDateEnd]);
 
   
   const refreshOvertimeList = async () => {
@@ -103,8 +104,8 @@ const OvertimeApplication = () => {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       EMP_NO: user.empNo,
-      START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"),
-      END_DATE: "2099-12-31",
+      START_DATE: searchFields.otDateStart,
+      END_DATE: searchFields.otDateEnd,
     }),
   });
   const jj = await r.json();
@@ -120,7 +121,6 @@ const OvertimeApplication = () => {
   // form defaults
   useEffect(() => {
     const today = dayjs().format("YYYY-MM-DD");
-    setApplicationDate(today);
     setOTDate(today);
     setOtType("REG");
   }, []);
@@ -337,8 +337,8 @@ const handleSubmit = async () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         EMP_NO: user.empNo,
-        START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"),
-        END_DATE: "2099-12-31"
+        START_DATE: searchFields.otDateStart,
+        END_DATE: searchFields.otDateEnd
       })
     });
 
@@ -434,17 +434,6 @@ const cancelApplication = async (entry) => {
         <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-xl text-sm">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <div className="min-w-0">
-              <label className="block font-semibold mb-1">Filing Date</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={applicationDate}
-                  onChange={(e) => setApplicationDate(e.target.value)}
-                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
-                />
-              </div>
-            </div>
-            <div className="min-w-0">
               <label className="block font-semibold mb-1">Date of Overtime</label>
               <div className="relative">
                 <input
@@ -536,12 +525,35 @@ const cancelApplication = async (entry) => {
                       <div className="font-semibold text-sm md:text-base">{dayjs(entry.otDate).format("MM/DD/YYYY")}</div>
                       <span className={`inline-flex justify-center items-center text-sm w-28 py-1 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span>
                     </div>
-                    <div className="space-y-1 text-[12px] md:text-sm">
-                      <div className="flex justify-between"><span className="text-gray-500 font-semibold">Hours</span><span className="font-medium">{entry.otHrs} hr(s)</span></div>
-                      <div className="flex justify-between"><span className="text-gray-500 font-semibold">Type</span><span className="font-medium">{getOvertimeTypeLabel(entry.otType)}</span></div>
-                      <div className="mt-2"><div className="text-gray-500 font-semibold">Employee Remarks:</div><div className="font-normal break-words text-black">{entry.otRemarks || "N/A"}</div></div>
-                      <div className="mt-2"><div className="text-gray-500 font-semibold">Approver's Remarks:</div><div className="font-normal break-words text-blue-700">{entry.appRemarks || "N/A"}</div></div>
-                    </div>
+
+                      <div className="space-y-1 text-[12px] md:text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-semibold">OT Hours</span>
+                          <span className="font-medium">{entry.otHrs} hr(s)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-semibold">OT Type</span>
+                          <span className="font-medium">{getOvertimeTypeLabel(entry.otType)}</span>
+                        </div>
+                        <br />
+                        <div>
+                          <div className="text-gray-500 font-semibold">Filing Date:</div>
+                          <div>{applicationFileDate(entry)}</div>
+                          <div className="text-gray-500 font-semibold mt-2">Employee Remarks:</div>
+                          <div className="font-normal break-words text-black">{entry.otRemarks || "N/A"}</div>
+                        </div>
+                        <br />
+                        <div>
+                          <div className="text-gray-500 font-semibold">Approver's Remarks:</div>
+                          <div className="font-normal break-words text-blue-700">{approvalRemarks(entry)}</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.otStatus).actor}:</div>
+                          <div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.otStatus).date}:</div>
+                          <div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div>
+                        </div>
+                      </div>
+
+
                     {entry?.otStatus === "Pending" && (
                       <div className="mt-3 text-right">
                         <button className="px-3 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button>
@@ -565,8 +577,11 @@ const cancelApplication = async (entry) => {
                       <span className={`inline-flex justify-center items-center w-28 py-1 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span>
                     </summary>
                     <div className="mt-3 space-y-2">
+                      <div><div className="text-gray-500 font-semibold">Filing Date</div><div>{applicationFileDate(entry)}</div></div>
                       <div><div className="text-gray-500 font-semibold">Remarks</div><div>{entry.otRemarks || "N/A"}</div></div>
-                      <div><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="text-blue-800">{entry.appRemarks || "N/A"}</div></div>
+                      <div><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="font-normal break-words text-blue-700">{approvalRemarks(entry)}</div></div>
+                      <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.otStatus).actor}</div><div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div></div>
+                      <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.otStatus).date}</div><div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div></div>
                       {entry?.otStatus === "Pending" && (
                         <div className="pt-2 text-right"><button className="px-3 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button></div>
                       )}
@@ -622,8 +637,8 @@ const cancelApplication = async (entry) => {
                         <td className="global-td whitespace-nowrap">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
                         <td className="global-td whitespace-nowrap text-right">{entry.otHrs} hr(s)</td>
                         <td className="global-td whitespace-nowrap text-left">{getOvertimeTypeLabel(entry.otType)}</td>
-                        <td className="global-td text-left max-w-[240px] truncate" title={entry.otRemarks || "N/A"}>{entry.otRemarks || "N/A"}</td>
-                        <td className="global-td text-left max-w-[240px] truncate" title={entry.appRemarks || "N/A"}>{entry.appRemarks || "N/A"}</td>
+                        <td className="global-td text-left max-w-[240px]"><div className="truncate">{entry.otRemarks || "N/A"}</div><div className="text-xs text-slate-600">Filing Date: {applicationFileDate(entry)}</div></td>
+                        <td className="global-td text-left max-w-[240px]" title={entry.appRemarks || "N/A"}><div className="truncate">{entry.appRemarks || "N/A"}</div><div className="text-xs text-slate-600">{approvalLabels(entry.otStatus).actor}: {approvalUser(entry)}</div><div className="text-xs text-slate-600">{approvalLabels(entry.otStatus).date}: {approvalDateTime(entry)}</div></td>
                         <td className="global-td text-center whitespace-nowrap"><span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span></td>
                         <td className="global-td text-center whitespace-nowrap">
                           {entry?.otStatus === "Pending" ? (

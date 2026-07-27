@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
+import { approvalUser, approvalDateTime, applicationFileDate, approvalLabels } from "./approvalDisplayUtils";
 
 
 const TimekeepingAdjustment = () => {
@@ -47,20 +48,21 @@ const TimekeepingAdjustment = () => {
     try {
       const body = JSON.stringify({
         EMP_NO: user.empNo,
-        START_DATE: dayjs().subtract(1, "year").format("YYYY-MM-DD"),
-        END_DATE: dayjs().add(1, "year").format("YYYY-MM-DD"),
+        START_DATE: filters.dateStart,
+        END_DATE: filters.dateEnd,
       });
       const res = await fetch(API_ENDPOINTS.getDTRAppHistory, { method: "POST", headers: { "Content-Type": "application/json" }, body });
       const j = await res.json();
       if (j?.success && Array.isArray(j.data) && j.data[0]?.result) {
         const rows = JSON.parse(j.data[0].result);
+        setError(null);
         setData(rows);
         setFiltered(rows);
       } else { setData([]); setFiltered([]); }
     } catch (e) { setError("Failed to load history."); console.error(e); }
   };
 
-  useEffect(() => { if (user?.empNo) fetchHistory(); }, [user?.empNo]);
+  useEffect(() => { if (user?.empNo) fetchHistory(); }, [user?.empNo, filters.dateStart, filters.dateEnd]);
 
   // Auto update actualDateTime when shiftDate changes
   // useEffect(() => {
@@ -525,8 +527,11 @@ dtrType: ${dtrType}
                   <div className="text-sm space-y-1">
                     <div className="flex justify-between"><span className="text-gray-500 font-semibold">Type</span><span className="font-medium">{r.dtrType}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-semibold">Actual</span><span className="font-medium">{dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm a")}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-semibold">Filing Date</span><span>{applicationFileDate(r)}</span></div>
                     <div className="mt-2"><div className="text-gray-500 font-semibold">Employee Remarks</div><div className="break-words">{r.dtrRemarks || "N/A"}</div></div>
                     <div className="mt-2"><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="text-blue-700">{r.appRemarks || "N/A"}</div></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).actor}</span><span>{approvalUser(r)}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).date}</span><span>{approvalDateTime(r)}</span></div>
                   </div>
                   {r?.dtrStatus === "Pending" && (
                     <div className="mt-3 text-right"><button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(r)}>Cancel</button></div>
@@ -549,8 +554,11 @@ dtrType: ${dtrType}
                     <span className={`inline-flex justify-center items-center w-28 py-1 rounded-lg ${badge}`}>{r.dtrStatus || "N/A"}</span>
                   </summary>
                   <div className="mt-3 space-y-2">
+                    <div><div className="text-gray-500 font-semibold">Filing Date</div><div>{applicationFileDate(r)}</div></div>
                     <div><div className="text-gray-500 font-semibold">Remarks</div><div>{r.dtrRemarks || "N/A"}</div></div>
                     <div><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="text-blue-800">{r.appRemarks || "N/A"}</div></div>
+                    <div><div className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).actor}</div><div>{approvalUser(r)}</div></div>
+                    <div><div className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).date}</div><div>{approvalDateTime(r)}</div></div>
                     {r?.dtrStatus === "Pending" && (<div className="pt-2 text-right"><button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(r)}>Cancel</button></div>)}
                   </div>
                 </details>
@@ -587,8 +595,8 @@ dtrType: ${dtrType}
                       <td className="global-td whitespace-nowrap">{dayjs(r.dtrDate).format("MM/DD/YYYY")}</td>
                       <td className="global-td whitespace-nowrap">{r.dtrType}</td>
                       <td className="global-td whitespace-nowrap">{dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm a")}</td>
-                      <td className="global-td text-left max-w-[240px] truncate" title={r.dtrRemarks || "N/A"}>{r.dtrRemarks || "N/A"}</td>
-                      <td className="global-td text-left max-w-[240px] truncate" title={r.appRemarks || "N/A"}>{r.appRemarks || "N/A"}</td>
+                      <td className="global-td text-left max-w-[240px]"><div className="truncate">{r.dtrRemarks || "N/A"}</div><div className="text-xs text-slate-600">Filing Date: {applicationFileDate(r)}</div></td>
+                      <td className="global-td text-left max-w-[240px]" title={r.appRemarks || "N/A"}><div className="truncate">{r.appRemarks || "N/A"}</div><div className="text-xs text-slate-600">{approvalLabels(r.dtrStatus).actor}: {approvalUser(r)}</div><div className="text-xs text-slate-600">{approvalLabels(r.dtrStatus).date}: {approvalDateTime(r)}</div></td>
                       <td className="global-td text-center whitespace-nowrap"><span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-lg ${badge}`}>{r.dtrStatus || "N/A"}</span></td>
                       <td className="global-td text-center whitespace-nowrap">{r?.dtrStatus === "Pending" ? (<button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(r)}>Cancel</button>) : ("—")}</td>
                     </tr>
