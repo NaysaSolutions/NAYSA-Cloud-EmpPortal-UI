@@ -149,13 +149,13 @@ const LeaveApproval = () => {
   const runBatch = async (rows, indexes, action) => {
     if (!indexes.length) return;
     const label = action === "cancel" ? "cancel" : action === "approve" ? "approve" : "disapprove";
-    const confirm = await Swal.fire({ title: `${label[0].toUpperCase()}${label.slice(1)} selected?`, text: `${label} ${indexes.length} leave record(s)?`, icon: "question", showCancelButton: true, confirmButtonColor: action === "approve" ? "#2563eb" : "#dc2626" });
+    const confirm = await Swal.fire({ title: `${label[0].toUpperCase()}${label.slice(1)} selected?`, text: `${label} ${indexes.length} leave record(s)?`, input: "textarea", inputLabel: "Approver's Remarks (optional)", inputPlaceholder: "Enter remarks...", inputAttributes: { "aria-label": "Approver's Remarks" }, icon: "question", showCancelButton: true, confirmButtonColor: action === "approve" ? "#2563eb" : "#dc2626" });
     if (!confirm.isConfirmed) return;
     try {
       for (const index of indexes) {
         const row = rows[index];
-        if (action === "cancel") await cancelApprovedRecord({ type: "leave", row });
-        else await sendApprovalDecision({ type: "leave", row, appStat: action === "approve" ? 1 : 0, userEmpNo: user.empNo });
+        if (action === "cancel") await cancelApprovedRecord({ type: "leave", row, appRemarks: confirm.value?.trim() || "" });
+        else await sendApprovalDecision({ type: "leave", row, appStat: action === "approve" ? 1 : 0, userEmpNo: user.empNo, appRemarks: confirm.value?.trim() || "" });
       }
       setSelectedPending([]); setSelectedHistory([]); await fetchLeaveApprovals();
       Swal.fire({ title: "Success", text: `Selected records were ${label}d.`, icon: "success" });
@@ -268,7 +268,7 @@ const LeaveApproval = () => {
 
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Labeled label="Remarks">
-                      <div>{leave.leaveRemarks || "N/A"}</div>
+                      <div>{leave.leaveRemarks}</div>
                     </Labeled>
                   </div>
                 </details>
@@ -463,16 +463,16 @@ const LeaveApproval = () => {
                       </td>
                       <td className="global-td-approval text-left">
                         <div className="text-xs text-slate-600 font-semibold">Filing Date: {applicationFileDate(rec)}</div>
-                        <div>{rec.leaveRemarks || "N/A"}</div>
+                        <div>{rec.leaveRemarks}</div>
                       </td>
 
                       <td className="global-td-approval text-left">
-                        <div className="text-xs text-slate-600 font-semibold">Approver's Remarks:</div>
-                        <div className="text-xs text-slate-600">{approvalRemarks(rec) || "N/A"}</div>
-                        <div className="text-xs text-slate-600 font-semibold">{approvalLabels(rec.obstatus).actor}:</div>
-                        <div className="text-xs text-slate-600">{approvalUser(rec) || "N/A"}</div>
-                        <div className="text-xs text-slate-600 font-semibold">{approvalLabels(rec.obstatus).date}:</div>
-                        <div className="text-xs text-slate-600">{approvalDateTime(rec) || "N/A"}</div>
+                        <div className="text-xs text-slate-600 font-semibold">{approvalLabels(rec.obstatus).remarks}</div>
+                        <div className="text-xs text-slate-600">{approvalRemarks(rec)}</div>
+                        <div className="text-xs text-slate-600 font-semibold">{approvalLabels(rec.obstatus).actor}</div>
+                        <div className="text-xs text-slate-600">{approvalUser(rec)}</div>
+                        <div className="text-xs text-slate-600 font-semibold">{approvalLabels(rec.obstatus).date}</div>
+                        <div className="text-xs text-slate-600">{approvalDateTime(rec)}</div>
                       </td>
 
                       <td className="global-td-approval text-center">

@@ -143,13 +143,13 @@ const OvertimeApproval = () => {
   const runBatch = async (rows, indexes, action) => {
     if (!indexes.length) return;
     const label = action === "cancel" ? "cancel" : action === "approve" ? "approve" : "disapprove";
-    const confirm = await Swal.fire({ title: `${label[0].toUpperCase()}${label.slice(1)} selected?`, text: `${label} ${indexes.length} overtime record(s)?`, icon: "question", showCancelButton: true, confirmButtonColor: action === "disapprove" || action === "cancel" ? "#dc2626" : "#2563eb" });
+    const confirm = await Swal.fire({ title: `${label[0].toUpperCase()}${label.slice(1)} selected?`, text: `${label} ${indexes.length} overtime record(s)?`, input: "textarea", inputLabel: "Approver's Remarks (optional)", inputPlaceholder: "Enter remarks...", inputAttributes: { "aria-label": "Approver's Remarks" }, icon: "question", showCancelButton: true, confirmButtonColor: action === "disapprove" || action === "cancel" ? "#dc2626" : "#2563eb" });
     if (!confirm.isConfirmed) return;
     try {
       for (const index of indexes) {
         const row = rows[index];
-        if (action === "cancel") await cancelApprovedRecord({ type: "ot", row });
-        else await sendApprovalDecision({ type: "ot", row, appStat: action === "approve" ? 1 : 0, userEmpNo: user.empNo });
+        if (action === "cancel") await cancelApprovedRecord({ type: "ot", row, appRemarks: confirm.value?.trim() || "" });
+        else await sendApprovalDecision({ type: "ot", row, appStat: action === "approve" ? 1 : 0, userEmpNo: user.empNo, appRemarks: confirm.value?.trim() || "" });
       }
       setSelectedPending([]); setSelectedHistory([]);
       await fetchOvertimeApprovals();

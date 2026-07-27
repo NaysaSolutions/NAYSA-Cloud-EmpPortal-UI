@@ -6,7 +6,7 @@ import OBReview from "./OBReview.jsx";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import Swal from "sweetalert2";
 import { cancelApprovedRecord, sendApprovalDecision } from "./approvalBatchUtils";
-import { applicationFileDate, approvalRemarks, approvalUser, approvalDateTime, approvalLabels } from "./approvalDisplayUtils";
+import { applicationFileDate, approvalRemarks, approvalLabels } from "./approvalDisplayUtils";
 
 // ---- Shared UI helpers (same as OT/Leave) -----------------------------------
 const badgeClass = (status) => {
@@ -62,6 +62,12 @@ const FilterIcon = (props) => (
   </svg>
 );
 
+const obApprovalUser = (row) => row?.appUser || row?.appuser || row?.APP_USER || "N/A";
+const obApprovalDateTime = (row) => {
+  const value = row?.appDateTime || row?.appDatetime || row?.APP_DATETIME || row?.app_date_time;
+  return value ? dayjs(value).format("MM/DD/YYYY hh:mm A") : "N/A";
+};
+
 // -----------------------------------------------------------------------------
 
 const OfficialBusinessApproval = () => {
@@ -114,9 +120,24 @@ const OfficialBusinessApproval = () => {
       const data = await response.json();
       if (data?.success && Array.isArray(data.data) && data.data.length > 0) {
         const parsed = JSON.parse(data.data[0].result || "[]");
+        const normalized = parsed.map((row) => ({
+          ...row,
+          obdate: row.obdate ?? row.obDate ?? row.OB_DATE,
+          obstart: row.obstart ?? row.obStart ?? row.OB_START,
+          obend: row.obend ?? row.obEnd ?? row.OB_END,
+          obstatus: row.obstatus ?? row.obStatus ?? row.OB_STATUS,
+          obStamp: row.obStamp ?? row.ob_stamp ?? row.OB_STAMP,
+          obRemarks: row.obRemarks ?? row.obremarks ?? row.OB_REMARKS,
+          empname: row.empname ?? row.empName ?? row.EMP_NAME,
+          duration: row.duration ?? row.obHrs ?? row.App_hrs ?? row.appHrs,
+          fileDate: row.fileDate ?? row.filedate ?? row.FILE_DATE ?? row.file_date,
+          appRemarks: row.appRemarks ?? row.appremarks ?? row.APP_REMARKS,
+          appUser: row.appUser ?? row.appuser ?? row.APP_USER,
+          appDateTime: row.appDateTime ?? row.appDatetime ?? row.APP_DATETIME ?? row.app_date_time,
+        }));
 
         const seen = new Set();
-        const unique = parsed.filter((r) => {
+        const unique = normalized.filter((r) => {
           const key = r.obStamp || `${r.empname}-${r.obstart}-${r.obend}`;
           if (seen.has(key)) return false;
           seen.add(key);
@@ -156,13 +177,13 @@ const OfficialBusinessApproval = () => {
   const runBatch = async (rows, indexes, action) => {
     if (!indexes.length) return;
     const label = action === "cancel" ? "cancel" : action === "approve" ? "approve" : "disapprove";
-    const confirm = await Swal.fire({ title: `${label[0].toUpperCase()}${label.slice(1)} selected?`, text: `${label} ${indexes.length} official business record(s)?`, icon: "question", showCancelButton: true, confirmButtonColor: action === "approve" ? "#2563eb" : "#dc2626" });
+    const confirm = await Swal.fire({ title: `${label[0].toUpperCase()}${label.slice(1)} selected?`, text: `${label} ${indexes.length} official business record(s)?`, input: "textarea", inputLabel: "Approver's Remarks (optional)", inputPlaceholder: "Enter remarks...", inputAttributes: { "aria-label": "Approver's Remarks" }, icon: "question", showCancelButton: true, confirmButtonColor: action === "approve" ? "#2563eb" : "#dc2626" });
     if (!confirm.isConfirmed) return;
     try {
       for (const index of indexes) {
         const row = rows[index];
-        if (action === "cancel") await cancelApprovedRecord({ type: "ob", row });
-        else await sendApprovalDecision({ type: "ob", row, appStat: action === "approve" ? 1 : 0, userEmpNo: user.empNo });
+        if (action === "cancel") await cancelApprovedRecord({ type: "ob", row, appRemarks: confirm.value?.trim() || "" });
+        else await sendApprovalDecision({ type: "ob", row, appStat: action === "approve" ? 1 : 0, userEmpNo: user.empNo, appRemarks: confirm.value?.trim() || "" });
       }
       setSelectedPending([]); setSelectedHistory([]); await fetchOBApprovals();
       Swal.fire({ title: "Success", text: `Selected records were ${label}d.`, icon: "success" });
@@ -493,8 +514,8 @@ const OfficialBusinessApproval = () => {
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Labeled label="Employee Remarks">{rec.obRemarks || "N/A"}</Labeled>
                     <Labeled label="Approver's Remarks">{approvalRemarks(rec) || "N/A"}</Labeled>
-                    <Labeled label={approvalLabels(rec.obstatus).actor}>{approvalUser(rec) || "N/A"}</Labeled>
-                    <Labeled label={approvalLabels(rec.obstatus).date}>{approvalDateTime(rec) || "N/A"}</Labeled>
+                    <Labeled label={approvalLabels(rec.obstatus).actor}>{obApprovalUser(rec)}</Labeled>
+                    <Labeled label={approvalLabels(rec.obstatus).date}>{obApprovalDateTime(rec)}</Labeled>
                   </div>
                 </details>
               ))
@@ -546,9 +567,9 @@ const OfficialBusinessApproval = () => {
                         <div className="text-xs text-slate-600 font-semibold">Approver's Remarks:</div>
                         <div className="text-xs text-slate-600">{approvalRemarks(rec) || "N/A"}</div>
                         <div className="text-xs text-slate-600 font-semibold">{approvalLabels(rec.obstatus).actor}:</div>
-                        <div className="text-xs text-slate-600">{approvalUser(rec) || "N/A"}</div>
+                        <div className="text-xs text-slate-600">{obApprovalUser(rec)}</div>
                         <div className="text-xs text-slate-600 font-semibold">{approvalLabels(rec.obstatus).date}:</div>
-                        <div className="text-xs text-slate-600">{approvalDateTime(rec) || "N/A"}</div>
+                        <div className="text-xs text-slate-600">{obApprovalDateTime(rec)}</div>
                       </td>
                       <td className="global-td-approval text-center">
                         <div className="flex flex-col items-center justify-center gap-1 whitespace-nowrap">

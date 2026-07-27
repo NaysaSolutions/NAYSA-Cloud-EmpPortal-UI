@@ -19,14 +19,14 @@ const approvalConfig = {
   dtr: { endpoint: API_ENDPOINTS.approvalDTR, stamp: "dtrStamp" },
 };
 
-export const sendApprovalDecision = async ({ type, row, appStat, userEmpNo }) => {
+export const sendApprovalDecision = async ({ type, row, appStat, userEmpNo, appRemarks = "" }) => {
   const config = approvalConfig[type];
   const stamp = getStamp(row, type);
   if (!config || !stamp) throw new Error(`Missing ${type} record identifier.`);
 
   const inner = {
     empNo: getEmployeeNo(row),
-    appRemarks: "",
+    appRemarks,
     [config.stamp]: stamp,
     appStat,
     appUser: userEmpNo,
@@ -56,7 +56,7 @@ export const sendApprovalDecision = async ({ type, row, appStat, userEmpNo }) =>
   if (!response.ok) throw new Error(result?.message || "Approval request failed.");
 };
 
-export const cancelApprovedRecord = async ({ type, row }) => {
+export const cancelApprovedRecord = async ({ type, row, appRemarks = "" }) => {
   const endpoint = {
     ot: API_ENDPOINTS.cancelOvertimeApplication,
     leave: API_ENDPOINTS.cancelLeaveApplication,
@@ -67,7 +67,7 @@ export const cancelApprovedRecord = async ({ type, row }) => {
   const stamp = getStamp(row, type);
   if (!endpoint || !stamp) throw new Error(`Missing ${type} record identifier.`);
 
-  const payload = { empNo: getEmployeeNo(row), [field]: stamp };
+  const payload = { empNo: getEmployeeNo(row), appRemarks, [field]: stamp };
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -78,4 +78,3 @@ export const cancelApprovedRecord = async ({ type, row }) => {
     throw new Error(result?.message || "Cancellation failed.");
   }
 };
-

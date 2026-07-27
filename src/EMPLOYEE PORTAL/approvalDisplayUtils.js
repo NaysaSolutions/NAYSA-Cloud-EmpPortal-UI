@@ -1,14 +1,27 @@
 import dayjs from "dayjs";
 
+const readField = (row, names) => {
+  if (!row) return undefined;
+  const keys = Object.keys(row);
+  const key = keys.find((candidate) => names.includes(candidate.toLowerCase()));
+  return key ? row[key] : undefined;
+};
+
+const isPending = (row) => {
+  const status = readField(row, ["obstatus", "leavestatus", "otstatus", "dtrstatus", "status"]);
+  return String(status || "").toLowerCase() === "pending";
+};
+
 export const approvalRemarks = (row) =>
-  row?.appRemarks ?? row?.appremarks ?? row?.APP_REMARKS ?? "N/A";
+  isPending(row) ? " " : row?.appRemarks ?? row?.appremarks ?? row?.APP_REMARKS ?? "N/A";
 
 
 export const approvalUser = (row) =>
-  row?.appUser ?? row?.appuser ?? row?.APP_USER ?? "N/A";
+  isPending(row) ? " " : readField(row, ["appuser", "appUser"]) || "N/A";
 
 export const approvalDateTime = (row) => {
-  const value = row?.appDateTime ?? row?.appDatetime ?? row?.APP_DATETIME ?? row?.app_date_time;
+  if (isPending(row)) return " ";
+  const value = readField(row, ["appdatetime", "app_date_time", "appDateTime" ]);
   return value ? dayjs(value).format("MM/DD/YYYY hh:mm A") : "N/A";
 };
 
@@ -19,7 +32,8 @@ export const applicationFileDate = (row) => {
 
 export const approvalLabels = (status) => {
   const value = String(status || "").toLowerCase();
-  if (value === "cancelled" || value === "canceled") return { actor: "Cancelled By", date: "Cancelled Date" };
-  if (value === "disapproved") return { actor: "Disapproved By", date: "Disapprove Date" };
-  return { actor: "Approved By", date: "Approved Date" };
+  if (value === "pending") return { remarks: "",actor: " ", date: " " };
+  if (value === "cancelled" || value === "canceled") return { remarks: "Approver's Remarks", actor: "Cancelled By", date: "Cancelled Date" };
+  if (value === "disapproved") return { remarks: "Approver's Remarks", actor: "Disapproved By", date: "Disapprove Date" };
+  return { remarks: "Approver's Remarks", actor: "Approved By", date: "Approved Date" };
 };
