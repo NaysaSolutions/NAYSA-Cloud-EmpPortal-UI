@@ -48,6 +48,7 @@ const LOCATION_CACHE_MAX_AGE_MS = 120000;
 const LOCATION_QUICK_TIMEOUT_MS = 3500;
 const LOCATION_WATCH_TIMEOUT_MS = 8000;
 const SERVER_TIME_SYNC_INTERVAL_MS = 300000;
+const EARLY_TIME_IN_WINDOW_MINUTES = 120;
 
 const parseServerDateTime = (value) => {
   if (value == null || value === "") return null;
@@ -403,6 +404,7 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
 
   const [records, setRecords] = useState([]);
   const [todayRecord, setTodayRecord] = useState(null);
+  const [timeOutTargetPrompt, setTimeOutTargetPrompt] = useState(null);
 
   const [capturing, setCapturing] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -1486,11 +1488,19 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
         getRecordShiftTimeIn(today) || getEmployeeShiftTimeIn()
       );
 
-      if (todayShiftTimeIn && now.isBefore(todayShiftTimeIn)) {
+      const earliestTodayTimeIn = todayShiftTimeIn
+        ? todayShiftTimeIn.subtract(EARLY_TIME_IN_WINDOW_MINUTES, "minute")
+        : null;
+
+      // A previous open record remains the active shift until the employee is
+      // within the allowed early-clock-in window for the next shift. This
+      // preserves night-shift records after midnight while allowing a new
+      // normal-shift Time In before the scheduled start.
+      if (earliestTodayTimeIn && now.isBefore(earliestTodayTimeIn)) {
         return openPreviousRecord;
       }
 
-      return today;
+      return today || null;
     },
     [
       getNormalizedRecordDate,
@@ -1502,6 +1512,57 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
       getTrustedPhilippineNow,
       isValueBlank,
     ]
+  );
+
+  const getOpenPreviousTimekeepingRecord = useCallback(
+    (nextRecords, currentShiftRecord) => {
+      const now = getTrustedPhilippineNow();
+
+      if (!now) return null;
+
+      const yesterdayStr = now.subtract(1, "day").format("YYYY-MM-DD");
+
+      return nextRecords
+        .filter((record) => {
+          const recordDate = getNormalizedRecordDate(record);
+
+          return (
+            record !== currentShiftRecord &&
+            recordDate === yesterdayStr &&
+            !isValueBlank(getDtrActualDateTimeValue(record, "timeIn")) &&
+            isValueBlank(getDtrActualDateTimeValue(record, "timeOut"))
+          );
+        })
+        .filter((record) => {
+          const recordDate = getNormalizedRecordDate(record);
+          const shiftTimeIn =
+            getRecordShiftTimeInDateTime(record) ||
+            getShiftTimeInDateTime(recordDate, getEmployeeShiftTimeIn());
+          const nextShiftTimeIn = shiftTimeIn?.add(1, "day");
+
+          return !nextShiftTimeIn || now.isBefore(nextShiftTimeIn);
+        })
+        .sort((a, b) => {
+          const dateA = getNormalizedRecordDate(a) || "";
+          const dateB = getNormalizedRecordDate(b) || "";
+
+          return dateB.localeCompare(dateA);
+        })[0] || null;
+    },
+    [
+      getDtrActualDateTimeValue,
+      getEmployeeShiftTimeIn,
+      getNormalizedRecordDate,
+      getRecordShiftTimeInDateTime,
+      getShiftTimeInDateTime,
+      getTrustedPhilippineNow,
+      isValueBlank,
+    ]
+  );
+
+  const previousOpenRecord = useMemo(
+    () => getOpenPreviousTimekeepingRecord(records, todayRecord),
+    [getOpenPreviousTimekeepingRecord, records, todayRecord]
   );
 
   const applyPendingTimekeepingImages = useCallback(
@@ -1528,12 +1589,17 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
           ...record,
           ...(timeInImage
             ? {
+                time_in_image_preview:
+                  timeInImage.previewUrl ||
+                  record.time_in_image_preview ||
+                  record.timeInImagePreview ||
+                  "",
                 time_in_image_path:
+                  timeInImage.previewUrl ||
                   record.time_in_image_path ||
                   record.timeInImagePath ||
                   record.TIME_IN_IMAGE_PATH ||
                   record.time_in_image ||
-                  timeInImage.previewUrl ||
                   timeInImage.path,
                 time_in_image_id:
                   record.time_in_image_id ||
@@ -1544,12 +1610,17 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
             : {}),
           ...(timeOutImage
             ? {
+                time_out_image_preview:
+                  timeOutImage.previewUrl ||
+                  record.time_out_image_preview ||
+                  record.timeOutImagePreview ||
+                  "",
                 time_out_image_path:
+                  timeOutImage.previewUrl ||
                   record.time_out_image_path ||
                   record.timeOutImagePath ||
                   record.TIME_OUT_IMAGE_PATH ||
                   record.time_out_image ||
-                  timeOutImage.previewUrl ||
                   timeOutImage.path,
                 time_out_image_id:
                   record.time_out_image_id ||
@@ -1666,7 +1737,26 @@ const showConfirmToast = ({
   });
 };
 
-  const handleTimeEvent = async (type) => {
+  const handleTimeOutClick = () => {
+    const hasCurrentTimeIn =
+      todayRecord &&
+      !isValueBlank(getDtrActualDateTimeValue(todayRecord, "timeIn"));
+    const hasPreviousTimeIn =
+      previousOpenRecord &&
+      !isValueBlank(getDtrActualDateTimeValue(previousOpenRecord, "timeIn"));
+
+    if (hasCurrentTimeIn && hasPreviousTimeIn) {
+      setTimeOutTargetPrompt({
+        currentRecord: todayRecord,
+        previousRecord: previousOpenRecord,
+      });
+      return;
+    }
+
+    handleTimeEvent("TIME OUT", hasCurrentTimeIn ? todayRecord : previousOpenRecord);
+  };
+
+  const handleTimeEvent = async (type, targetRecord = null) => {
   if (isProcessingTimeEventRef.current) {
     console.warn("Duplicate time event ignored:", type);
     return;
@@ -1698,6 +1788,24 @@ const showConfirmToast = ({
   }
 
   try {
+    const eventRecord =
+      type === "TIME OUT"
+        ? targetRecord || todayRecord || previousOpenRecord
+        : todayRecord;
+
+    if (
+      type === "TIME OUT" &&
+      (!eventRecord ||
+        isValueBlank(getDtrActualDateTimeValue(eventRecord, "timeIn")) ||
+        !isValueBlank(getDtrActualDateTimeValue(eventRecord, "timeOut")))
+    ) {
+      showErrorToast(
+        "Time Out Unavailable",
+        "There is no open shift record available for Time Out."
+      );
+      return;
+    }
+
     let userCoords = null;
 let address = "N/A";
 let actualCapturedLocation = "N/A";
@@ -1861,7 +1969,7 @@ capturedImageInfo = await captureImageProcess(type);
     const currentDateStr = syncedNow.format("YYYY-MM-DD");
     const eventDateStr =
       type === "TIME OUT"
-        ? getNormalizedRecordDate(todayRecord) || currentDateStr
+        ? getNormalizedRecordDate(eventRecord) || currentDateStr
         : currentDateStr;
     const displayTime = syncedNow.format("hh:mm:ss A");
 
@@ -1978,6 +2086,7 @@ capturedImageInfo = await captureImageProcess(type);
             : "N/A";
 
           if (capturedImageInfo) {
+            nextRecord.time_in_image_preview = capturedImageInfo.previewUrl || "";
             nextRecord.time_in_image_path =
               capturedImageInfo.previewUrl || capturedImageInfo.path;
             nextRecord.time_in_image_id = capturedImageInfo.id;
@@ -1993,6 +2102,7 @@ capturedImageInfo = await captureImageProcess(type);
             : "N/A";
 
           if (capturedImageInfo) {
+            nextRecord.time_out_image_preview = capturedImageInfo.previewUrl || "";
             nextRecord.time_out_image_path =
               capturedImageInfo.previewUrl || capturedImageInfo.path;
             nextRecord.time_out_image_id = capturedImageInfo.id;
@@ -2241,7 +2351,16 @@ if (!confirm) return;
 
     const candidates = [];
     const addCandidate = (value) => {
-      if (value) candidates.push(value.replace(/([^:]\/)\/+/g, "$1"));
+      if (!value) return;
+
+      const candidate = String(value).trim();
+
+      // Preserve data/blob URLs exactly; their slashes are part of the image payload.
+      candidates.push(
+        /^(?:data|blob):/i.test(candidate)
+          ? candidate
+          : candidate.replace(/([^:]\/)\/+/g, "$1")
+      );
     };
 
     const normalizePath = (value) => {
@@ -2250,11 +2369,7 @@ if (!confirm) return;
       let path = String(value).trim();
       if (!path) return "";
 
-      if (
-        path.startsWith("http://") ||
-        path.startsWith("https://") ||
-        path.startsWith("data:")
-      ) {
+      if (/^(?:https?|data|blob):/i.test(path)) {
         return path;
       }
 
@@ -2303,9 +2418,7 @@ if (!confirm) return;
       } else if (/^images\/timekeeping_images\//i.test(rawPath)) {
         addCandidate(rawPath.replace(/^images\//i, `${appBase}/storage/`));
       } else if (
-        !rawPath.startsWith("http://") &&
-        !rawPath.startsWith("https://") &&
-        !rawPath.startsWith("data:")
+        !/^(?:https?|data|blob):/i.test(rawPath)
       ) {
         addCandidate(`${appBase}/storage/timekeeping_images/${rawPath}`);
         addCandidate(`${appBase}/images/timekeeping_images/${rawPath}`);
@@ -2398,6 +2511,8 @@ if (!confirm) return;
           const canAdjust = !isFinal && !hasCompleteTime;
           const canOffset = isFinal && hasCompleteTime;
           const timeInImagePath = getRecordValue(record, [
+            "time_in_image_preview",
+            "timeInImagePreview",
             "time_in_image_path",
             "timeInImagePath",
             "TIME_IN_IMAGE_PATH",
@@ -2412,6 +2527,8 @@ if (!confirm) return;
             "timeInImageID",
           ]);
           const timeOutImagePath = getRecordValue(record, [
+            "time_out_image_preview",
+            "timeOutImagePreview",
             "time_out_image_path",
             "timeOutImagePath",
             "TIME_OUT_IMAGE_PATH",
@@ -2435,6 +2552,8 @@ if (!confirm) return;
             timeOutImageId,
             record
           );
+          const timeInImageKey = `${timeInImageId || ""}-${timeInImagePath || ""}`;
+          const timeOutImageKey = `${timeOutImageId || ""}-${timeOutImagePath || ""}`;
 
           return (
             <div
@@ -2501,11 +2620,12 @@ if (!confirm) return;
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-y-6 lg:gap-x-12">
                 <div className="flex flex-row gap-4 lg:gap-6">
                   <div className="flex flex-col gap-2 shrink-0">
-                    <div className="flex items-center gap-1.5 text-[11px] text-gray-400 uppercase font-bold tracking-wide">
+                  <div className="flex items-center gap-1.5 text-[11px] text-gray-400 uppercase font-bold tracking-wide">
                       <Camera size={14} /> Time In
                     </div>
                     {timeInImageUrl ? (
   <img
+    key={`time-in-${timeInImageKey}`}
     src={timeInImageUrl}
     alt="Time In"
     className="w-32 lg:w-40 aspect-square object-cover rounded-xl border border-gray-100 shadow-sm"
@@ -2541,6 +2661,7 @@ if (!confirm) return;
                     </div>
                     {timeOutImageUrl ? (
   <img
+    key={`time-out-${timeOutImageKey}`}
     src={timeOutImageUrl}
     alt="Time Out"
     className="w-32 lg:w-40 aspect-square object-cover rounded-xl border border-gray-100 shadow-sm"
@@ -3105,6 +3226,24 @@ if (!confirm) return;
     );
   };
 
+  const hasCurrentTimeIn =
+    todayRecord &&
+    !isValueBlank(getDtrActualDateTimeValue(todayRecord, "timeIn"));
+  const hasCurrentTimeOut =
+    todayRecord &&
+    !isValueBlank(getDtrActualDateTimeValue(todayRecord, "timeOut"));
+  const hasPreviousTimeIn =
+    previousOpenRecord &&
+    !isValueBlank(getDtrActualDateTimeValue(previousOpenRecord, "timeIn"));
+  const hasPreviousTimeOut =
+    previousOpenRecord &&
+    !isValueBlank(getDtrActualDateTimeValue(previousOpenRecord, "timeOut"));
+  const availableTimeOutRecord = hasCurrentTimeIn
+    ? todayRecord
+    : hasPreviousTimeIn && !hasPreviousTimeOut
+      ? previousOpenRecord
+      : null;
+
   return (
     <div className="ml-0 lg:ml-[200px] mt-[70px] p-2 sm:p-4 bg-gray-100 min-h-screen">
 
@@ -3131,6 +3270,17 @@ if (!confirm) return;
           {clockSyncStatus === "syncing"
             ? "Verifying server time..."
             : "Philippine Standard Time could not be verified from the server. Timekeeping buttons are disabled until sync is restored."}
+        </div>
+      )}
+
+      {hasPreviousTimeIn && !hasPreviousTimeOut && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <p className="font-bold">Previous shift has no Time Out.</p>
+          <p>
+            Time Out will remain available for the previous shift until the next
+            scheduled Shift In. If you already timed in for today, the Time Out
+            button will ask which shift you want to close.
+          </p>
         </div>
       )}
 
@@ -3175,8 +3325,8 @@ if (!confirm) return;
                   ? capturing ||
                     !faceDetectionModelLoaded ||
                     !currentUserFaceDescriptor ||
-                    !!todayRecord?.time_in
-                  : !!todayRecord?.time_in)
+                    hasCurrentTimeIn
+                  : hasCurrentTimeIn)
               }
             >
               Time In
@@ -3218,16 +3368,21 @@ if (!confirm) return;
 
             <button
               className="bg-blue-800 hover:bg-blue-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
-              onClick={() => handleTimeEvent("TIME OUT")}
+              onClick={handleTimeOutClick}
               disabled={
                 !isClockSynced ||
                 (isImageCaptureRequired
                   ? capturing ||
                     !faceDetectionModelLoaded ||
                     !currentUserFaceDescriptor ||
-                    !!todayRecord?.time_out ||
-                    !todayRecord?.time_in
-                  : !!todayRecord?.time_out || !todayRecord?.time_in)
+                    !availableTimeOutRecord ||
+                    (availableTimeOutRecord === todayRecord
+                      ? hasCurrentTimeOut
+                      : hasPreviousTimeOut)
+                  : !availableTimeOutRecord ||
+                    (availableTimeOutRecord === todayRecord
+                      ? hasCurrentTimeOut
+                      : hasPreviousTimeOut))
               }
             >
               Time Out
@@ -3470,6 +3625,58 @@ if (!confirm) return;
           </div>
         </div>
       </div>
+
+      {timeOutTargetPrompt && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
+            <h2 className="text-lg font-bold text-gray-900">Select Shift for Time Out</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              You have an unfinished previous shift and a current shift. Which
+              shift should receive this Time Out?
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const targetRecord = timeOutTargetPrompt.previousRecord;
+                  setTimeOutTargetPrompt(null);
+                  handleTimeEvent("TIME OUT", targetRecord);
+                }}
+                className="w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900 hover:bg-amber-100"
+              >
+                <span className="block font-bold">Previous Shift</span>
+                <span className="block text-xs">
+                  {getNormalizedRecordDate(timeOutTargetPrompt.previousRecord) || "Unknown date"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const targetRecord = timeOutTargetPrompt.currentRecord;
+                  setTimeOutTargetPrompt(null);
+                  handleTimeEvent("TIME OUT", targetRecord);
+                }}
+                className="w-full rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-left text-sm text-blue-900 hover:bg-blue-100"
+              >
+                <span className="block font-bold">Current Shift</span>
+                <span className="block text-xs">
+                  {getNormalizedRecordDate(timeOutTargetPrompt.currentRecord) || "Unknown date"}
+                </span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setTimeOutTargetPrompt(null)}
+              className="mt-4 w-full rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <SpinnerOverlay show={loading.show} message={loading.message} />
     </div>

@@ -5,13 +5,16 @@ import advancedFormat from "dayjs/plugin/advancedFormat";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { useAuth } from "./AuthContext"; 
+import Swal from "sweetalert2";
+import { useAuth } from "./AuthContext"; // Import AuthContext
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowUp, faClock } from "@fortawesome/free-solid-svg-icons";
 import LeaveCreditModal from "./LeaveCreditModal";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import "@/index.css";
+import Timekeeping from "./Timekeeping"; // Adjust the path as needed
+import TimekeepingFaceEnroll from "./TimekeepingFaceEnrollment"; // Adjust the path as needed
 
 dayjs.extend(advancedFormat);
 dayjs.extend(customParseFormat);
@@ -122,46 +125,32 @@ const getServerTimestampFromPayload = (payload, response) => {
   return null;
 };
 
-const DEFAULT_SUM = Object.freeze({
-  LVApplicationCount: 0,
-  LVApprovalCount: 0,
-  OTApplicationCount: 0,
-  OTApprovalCount: 0,
-  OBApplicationCount: 0,
-  OBApprovalCount: 0,
-  DTRApplicationCount: 0,
-  DTRApprovalCount: 0,
-});
-
-const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
-
 const Dashboard = () => {
   const trustedClockRef = useRef(null);
   const trustedMonthInitializedRef = useRef(false);
 
   const [currentDate, setCurrentDate] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(dayjs().startOf("month"));
-  const [dailyTimeRecord, setDailyTimeRecord] = useState([]);
-  const [leaveCredit, setLeaveCredit] = useState([]);
-  const [loanBalance, setLoanBalance] = useState([]);
-  const [leaveApplication, setLeaveApplication] = useState([]);
-  const [otApplication, setOtApplication] = useState([]);
-  const [obApplication, setOfficialBusinessApplication] = useState([]);
-  const [otApproval, setOtApproval] = useState([]);
-  const [leaveApproval, setLeaveApproval] = useState([]);
-  const [obApproval, setOfficialBusinessApproval] = useState([]);
+  const [entryTime, setEntryTime] = useState(null); // Entry Time
+  const [breakTime, setBreakTime] = useState(3600); // Default break time in seconds (1 hour)
+  const [isCounting, setIsCounting] = useState(false); // Tracks whether the countdown is active
+  const [dailyTimeRecord, setDailyTimeRecord] = useState([]); // Store Daily Time Record
+  const [leaveCredit, setLeaveCredit] = useState([]); // Store Daily Time Record
+  const [loanBalance, setLoanBalance] = useState([]); // Store Daily Time Record
+  const [leaveApplication, setLeaveApplication] = useState([]); // Store Leave Applications
+  const [otApplication, setOtApplication] = useState([]); // Store Overtime Applications
+  const [obApplication, setOfficialBusinessApplication] = useState([]); // Store OB Applications
+  const [otApproval, setOtApproval] = useState([]); // Store Overtime Approvals
+  const [leaveApproval, setLeaveApproval] = useState([]); // Store Leave Approvals
+  const [obApproval, setOfficialBusinessApproval] = useState([]); // Store OB Approvals
   const [holidays, setHolidays] = useState([]);
+  const [message, setMessage] = useState(""); // New state for messages
   const [time, setTime] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [error, setError] = useState(null);
-  const [isDashboardLoading, setIsDashboardLoading] = useState(true);
-  const [showBackToTop, setShowBackToTop] = useState(false);
-  const [activeTab, setActiveTab] = useState("leave");
-  const [activeApproverTab, setActiveApproverTab] = useState("leave");
-  const [approvalsum, setApprovalsum] = useState(DEFAULT_SUM);
-
+  const [error, setError] = useState(null); // Error state
   const { user, setUser, authLoading } = useAuth();
   const navigate = useNavigate();
+  const [showBackToTop, setShowBackToTop] = useState(false);
 
   const getTrustedPhilippineNow = useCallback(() => {
     const trustedClock = trustedClockRef.current;
@@ -193,11 +182,6 @@ const Dashboard = () => {
         },
       });
       const receivedAt = performance.now();
-
-      if (!response.ok) {
-        throw new Error(`Server time request failed (${response.status}).`);
-      }
-
       const payload = await response.json().catch(() => ({}));
       const serverTimestamp = getServerTimestampFromPayload(payload, response);
 
@@ -224,122 +208,58 @@ const Dashboard = () => {
         setCurrentMonth(trustedNow.startOf("month"));
         trustedMonthInitializedRef.current = true;
       }
-    } catch (clockError) {
+    } catch (error) {
       trustedClockRef.current = null;
       setCurrentDate(null);
       setTime("");
-      console.error("Dashboard Philippine Standard Time sync failed:", clockError);
+      console.error("Dashboard Philippine Standard Time sync failed:", error);
     }
   }, [getTrustedPhilippineNow]);
 
-  const fetchDashboardData = useCallback(async () => {
-    const empNo = user?.empNo;
+  const DEFAULT_SUM = {
+    LVApplicationCount: 0,
+    LVApprovalCount: 0,
+    OTApplicationCount: 0,
+    OTApprovalCount: 0,
+    OBApplicationCount: 0,
+    OBApprovalCount: 0,
+    DTRApplicationCount: 0,
+    DTRApprovalCount: 0,
+  };
 
-    if (!empNo) {
-      setIsDashboardLoading(false);
-      return;
-    }
-
-    setIsDashboardLoading(true);
-    setError(null);
-
-    try {
-      const dashboardResponse = await fetch(API_ENDPOINTS.dashBoard, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({ EMP_NO: empNo }),
-      });
-
-      if (!dashboardResponse.ok) {
-        throw new Error(`Dashboard request failed (${dashboardResponse.status}).`);
-      }
-
-      const dashboardResult = await dashboardResponse.json();
-
-      if (
-        !dashboardResult?.success ||
-        !Array.isArray(dashboardResult.data) ||
-        dashboardResult.data.length === 0
-      ) {
-        throw new Error("No dashboard data was returned for this employee.");
-      }
-
-      const employee =
-        dashboardResult.data.find((item) => item.empNo === empNo) ||
-        dashboardResult.data[0];
-
-      setUser((previousUser) => {
-        if (previousUser?.approver === employee.approver) return previousUser;
-
-        return {
-          ...(previousUser || {}),
-          approver: employee.approver,
-        };
-      });
-
-      setLeaveCredit(employee.leaveCredit || []);
-      setDailyTimeRecord(employee.dailyTimeRecord || []);
-      setLoanBalance(employee.loanBalance || []);
-      setOtApproval(employee.otApproval || []);
-      setLeaveApproval(employee.leaveApproval || []);
-      setOfficialBusinessApproval(employee.obApproval || []);
-      setHolidays(employee.holidays || []);
-      setLeaveApplication(employee.leaveApplication || []);
-      setOtApplication(employee.otApplication || []);
-      setOfficialBusinessApplication(employee.obApplication || []);
-
-      const rawSummary = employee.approvalsum;
-      const summary = Array.isArray(rawSummary)
-        ? rawSummary[0] || DEFAULT_SUM
-        : rawSummary || DEFAULT_SUM;
-
-      setApprovalsum({
-        LVApplicationCount: Number(summary.LVApplicationCount ?? 0),
-        LVApprovalCount: Number(summary.LVApprovalCount ?? 0),
-        OTApplicationCount: Number(summary.OTApplicationCount ?? 0),
-        OTApprovalCount: Number(summary.OTApprovalCount ?? 0),
-        OBApplicationCount: Number(summary.OBApplicationCount ?? 0),
-        OBApprovalCount: Number(summary.OBApprovalCount ?? 0),
-        DTRApplicationCount: Number(summary.DTRApplicationCount ?? 0),
-        DTRApprovalCount: Number(summary.DTRApprovalCount ?? 0),
-      });
-    } catch (requestError) {
-      console.error("Error fetching dashboard data:", requestError);
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "An error occurred while fetching dashboard records."
-      );
-    } finally {
-      setIsDashboardLoading(false);
-    }
-  }, [setUser, user?.empNo]);
+  const [approvalsum, setApprovalsum] = useState(DEFAULT_SUM);
 
   useEffect(() => {
-    const handleScroll = () => setShowBackToTop(window.scrollY > 300);
+    const handleScroll = () => {
+      setShowBackToTop(window.scrollY > 300);
+    };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   useEffect(() => {
-    if (!authLoading) {
+    if (!authLoading && user?.empNo) {
       fetchDashboardData();
     }
-  }, [authLoading, fetchDashboardData]);
+  }, [authLoading, user?.empNo]);
+
+  const startBreakCountdown = () => {
+    setBreakTime(3600); // reset to 1 hour or your desired countdown
+    setIsCounting(true); // start the countdown
+  };
+
+  <Timekeeping onBreakStart={startBreakCountdown} />;
 
   useEffect(() => {
     syncPhilippineClock();
 
-    const syncInterval = window.setInterval(
+    const syncInterval = setInterval(
       syncPhilippineClock,
       SERVER_TIME_SYNC_INTERVAL_MS
     );
 
-    const clockInterval = window.setInterval(() => {
+    const clockInterval = setInterval(() => {
       const trustedNow = getTrustedPhilippineNow();
 
       if (!trustedNow) return;
@@ -349,11 +269,118 @@ const Dashboard = () => {
     }, 1000);
 
     return () => {
-      window.clearInterval(syncInterval);
-      window.clearInterval(clockInterval);
+      clearInterval(syncInterval);
+      clearInterval(clockInterval);
     };
   }, [getTrustedPhilippineNow, syncPhilippineClock]);
+  // If no user is logged in, return an empty container
+  if (authLoading) {
+    return <div className="p-6">Loading...</div>;
+  }
 
+  const fetchDashboardData = async () => {
+    if (!user || !user.empNo) return;
+
+    try {
+      // Fetch the main dashboard data, which now includes a complete list of leave types
+      const dashboardResponse = await fetch(API_ENDPOINTS.dashBoard, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ EMP_NO: user.empNo }),
+      });
+
+      const dashboardResult = await dashboardResponse.json();
+
+      if (
+        dashboardResult.success &&
+        Array.isArray(dashboardResult.data) &&
+        dashboardResult.data.length > 0
+      ) {
+        const employee =
+          dashboardResult.data.find((emp) => emp.empNo === user.empNo) ||
+          dashboardResult.data[0];
+
+        setUser((prev) => ({
+          ...prev,
+          approver: employee.approver,
+        }));
+
+        // Directly use the leaveCredit array from the API response
+        setLeaveCredit(employee.leaveCredit || []);
+        setDailyTimeRecord(employee.dailyTimeRecord || []);
+        setLoanBalance(employee.loanBalance || []);
+        setOtApproval(employee.otApproval || []);
+        setLeaveApproval(employee.leaveApproval || []);
+        setOfficialBusinessApproval(employee.obApproval || []);
+        setHolidays(employee.holidays || []);
+        setLeaveApplication(employee.leaveApplication || []);
+        setOtApplication(employee.otApplication || []);
+        setOfficialBusinessApplication(employee.obApplication || []);
+
+        const raw = employee.approvalsum;
+        const one = Array.isArray(raw)
+          ? raw[0] || DEFAULT_SUM
+          : raw || DEFAULT_SUM;
+
+        setApprovalsum({
+          LVApplicationCount: Number(one.LVApplicationCount ?? 0),
+          LVApprovalCount: Number(one.LVApprovalCount ?? 0),
+          OTApplicationCount: Number(one.OTApplicationCount ?? 0),
+          OTApprovalCount: Number(one.OTApprovalCount ?? 0),
+          OBApplicationCount: Number(one.OBApplicationCount ?? 0),
+          OBApprovalCount: Number(one.OBApprovalCount ?? 0),
+          DTRApplicationCount: Number(one.DTRApplicationCount ?? 0),
+          DTRApprovalCount: Number(one.DTRApprovalCount ?? 0),
+        });
+      } else {
+        setError("API response format is incorrect or no data found.");
+      }
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      setError("An error occurred while fetching the records.");
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [user.empNo]);
+
+  useEffect(() => {
+    console.log("Leave Approval Data:", leaveApproval);
+    console.log("OT Approval Data:", otApproval);
+    console.log("OB Approval Data:", obApproval);
+    console.log("Approval Data:", approvalsum);
+  }, [leaveApproval, otApproval, obApproval, approvalsum]);
+
+  useEffect(() => {
+    let countdown;
+    if (isCounting && breakTime > 0) {
+      countdown = setInterval(() => {
+        setBreakTime((prev) => prev - 1);
+      }, 1000);
+    }
+    if (breakTime <= 0) {
+      clearInterval(countdown);
+      setIsCounting(false);
+      Swal.fire("Time's Up!", "Your break is over.", "warning");
+    }
+    return () => clearInterval(countdown);
+  }, [isCounting, breakTime]);
+
+  // Convert seconds to HH:MM:SS
+  const formatTime = (seconds) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs.toString().padStart(2, "0")}:${mins
+      .toString()
+      .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // Personal Calendar Navigation
   const handlePrevMonth = () => {
     setCurrentMonth(currentMonth.subtract(1, "month"));
   };
@@ -362,6 +389,7 @@ const Dashboard = () => {
     setCurrentMonth(currentMonth.add(1, "month"));
   };
 
+  // Generate Calendar Days
   const generateCalendar = () => {
     const startDay = currentMonth.startOf("month").day();
     const daysInMonth = currentMonth.daysInMonth();
@@ -370,8 +398,12 @@ const Dashboard = () => {
     const today = trustedToday?.date();
 
     let days = [];
+
+    // const pendingLeaveDays = new Set();
+    // const approvedLeaveDays = new Set();
     const approvedLeaveDays = new Map();
     const pendingLeaveDays = new Map();
+
     const holidayDays = new Map();
 
     holidays.forEach((holiday) => {
@@ -470,7 +502,7 @@ const Dashboard = () => {
       (sum, leave) => ({
         credit: sum.credit + leave.credit,
         used: sum.used + leave.used,
-        remaining: sum.remaining + leave.available,
+        remaining: sum.remaining + (leave.actual || leave.remaining),
         applied: sum.applied + leave.applied,
       }),
       { credit: 0, used: 0, remaining: 0, applied: 0 }
@@ -605,280 +637,218 @@ const Dashboard = () => {
     };
   }, [loanBalance]);
 
-  const dtrTrendData = useMemo(() => {
-    return dailyTimeRecord
-      .slice(0, 7)
-      .reverse()
-      .map((record) => {
-        const hours = toDashboardNumber(record?.reg_hrs);
-        const recordDate = parseDashboardDate(record?.trandate);
+  // Calculate totals for stat cards
+  // const pendingLeaveCount = leaveApplication.filter(
+  //   (leave) => leave.leavestatus === "Pending"
+  // ).length;
+  // const pendingOtCount = otApplication.filter(
+  //   (ot) => ot.otstatus === "Pending"
+  // ).length;
+  //  const pendingDTRCount = DTRApplication.filter(
+  //   (dtr) => dtr.dtrstatus === "Pending"
+  // ).length;
+  // const pendingLeaveApproval = leaveApproval.filter(
+  //   (leave) => leave.leavestatus === "Pending"
+  // ).length;
+  // const pendingOtApproval = otApproval.filter(
+  //   (ot) => ot.otstatus === "Pending"
+  // ).length;
+  // const pendingObApproval = obApproval.filter(
+  //   (ob) => ob.obstatus === "Pending"
+  // ).length;
 
-        return {
-          date: recordDate?.isValid() ? recordDate.format("ddd") : "—",
-          fullDate: recordDate?.isValid() ? recordDate.format("MMM DD") : "Unknown date",
-          hours,
-          isUnderTime: hours > 0 && hours < 8,
-          heightPct: Math.min(Math.max((hours / 12) * 100, 0), 100),
-        };
-      });
-  }, [dailyTimeRecord]);
+  return (
+    <div className="mt-[80px] p-4 bg-gray-100 min-h-screen ml-0 lg:ml-[200px]">
+      {/* Header */}
+      <div className="flex justify-center sm:justify-between items-start w-full">
+        <div className="bg-blue-800 p-3 rounded-xl text-white flex flex-col md:flex-row md:justify-between md:items-center gap-2 mb-4 w-full shadow-lg">
+          {/* Date Section */}
+          <div className="text-center sm:text-left">
+            <p className="text-sm sm:text-lg font-bold text-white">
+              <span className="kanit-text">Today</span>
+            </p>
+            <h1 className="text-base sm:text-lg md:text-2xl font-extrabold text-white">
+              {currentDate ? currentDate.format("MMMM DD, YYYY") : "Verifying..."}
+            </h1>
+          </div>
 
-  const unifiedRequestStats = useMemo(() => {
-    const statuses = [
-      ...leaveApplication.map((request) => normalizeStatus(request?.leavestatus)),
-      ...otApplication.map((request) => normalizeStatus(request?.otstatus)),
-      ...obApplication.map((request) => normalizeStatus(request?.obstatus)),
-    ];
+          {/* Entry Time and Break Time Count */}
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-10 items-center sm:items-start text-center sm:text-left">
+            <div>
+              <p className="text-sm font-extrabold text-white mb-2">
+                Philippine Standard Time
+              </p>
+              <p className="text-xl sm:text-2xl font-bold">
+                {time || "00:00 PM"}
+              </p>
+            </div>
 
-    const pending = statuses.filter((status) => status === "pending").length;
-    const approved = statuses.filter((status) => status === "approved").length;
-    const rejected = statuses.filter(
-      (status) => status === "rejected" || status === "declined" || status === "disapproved"
-    ).length;
-    const total = pending + approved + rejected;
+            <div className="w-full md:w-auto flex justify-center">
+              <button
+                onClick={() => navigate("/timekeeping")}
+                className="
+                bg-gradient-to-b from-blue-500 to-blue-700
+                border border-blue-800
+                text-white font-semibold tracking-wide
+                px-4 py-3.5 rounded-xl text-md sm:text-lg
+                shadow-[inset_0_2px_1px_rgba(255,255,255,0.2),_0_4px_6px_rgba(0,0,0,0.25)]
+                transition-all duration-200 ease-in-out
+                hover:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),_0_2px_4px_rgba(0,0,0,0.3)]
+                hover:translate-y-[1px]
+                active:shadow-[inset_0_3px_5px_rgba(0,0,0,0.4)]
+                active:translate-y-[2px]
+                w-full sm:w-auto
+              "
+            >
+              <FontAwesomeIcon icon={faClock} size="lg" className="mr-2" />
+              Timekeeping
+            </button>
+            {/* <button
+  onClick={() =>
+    navigate("/timekeepingFaceEnroll", {
+      state: {
+        employeeData: user,
+        user: user,
+      },
+    })
+  }
+  className="
+                bg-gradient-to-b from-blue-500 to-blue-700
+                border border-blue-800
+                text-white font-semibold tracking-wide
+                px-4 py-3.5 rounded-lg text-md sm:text-lg
+                shadow-[inset_0_2px_1px_rgba(255,255,255,0.2),_0_4px_6px_rgba(0,0,0,0.25)]
+                transition-all duration-200 ease-in-out
+                hover:shadow-[inset_0_2px_4px_rgba(0,0,0,0.3),_0_2px_4px_rgba(0,0,0,0.3)]
+                hover:translate-y-[1px]
+                active:shadow-[inset_0_3px_5px_rgba(0,0,0,0.4)]
+                active:translate-y-[2px]
+                w-full sm:w-auto
+              "
+            >
+  Face Enrollment
+</button> */}
+          </div>
 
-    return {
-      total,
-      pending,
-      approved,
-      rejected,
-      pendingPct: total > 0 ? (pending / total) * 100 : 0,
-      approvedPct: total > 0 ? (approved / total) * 100 : 0,
-      rejectedPct: total > 0 ? (rejected / total) * 100 : 0,
-    };
-  }, [leaveApplication, otApplication, obApplication]);
-
-  const employeeDisplayName =
-    user?.empName || user?.employeeName || user?.name || user?.userName || user?.empname || "Employee";
-
-  const requestSummaryCards = [
-    {
-      code: "LV",
-      label: "Leave Applications",
-      count: approvalsum?.LVApplicationCount ?? 0,
-      route: "/leave",
-    },
-    {
-      code: "OT",
-      label: "Overtime Applications",
-      count: approvalsum?.OTApplicationCount ?? 0,
-      route: "/overtime",
-    },
-    {
-      code: "OB",
-      label: "Official Business Applications",
-      count: approvalsum?.OBApplicationCount ?? 0,
-      route: "/official-business",
-    },
-    {
-      code: "DTR",
-      label: "DTR Adjustments",
-      count: approvalsum?.DTRApplicationCount ?? 0,
-      route: "/timekeepingAdj",
-    },
-  ];
-
-  const approvalSummaryCards = [
-    {
-      code: "LV",
-      label: "Leave for Approval",
-      count: approvalsum?.LVApprovalCount ?? 0,
-      route: "/leaveApproval",
-    },
-    {
-      code: "OT",
-      label: "Overtime for Approval",
-      count: approvalsum?.OTApprovalCount ?? 0,
-      route: "/overtimeApproval",
-    },
-    {
-      code: "OB",
-      label: "Official Business for Approval",
-      count: approvalsum?.OBApprovalCount ?? 0,
-      route: "/OfficialBusinessApproval",
-    },
-    {
-      code: "DTR",
-      label: "DTR Adustments for Approval",
-      count: approvalsum?.DTRApprovalCount ?? 0,
-      route: "/timekeepingAdjApproval",
-    },
-  ];
-
-  if (authLoading) {
-    return (
-      <div className="mt-[80px] min-h-screen bg-slate-100 p-4 lg:ml-[200px]">
-        <div className="mx-auto max-w-[1600px] animate-pulse space-y-4">
-          <div className="h-40 rounded-2xl bg-slate-200" />
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {[0, 1, 2, 3].map((item) => (
-              <div key={item} className="h-28 rounded-2xl bg-white" />
-            ))}
           </div>
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="mt-[80px] min-h-screen bg-slate-100/80 p-3 sm:p-4 lg:ml-[200px] lg:p-4">
-      <div className="mx-auto w-full max-w-[1600px] space-y-4">
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-900 to-blue-600 p-5 text-white shadow-xl sm:p-4">
-          <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
-          <div className="pointer-events-none absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-blue-300/10 blur-3xl" />
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <div
+          className="bg-yellow-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
+          onClick={() => navigate("/leave")}
+        >
+          <h3 className="font-bold text-[11px] md:text-base">
+            Pending LV Applications
+          </h3>
+          <p className="text-xl md:text-2xl">
+            {approvalsum?.LVApplicationCount ?? 0}
+          </p>
+        </div>
+        <div
+          className="bg-yellow-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
+          onClick={() => navigate("/overtime")}
+        >
+          <h3 className="font-bold text-[11px] md:text-base">
+            Pending OT Applications
+          </h3>
+          <p className="text-xl md:text-2xl">
+            {approvalsum?.OTApplicationCount ?? 0}
+          </p>
+        </div>
+        <div
+          className="bg-yellow-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
+          onClick={() => navigate("/Official-Business")}
+        >
+          <h3 className="font-bold text-[11px] md:text-base">
+            Pending OB Applications
+          </h3>
+          <p className="text-xl md:text-2xl">
+            {approvalsum?.OBApplicationCount ?? 0}
+          </p>
+        </div>
+        <div
+          className="bg-yellow-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
+          onClick={() => navigate("/timekeepingAdj")}
+        >
+          <h3 className="font-bold text-[11px] md:text-base">
+            Pending DTR Applications
+          </h3>
+          <p className="text-xl md:text-2xl">
+            {approvalsum?.DTRApplicationCount ?? 0}
+          </p>
+        </div>
+      </div>
 
-          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-            <div className="min-w-0">
-              <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-blue-50 backdrop-blur">
-                Welcome to Employee Portal Dashboard !
-              </div>
-              {/* <p className="text-sm font-medium text-blue-100">Welcome back, {employeeDisplayName}</p> */}
-              <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
-                {currentDate ? currentDate.format("dddd, MMMM DD, YYYY") : "Verifying Philippine date…"}
-              </h1>
-              {/* <p className="mt-2 max-w-2xl text-sm text-blue-100/90">
-                Review attendance, leave credits, requests, and approvals from one place.
-              </p> */}
-            </div>
-
-            <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto xl:items-stretch">
-              <div className="min-w-[230px] rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-blue-100">
-                      Philippine Standard Time
-                    </p>
-                    <p className="mt-1 text-2xl font-extrabold tabular-nums">
-                      {time || "Syncing time…"}
-                    </p>
-                  </div>
-                  <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
-                    <FontAwesomeIcon icon={faClock} />
-                  </span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => navigate("/timekeeping")}
-                className="inline-flex min-h-[72px] items-center justify-center rounded-2xl bg-white px-5 py-3 text-lg font-bold text-blue-900 shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-white/30"
-              >
-                <FontAwesomeIcon icon={faClock} className="mr-2" />
-                Open Timekeeping
-              </button>
-            </div>
-          </div>
-
-          {isDashboardLoading && (
-            <div className="relative mt-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs text-blue-50">
-              <span className="h-2 w-2 animate-pulse rounded-full bg-yellow-300" />
-              Updating dashboard data…
-            </div>
-          )}
-        </section>
-
-        {error && (
-          <div className="flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="font-bold">Dashboard data could not be loaded.</p>
-              <p className="text-red-700">{error}</p>
-            </div>
-            <button
-              type="button"
-              onClick={fetchDashboardData}
-              className="rounded-xl bg-red-700 px-4 py-2 font-semibold text-white transition hover:bg-red-800"
+      {user.approver === "1" && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div
+              className="bg-blue-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
+              onClick={() => navigate("/leaveApproval")}
             >
-              Try Again
-            </button>
-          </div>
-        )}
-
-        <section className="rounded-2xl border border-blue-100 bg-white p-3 sm:p-4">
-          <div className="mb-3 flex items-end justify-between gap-3">
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900 sm:text-lg mb-1">My pending requests</h2>
-              <p className="text-xs text-slate-500 sm:text-xs">Open applications that may still need action.</p>
+              <h3 className="font-bold text-[11px] md:text-base">
+                Pending LV for my Approval
+              </h3>
+              <p className="text-xl md:text-2xl">
+                {approvalsum?.LVApprovalCount ?? 0}
+              </p>
+            </div>
+            <div
+              className="bg-blue-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
+              onClick={() => navigate("/overtimeApproval")}
+            >
+              <h3 className="font-bold text-[11px] md:text-base">
+                Pending OT for my Approval
+              </h3>
+              <p className="text-xl md:text-2xl">
+                {approvalsum?.OTApprovalCount ?? 0}
+              </p>
+            </div>
+            <div
+              className="bg-blue-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
+              onClick={() => navigate("/OfficialBusinessApproval")}
+            >
+              <h3 className="font-bold text-[11px] md:text-base">
+                Pending OB for my Approval
+              </h3>
+              <p className="text-xl md:text-2xl">
+                {approvalsum?.OBApprovalCount ?? 0}
+              </p>
+            </div>
+            <div
+              className="bg-blue-500 p-4 rounded-xl shadow-lg text-white cursor-pointer select-none"
+              onClick={() => navigate("/timekeepingAdjApproval")}
+            >
+              <h3 className="font-bold text-[11px] md:text-base">
+                Pending DTR for my Approval
+              </h3>
+              <p className="text-xl md:text-2xl">
+                {approvalsum?.DTRApprovalCount ?? 0}
+              </p>
             </div>
           </div>
+        </>
+      )}
+      {/* Main Content */}
+      {/* <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2 p-2"> */}
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {requestSummaryCards.map((card) => (
-              <button
-                type="button"
-                key={card.code}
-                onClick={() => navigate(card.route)}
-                className="group min-w-0 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-blue-100 px-2 text-xs font-extrabold text-blue-900">
-                    {card.code}
-                  </span>
-                  <span className="text-lg text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-700">→</span>
-                </div>
-                <p className="mt-4 text-3xl font-extrabold tabular-nums text-slate-950">{card.count}</p>
-                <p className="mt-1 text-wrap text-xs font-semibold text-slate-600 sm:text-sm" title={card.label}>
-                  My {card.label}
-                </p>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {user?.approver === "1" && (
-          <section className="rounded-2xl border border-blue-100 bg-white p-3 sm:p-4">
-            <div className="mb-3">
-              <h2 className="text-base font-extrabold text-blue-950 sm:text-lg mb-1">For my approval</h2>
-              <p className="text-xs text-slate-500 sm:text-xs">Pending employee requests assigned to you.</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              {approvalSummaryCards.map((card) => (
-                <button
-                  type="button"
-                  key={card.code}
-                  onClick={() => navigate(card.route)}
-                  className="group rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-blue-800 px-2 text-xs font-extrabold text-white">
-                      {card.code}
-                    </span>
-                    <span className="text-slate-300 transition group-hover:text-blue-700">→</span>
-                  </div>
-                  <p className="mt-3 text-3xl font-extrabold tabular-nums text-blue-950">{card.count}</p>
-                  <p className="mt-1 text-wrap text-xs font-semibold text-slate-600 sm:text-sm" title={card.label}>
-                    {card.label}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-2">
         {/* Leave Credit Section */}
-          <div className="w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-2 sm:p-5">
+        <div className="bg-white p-4 rounded-xl shadow-lg w-full lg:col-span-2">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="dashboard-text-header">Leave Credit</h2>
               <span className="dashboard-text-span">Available credits by leave type</span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {/* <button
-                type="button"
-                onClick={() => setIsModalOpen(true)}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800"
-              >
-                View Details
-              </button> */}
-              <button
-                type="button"
-                onClick={() => navigate("/leave")}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-              >
-                File Leave
-              </button>
-            </div>
+            <button
+              onClick={() => navigate("/leave")}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              File Leave
+            </button>
           </div>
 
 
@@ -986,6 +956,12 @@ const Dashboard = () => {
                     {formatDashboardNumber(leaveCreditInsights.totals.used)}
                   </p>
                 </div>
+                {/* <div className="rounded-xl border border-red-100 bg-red-50 p-3">
+                  <p className="text-[10px] sm:text-[11px] font-semibold uppercase text-red-700">Low Balance</p>
+                  <p className="mt-1 text-[14px] sm:text-lg font-bold text-red-700">
+                    {leaveCreditInsights.lowBalanceCount}
+                  </p>
+                </div> */}
               </div>
 
               {/* Table Structure */}
@@ -1043,6 +1019,16 @@ const Dashboard = () => {
             </div>
           </div>
 
+          {/* View All Button
+    {leaveCredit.length > 0 && (
+      <div className="flex justify-end mt-20">
+        <button onClick={() => setIsModalOpen(true)} className="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center">
+          View All <span className="ml-1">→</span>
+        </button>
+      </div>
+    )} */}
+
+          {/* Leave Credit Modal */}
           <LeaveCreditModal
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
@@ -1051,38 +1037,27 @@ const Dashboard = () => {
         </div>
 
         {/* Personal Calendar */}
-          <div className="w-full rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-5 lg:col-span-2">
+        <div className="bg-white p-3 sm:p-4 rounded-xl shadow-lg w-full lg:col-span-2">
+          {/* <h2 className="text-base sm:text-base font-semibold mb-2 text-blue-800 text-center">
+            Personal Calendar
+          </h2> */}
 
-          <div className="mb-4">
-            <h2 className="dashboard-text-header">Personal Calendar</h2>
-            <span className="dashboard-text-span">Holidays, approved leave, and pending leave</span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(320px,330px)_1fr] lg:items-start">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(320px,330px)_1fr] lg:items-start">
             <div>
           {/* Navigation */}
           <div className="flex justify-between items-center mb-2">
-            <button
-              type="button"
-              onClick={handlePrevMonth}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-blue-800"
-              aria-label="Previous month"
-            >
+            <button onClick={handlePrevMonth} className="text-gray-400">
               ◀
             </button>
-            <h3 className="text-sm font-bold text-slate-800">
+            <h3 className="text-sm font-semibold">
               {currentMonth.format("MMMM YYYY")}
             </h3>
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-blue-800"
-              aria-label="Next month"
-            >
+            <button onClick={handleNextMonth} className="text-gray-600">
               ▶
             </button>
           </div>
 
+          {/* <div className="items-center justify-center"> */}
           {/* Weekday Names */}
           <div className="grid grid-cols-7 text-center font-semibold text-gray-600 mb-1 mx-auto text-[0.80rem] sm:text-[0.80rem] md:text-[0.90rem] lg:text-[13px]">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
@@ -1124,21 +1099,31 @@ const Dashboard = () => {
               }
 
               return (
-                <div
-                  key={`${day.dateKey || "outside"}-${index}`}
-                  data-tooltip-id="dashboard-calendar-tooltip"
-                  data-tooltip-content={tooltipText || undefined}
-                  className={`${baseClasses} ${style}`}
-                >
-                  {day.day}
-                </div>
+                <React.Fragment key={index}>
+                  <div
+                    data-tooltip-id={`tooltip-${index}`}
+                    data-tooltip-content={tooltipText}
+                    className={`${baseClasses} ${style}`}
+                  >
+                    {day.day}
+                  </div>
+                  {tooltipText && (
+                    <Tooltip
+                      id={`tooltip-${index}`}
+                      place="top"
+                      effect="solid"
+                    />
+                  )}
+                </React.Fragment>
               );
             })}
           </div>
-          <Tooltip id="dashboard-calendar-tooltip" place="top" />
+
+          {/* </div> */}
 
           {/* Calendar Legend */}
           <div className="flex flex-wrap justify-center gap-4 text-[11px] md:text-xs mt-4">
+            {/* <div className="flex items-center"><span className="w-4 h-4 rounded-xl bg-red-400 inline-block mr-1"></span> Holiday</div> */}
             <div className="flex items-center text-red-500 font-bold">
               <span className="w-4 h-4 rounded-xl bg-red-500 inline-block mr-1"></span>
               Holiday
@@ -1215,7 +1200,7 @@ const Dashboard = () => {
             <div className="rounded-xl border border-yellow-100 bg-yellow-50 p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <h3 className="text-xs font-bold uppercase text-yellow-700">
-                  Pending Leaves for Approval
+                  Pending Leaves
                 </h3>
                 <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-yellow-700">
                   {personalCalendarLists.pendingLeaves.length}
@@ -1247,55 +1232,19 @@ const Dashboard = () => {
             </div>
           </div>
           </div>
-          </div>
         </div>
+      </div>
 
-        {/* <div className="grid grid-cols-1 gap-4"> */}
-        
+      <hr className="mt-2 mb-2" />
+      <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-2 min-h-screen">
         {/* Daily Time Record Section */}
-        <div className="relative flex flex-grow flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
           <h2 className="dashboard-text-header">Daily Time Record</h2>
           <span className="dashboard-text-span">Recent Transactions</span>
 
-          <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
-            {/* DTR Trend Chart */}
-            <div className="min-w-0 rounded-xl border border-gray-200 bg-gray-50 p-4">
-            <div className="mb-4">
-              <p className="text-sm font-bold text-blue-900">Weekly Attendance Trend</p>
-              <p className="text-xs text-gray-500">Regular hours rendered over the last 7 transactions</p>
-            </div>
-            
-            {dtrTrendData.length > 0 ? (
-              <div className="flex h-40 items-end justify-between gap-2 px-2 sm:px-2">
-                {dtrTrendData.map((data, index) => (
-                  <div key={`${data.fullDate}-${index}`} className="group flex h-full w-full max-w-[42px] flex-col items-center gap-2">
-                    <div
-                      className="relative flex h-full w-full items-end justify-center overflow-hidden rounded-t-xl bg-blue-100"
-                      title={`${data.fullDate}: ${formatDashboardNumber(data.hours)} hours`}
-                    >
-                      <div
-                        className={`w-full rounded-t-lg transition-all duration-500 ${
-                          data.isUnderTime ? "bg-yellow-500" : "bg-blue-800"
-                        } group-hover:opacity-80`}
-                        style={{ height: `${Math.max(data.heightPct, data.hours > 0 ? 4 : 0)}%` }}
-                      />
-                      <span className="absolute top-1 hidden rounded bg-white/90 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 shadow-sm group-hover:block">
-                        {formatDashboardNumber(data.hours, 1)}h
-                      </span>
-                    </div>
-                    <p className="text-[10px] font-semibold text-slate-600">{data.date}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-sm text-slate-500">
-                No attendance trend available.
-              </div>
-            )}
-            </div>
-
-            <div className="min-w-0 overflow-x-auto">
-              <table className="dashboard-table">
+          {/* Responsive Table */}
+          <div className="mt-2 overflow-x-auto flex-grow">
+            <table className="dashboard-table">
               <thead className="dashboard-thead">
                 <tr className="dashboard-thead">
                   <th className="dashboard-th text-left">Date</th>
@@ -1339,15 +1288,15 @@ const Dashboard = () => {
                   </tr>
                 )}
               </tbody>
-              </table>
-            </div>
+            </table>
           </div>
 
+          {/* View All Button - Fixed on Small Screens */}
           {dailyTimeRecord.length > 0 && (
             <div className="relative flex justify-end">
               <button
                 onClick={() => navigate("/timekeeping")}
-                className="dashboard-button-viewall text-blue-800 hover:text-blue-900"
+                className="dashboard-button-viewall"
               >
                 View All <span className="ml-1">→</span>
               </button>
@@ -1356,13 +1305,17 @@ const Dashboard = () => {
         </div>
 
         {/* Loan Balance Inquiry */}
-        <div className="relative flex flex-grow flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        {/* <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative"> */}
+        {/* <h2 className="text-lg font-semibold mb-2 text-blue-800">My Loan Balance</h2>
+  <span className="text-gray-500 text-sm font-normal mt-2 uppercase">Recent Transactions</span> */}
+
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
           <h2 className="dashboard-text-header">My Loan Balance</h2>
           <span className="dashboard-text-span">Recent Transactions</span>
 
-          <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="min-w-0 overflow-x-auto">
-              <table className="dashboard-table">
+          {/* Responsive Table */}
+          <div className="mt-2 overflow-x-auto flex-grow">
+            <table className="dashboard-table">
               <thead className="dashboard-thead">
                 <tr className="dashboard-thead">
                   <th className="dashboard-th text-left">Loan Type</th>
@@ -1397,10 +1350,10 @@ const Dashboard = () => {
                   </tr>
                 )}
               </tbody>
-              </table>
-            </div>
+            </table>
+          </div>
 
-            <div className="min-w-0 rounded-xl border border-gray-200 bg-slate-50 p-3">
+          <div className="mt-2 rounded-xl border border-gray-200 bg-gray-50 p-3">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-sm font-bold text-blue-900">Loan Repayment</p>
@@ -1478,323 +1431,432 @@ const Dashboard = () => {
                 No loan balances to chart.
               </div>
             )}
-            </div>
           </div>
+
+          {/* View All Button - Fixed on Small Screens
+    {loanBalance.length > 0 && (
+      <div className="relative flex justify-end">
+      <button 
+        onClick={() => navigate("/leaveApproval")} 
+        className="dashboard-button-viewall"
+    >
+        View All <span className="ml-1">→</span>
+      </button>
+    </div>
+    )} */}
         </div>
 
-        {/* Unified My Applications Tabbed Component */}
-        <div className="relative flex w-full flex-grow flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
-          
-          {/* Status Ring Block */}
-          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 mb-4">
-            <p className="text-sm font-bold text-blue-900">Recent Requests Overview</p>
-            <div className="mt-3 flex h-3 w-full overflow-hidden rounded-full bg-gray-200">
-              <div className="bg-blue-600 transition-all duration-500" style={{ width: `${unifiedRequestStats.approvedPct}%` }} title={`Approved: ${unifiedRequestStats.approved}`} />
-              <div className="bg-yellow-400 transition-all duration-500" style={{ width: `${unifiedRequestStats.pendingPct}%` }} title={`Pending: ${unifiedRequestStats.pending}`} />
-              <div className="bg-red-500 transition-all duration-500" style={{ width: `${unifiedRequestStats.rejectedPct}%` }} title={`Rejected: ${unifiedRequestStats.rejected}`} />
+        {/* Overtime Applications */}
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="dashboard-text-header">My Overtime Applications</h2>
+              <span className="dashboard-text-span">Recent Transactions</span>
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] font-semibold text-blue-950">
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-600" /> Approved ({unifiedRequestStats.approved})</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-400" /> Pending ({unifiedRequestStats.pending})</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" /> Rejected ({unifiedRequestStats.rejected})</span>
-              <span className="ml-auto text-slate-500">Total: {unifiedRequestStats.total}</span>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3">
-            {/* Tab Navigation */}
-            <div className="flex space-x-2 overflow-x-auto">
-              <button
-                onClick={() => setActiveTab("leave")}
-                className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
-                  activeTab === "leave"
-                    ? "bg-blue-800 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"
-                }`}
-              >
-                Leave Applications
-              </button>
-              <button
-                onClick={() => setActiveTab("ot")}
-                className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
-                  activeTab === "ot"
-                    ? "bg-blue-800 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"
-                }`}
-              >
-                Overtime Applications
-              </button>
-              <button
-                onClick={() => setActiveTab("ob")}
-                className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
-                  activeTab === "ob"
-                    ? "bg-blue-800 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"
-                }`}
-              >
-                Official Business Applications
-              </button>
-            </div>
-
-            {/* Dynamic Action Button */}
             <button
-              onClick={() => {
-                if (activeTab === "leave") navigate("/leave");
-                if (activeTab === "ot") navigate("/overtime");
-                if (activeTab === "ob") navigate("/official-business");
-              }}
-              className="inline-flex h-9 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 whitespace-nowrap"
+              onClick={() => navigate("/overtime")}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
             >
-              File {activeTab === "leave" ? "Leave" : activeTab === "ot" ? "Overtime" : "Official Business"}
+              File OT
             </button>
           </div>
 
-          <div className="mt-4 overflow-x-auto flex-grow">
-            {/* LEAVE TABLE */}
-            {activeTab === "leave" && (
-              <table className="dashboard-table">
-                <thead className="dashboard-thead">
-                  <tr>
-                    <th className="dashboard-th text-left">Leave Date</th>
-                    <th className="dashboard-th text-left">Leave Type</th>
-                    <th className="dashboard-th text-right">Duration</th>
-                    <th className="dashboard-th text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="dashboard-tbody">
-                  {leaveApplication.length > 0 ? (
-                    leaveApplication.slice(0, 5).map((leave, index) => (
-                      <tr key={`leave-${index}`} className="dashboard-tbody dashboard-tr">
-                        <td className="dashboard-td">{leave.dateapplied}</td>
-                        <td className="dashboard-td">{leave.leavetype}</td>
-                        <td className="dashboard-td text-right">{leave.duration}</td>
-                        <td className="dashboard-td text-center">
-                          <span className={`dashboard-td inline-block px-3 py-1 w-[100px] rounded-full ${
-                            leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-700" : 
-                            leave.leavestatus === "Approved" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"
-                          }`}>
-                            {leave.leavestatus}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan="4"><div className="dashboard-div-norecords">No leave applications found.</div></td></tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-
-            {/* OT TABLE */}
-            {activeTab === "ot" && (
-              <table className="dashboard-table">
-                <thead className="dashboard-thead">
-                  <tr>
-                    <th className="dashboard-th text-left">OT Date</th>
-                    <th className="dashboard-th text-left">OT Type</th>
-                    <th className="dashboard-th text-right">Duration</th>
-                    <th className="dashboard-th text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="dashboard-tbody">
-                  {otApplication.length > 0 ? (
-                    otApplication.slice(0, 5).map((ot, index) => (
-                      <tr key={`ot-${index}`} className="dashboard-tbody dashboard-tr">
-                        <td className="dashboard-td">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
-                        <td className="dashboard-td">{ot.ottype}</td>
-                        <td className="dashboard-td text-right">{ot.duration}</td>
-                        <td className="dashboard-td text-center">
-                          <span className={`inline-block w-[90px] px-2 py-1 rounded-full ${
-                            ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                            ot.otstatus === "Approved" ? "bg-blue-100 text-blue-600" : "bg-red-100 text-red-600"
-                          }`}>
-                            {ot.otstatus}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan="4"><div className="dashboard-div-norecords">No overtime applications found.</div></td></tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-
-            {/* OB TABLE */}
-            {activeTab === "ob" && (
-              <table className="dashboard-table">
-                <thead className="dashboard-thead">
-                  <tr>
-                    <th className="dashboard-th text-left">OB Date</th>
-                    <th className="dashboard-th text-center">Start Datetime</th>
-                    <th className="dashboard-th text-center">End Datetime</th>
-                    <th className="dashboard-th text-right">Duration</th>
-                    <th className="dashboard-th text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="dashboard-tbody">
-                  {obApplication.length > 0 ? (
-                    obApplication.slice(0, 5).map((ob, index) => (
-                      <tr key={`ob-${index}`} className="dashboard-tbody dashboard-tr">
-                        <td className="dashboard-td text-nowrap">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
-                        <td className="dashboard-td text-nowrap text-center">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm A")}</td>
-                        <td className="dashboard-td text-nowrap text-center">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm A")}</td>
-                        <td className="dashboard-td text-nowrap text-right">{ob.duration} hr(s)</td>
-                        <td className="dashboard-td text-center">
-                          <span className={`dashboard-td inline-block px-3 py-1 w-[100px] rounded-full ${
-                            ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-700" : 
-                            ob.obstatus === "Approved" ? "bg-blue-100 text-blue-700" : "bg-red-100 text-red-700"
-                          }`}>
-                            {ob.obstatus}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr><td colSpan="5"><div className="dashboard-div-norecords">No official business applications found.</div></td></tr>
-                  )}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          <div className="relative flex justify-end mt-2">
-            <button
-              onClick={() => {
-                if (activeTab === "leave") navigate("/leave");
-                if (activeTab === "ot") navigate("/overtime");
-                if (activeTab === "ob") navigate("/official-business");
-              }}
-              className="dashboard-button-viewall text-blue-800 hover:text-blue-900 font-semibold text-sm"
-            >
-              View All <span className="ml-1">→</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Unified Approvals Tabbed Component */}
-        {user?.approver === "1" && (
-          <div className="relative flex w-full flex-grow flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
-            
-            <div className="mb-4">
-              <h2 className="dashboard-text-header">For My Approval</h2>
-              <span className="dashboard-text-span">Pending employee requests</span>
-            </div>
-
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3">
-              {/* Tab Navigation */}
-              <div className="flex space-x-2 overflow-x-auto">
-                <button
-                  onClick={() => setActiveApproverTab("leave")}
-                  className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
-                    activeApproverTab === "leave"
-                      ? "bg-blue-800 text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"
-                  }`}
-                >
-                  Leave for Approval
-                </button>
-                <button
-                  onClick={() => setActiveApproverTab("ot")}
-                  className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
-                    activeApproverTab === "ot"
-                      ? "bg-blue-800 text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"
-                  }`}
-                >
-                  Overtime for Approval
-                </button>
-                <button
-                  onClick={() => setActiveApproverTab("ob")}
-                  className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
-                    activeApproverTab === "ob"
-                      ? "bg-blue-800 text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"
-                  }`}
-                >
-                  Official Business for Approval
-                </button>
-              </div>
-            </div>
-
-            <div className="mt-4 overflow-x-auto flex-grow">
-              
-              {/* LEAVE APPROVAL TABLE */}
-              {activeApproverTab === "leave" && (
-                <table className="dashboard-table">
-                  <thead className="dashboard-thead">
-                    <tr>
-                      <th className="dashboard-th text-left text-nowrap">Leave Date</th>
-                      <th className="dashboard-th text-left text-nowrap">Leave Type</th>
-                      <th className="dashboard-th text-left text-nowrap">Duration</th>
-                      <th className="dashboard-th text-left text-nowrap">Employee</th>
-                      <th className="dashboard-th text-center text-nowrap">Status</th>
+          {/* Responsive Table */}
+          <div className="mt-2 overflow-x-auto flex-grow">
+            <table className="dashboard-table">
+              {/* <thead className="bg-gradient-to-r from-blue-300 to-purple-300 text-black text-xs sm:text-xs md:text-xs lg:text-base"> */}
+              <thead className="dashboard-thead">
+                <tr>
+                  <th className="dashboard-th text-left">OT Date</th>
+                  <th className="dashboard-th text-left">OT Type</th>
+                  <th className="dashboard-th text-right">Duration</th>
+                  <th className="dashboard-th text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="dashboard-tbody">
+                {otApplication.length > 0 ? (
+                  otApplication.slice(0, 5).map((ot, index) => (
+                    <tr key={index} className="dashboard-tbody dashboard-tr">
+                      <td className="dashboard-td">
+                        {dayjs(ot.dateapplied).format("MM/DD/YYYY")}
+                      </td>
+                      <td className="dashboard-td">{ot.ottype}</td>
+                      <td className="dashboard-td text-right">{ot.duration}</td>
+                      <td className="dashboard-td text-center">
+                        <span
+                          className={`inline-block w-[90px] px-2 py-1 rounded-full 
+                    ${
+                      ot.otstatus === "Pending"
+                        ? "bg-yellow-100 text-yellow-600"
+                        : ot.otstatus === "Approved"
+                          ? "bg-blue-100 text-blue-600"
+                          : "bg-red-100 text-red-600"
+                    }`}
+                        >
+                          {ot.otstatus}
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="dashboard-tbody">
-                    {leaveApproval.length > 0 ? (
-                      leaveApproval.slice(0, 5).map((leave, index) => (
-                        <tr key={`ap-leave-${index}`} className="dashboard-tbody dashboard-tr">
-                          <td className="dashboard-td">{leave.dateapplied}</td>
-                          <td className="dashboard-td">{leave.leavetype}</td>
-                          <td className="dashboard-td">{leave.duration}</td>
-                          <td className="dashboard-td text-wrap">{leave.empname}</td>
-                          <td className="dashboard-td text-center">
-                            <span className={`inline-block w-[90px] px-2 py-1 rounded-full ${
-                              leave.leavestatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                              leave.leavestatus === "Approved" ? "bg-blue-100 text-blue-600" : "bg-red-100 text-red-600"
-                            }`}>
-                              {leave.leavestatus}
-                            </span>
-                          </td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr><td colSpan="5"><div className="dashboard-div-norecords">No leave records for approval found.</div></td></tr>
-                    )}
-                  </tbody>
-                </table>
-              )}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="4">
+                      <div className="dashboard-div-norecords">
+                        No overtime applications found.
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-              {/* OT APPROVAL TABLE */}
-              {activeApproverTab === "ot" && (
+          {/* View All Button - Fixed on Small Screens */}
+          {otApplication.length > 0 && (
+            <div className="relative flex justify-end">
+              <button
+                onClick={() => navigate("/overtime")}
+                className="dashboard-button-viewall"
+              >
+                View All <span className="ml-1">→</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="dashboard-text-header">My Leave Applications</h2>
+              <span className="dashboard-text-span">Recent Transactions</span>
+            </div>
+            <button
+              onClick={() => navigate("/leave")}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              File Leave
+            </button>
+          </div>
+
+          {/* Responsive Table */}
+          <div className="mt-2 overflow-x-auto flex-grow">
+            <table className="dashboard-table">
+              <thead className="dashboard-thead">
+                <tr>
+                  <th className="dashboard-th text-left">Leave Date</th>
+                  <th className="dashboard-th text-left">Leave Type</th>
+                  <th className="dashboard-th text-right">Duration</th>
+                  <th className="dashboard-th text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="dashboard-tbody">
+                {leaveApplication.length > 0 ? (
+                  leaveApplication.slice(0, 5).map((leave, index) => (
+                    <tr key={index} className="dashboard-tbody dashboard-tr">
+                      <td className="dashboard-td">{leave.dateapplied}</td>
+                      <td className="dashboard-td">{leave.leavetype}</td>
+                      <td className="dashboard-td text-right">
+                        {leave.duration}
+                      </td>
+                      <td className="dashboard-td text-center">
+                        <span
+                          className={`dashboard-td inline-block px-3 py-1 w-[100px] rounded-full
+      ${
+        leave.leavestatus === "Pending"
+          ? "bg-yellow-100 text-yellow-700"
+          : leave.leavestatus === "Approved"
+            ? "bg-blue-100 text-blue-700"
+            : "bg-red-100 text-red-700"
+      }`}
+                        >
+                          {leave.leavestatus}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="4">
+                      <div className="dashboard-div-norecords">
+                        No leave applications found.
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* View All Button - Fixed on Small Screens */}
+          {leaveApplication.length > 0 && (
+            <div className="relative flex justify-end">
+              <button
+                onClick={() => navigate("/leave")}
+                className="dashboard-button-viewall"
+              >
+                View All <span className="ml-1">→</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Official Business Applications */}
+
+        <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="dashboard-text-header">
+                My Official Business Applications
+              </h2>
+              <span className="dashboard-text-span">Recent Transactions</span>
+            </div>
+            <button
+              onClick={() => navigate("/official-business")}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+            >
+              File OB
+            </button>
+          </div>
+
+          {/* Responsive Table */}
+          <div className="mt-2 overflow-x-auto flex-grow">
+            <table className="dashboard-table">
+              <thead className="dashboard-thead">
+                <tr>
+                  <th className="dashboard-th text-left">OB Date</th>
+                  <th className="dashboard-th text-center">Start Datetime</th>
+                  <th className="dashboard-th text-center">End Datetime</th>
+                  <th className="dashboard-th text-center">Duration</th>
+                  <th className="dashboard-th text-center">Status</th>
+                </tr>
+              </thead>
+              <tbody className="dashboard-tbody">
+                {obApplication.length > 0 ? (
+                  obApplication.slice(0, 5).map((ob, index) => (
+                    <tr key={index} className="dashboard-tbody dashboard-tr">
+                      <td className="dashboard-td text-nowrap">
+                        {dayjs(ob.dateapplied).format("MM/DD/YYYY")}
+                      </td>
+                      <td className="dashboard-td text-nowrap text-center">
+                        {dayjs(ob.obstart).format("MM/DD/YYYY hh:mm A")}
+                      </td>
+                      <td className="dashboard-td text-nowrap text-center">
+                        {dayjs(ob.obend).format("MM/DD/YYYY hh:mm A")}
+                      </td>
+                      <td className="dashboard-td text-nowrap text-right">
+                        {ob.duration} hr(s)
+                      </td>
+                      <td className="dashboard-td text-center">
+                        <span
+                          className={`dashboard-td inline-block px-3 py-1 w-[100px] rounded-full
+      ${
+        ob.obstatus === "Pending"
+          ? "bg-yellow-100 text-yellow-700"
+          : ob.obstatus === "Approved"
+            ? "bg-blue-100 text-blue-700"
+            : "bg-red-100 text-red-700"
+      }`}
+                        >
+                          {ob.obstatus}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5">
+                      <div className="dashboard-div-norecords">
+                        No official business applications found.
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* View All Button - Fixed on Small Screens */}
+          {obApplication.length > 0 && (
+            <div className="relative flex justify-end">
+              <button
+                onClick={() => navigate("/official-business")}
+                className="dashboard-button-viewall"
+              >
+                View All <span className="ml-1">→</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {user.approver === "1" && (
+          <>
+            {/* Overtime Approval */}
+            <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
+              <h2 className="dashboard-text-header">Overtime for Approval</h2>
+              <span className="dashboard-text-span">Recent Transactions</span>
+
+              {/* Responsive Table */}
+              <div className="mt-2 overflow-x-auto flex-grow">
                 <table className="dashboard-table">
                   <thead className="dashboard-thead">
                     <tr>
                       <th className="dashboard-th text-left">OT Date</th>
                       <th className="dashboard-th text-left">OT Type</th>
                       <th className="dashboard-th text-right">Duration</th>
-                      <th className="dashboard-th text-left">Employee</th>
+                      <th className="dashboard-th text-left">Employee Name</th>
                       <th className="dashboard-th text-center">Status</th>
                     </tr>
                   </thead>
                   <tbody className="dashboard-tbody">
                     {otApproval.length > 0 ? (
                       otApproval.slice(0, 5).map((ot, index) => (
-                        <tr key={`ap-ot-${index}`} className="dashboard-tbody dashboard-tr">
-                          <td className="dashboard-td text-left">{dayjs(ot.dateapplied).format("MM/DD/YYYY")}</td>
-                          <td className="dashboard-td text-left text-nowrap">{ot.ottype}</td>
-                          <td className="dashboard-td text-right">{ot.duration}</td>
-                          <td className="dashboard-td text-left text-wrap">{ot.empname}</td>
+                        <tr
+                          key={index}
+                          className="dashboard-tbody dashboard-tr"
+                        >
+                          <td className="dashboard-td text-left">
+                            {dayjs(ot.dateapplied).format("MM/DD/YYYY")}
+                          </td>
+                          <td className="dashboard-td text-left text-nowrap">
+                            {ot.ottype}
+                          </td>
+                          <td className="dashboard-td text-right">
+                            {ot.duration}
+                          </td>
+                          <td className="dashboard-td text-left text-wrap">
+                            {ot.empname}
+                          </td>
                           <td className="dashboard-td text-center">
-                            <span className={`inline-block w-[90px] px-2 py-1 rounded-full ${
-                              ot.otstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                              ot.otstatus === "Approved" ? "bg-blue-100 text-blue-600" : "bg-red-100 text-red-600"
-                            }`}>
+                            <span
+                              className={`inline-block w-[90px] px-2 py-1 rounded-full 
+                    ${
+                      ot.otstatus === "Pending"
+                        ? "bg-yellow-100 text-yellow-600"
+                        : ot.otstatus === "Approved"
+                          ? "bg-blue-100 text-blue-600"
+                          : "bg-red-100 text-red-600"
+                    }`}
+                            >
                               {ot.otstatus}
                             </span>
                           </td>
                         </tr>
                       ))
                     ) : (
-                      <tr><td colSpan="5"><div className="dashboard-div-norecords">No overtime records for approval found.</div></td></tr>
+                      <tr>
+                        <td colSpan="6">
+                          <div className="dashboard-div-norecords">
+                            No overtime records for approval found.
+                          </div>
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
-              )}
+              </div>
 
-              {/* OB APPROVAL TABLE */}
-              {activeApproverTab === "ob" && (
+              {/* View All Button - Fixed on Small Screens */}
+              {otApproval.length > 0 && (
+                <div className="relative flex justify-end">
+                  <button
+                    onClick={() => navigate("/overtimeApproval")}
+                    className="dashboard-button-viewall"
+                  >
+                    View All <span className="ml-1">→</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Leave Approval */}
+            <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
+              <h2 className="dashboard-text-header">Leave for Approval</h2>
+              <span className="dashboard-text-span">Recent Transactions</span>
+
+              {/* Responsive Table */}
+              <div className="mt-2 overflow-x-auto flex-grow">
+                <table className="dashboard-table">
+                  <thead className="dashboard-thead">
+                    <tr>
+                      <th className="dashboard-th text-left text-nowrap">
+                        Leave Date
+                      </th>
+                      <th className="dashboard-th text-left text-nowrap">
+                        Leave Type
+                      </th>
+                      <th className="dashboard-th text-left text-nowrap">
+                        Duration
+                      </th>
+                      <th className="dashboard-th text-left text-nowrap">
+                        Employee
+                      </th>
+                      <th className="dashboard-th text-center text-nowrap">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="dashboard-tbody">
+                    {leaveApproval.length > 0 ? (
+                      leaveApproval.map((leave, index) => (
+                        <tr
+                          key={index}
+                          className="dashboard-tbody dashboard-tr"
+                        >
+                          <td className="dashboard-td">{leave.dateapplied}</td>
+                          <td className="dashboard-td">{leave.leavetype}</td>
+                          <td className="dashboard-td">{leave.duration}</td>
+                          <td className="dashboard-td text-wrap">{leave.empname}</td>
+                          <td className="dashboard-td text-center">
+                            <span
+                              className={`inline-block w-[90px] px-2 py-1 rounded-full 
+            ${
+              leave.leavestatus === "Pending"
+                ? "bg-yellow-100 text-yellow-600"
+                : leave.leavestatus === "Approved"
+                  ? "bg-blue-100 text-blue-600"
+                  : "bg-red-100 text-red-600"
+            }`}
+                            >
+                              {leave.leavestatus}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6">
+                          <div className="dashboard-div-norecords">
+                            No leave records for approval found.
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* View All Button - Fixed on Small Screens */}
+              {leaveApproval.length > 0 && (
+                <div className="relative flex justify-end">
+                  <button
+                    onClick={() => navigate("/leaveApproval")}
+                    className="dashboard-button-viewall"
+                  >
+                    View All <span className="ml-1">→</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Official Business Approval */}
+            <div className="bg-white p-4 rounded-xl shadow-md flex flex-col flex-grow relative">
+              <h2 className="dashboard-text-header">
+                Official Business for Approval
+              </h2>
+              <span className="dashboard-text-span">Recent Transactions</span>
+
+              {/* Responsive Table */}
+              <div className="mt-2 overflow-x-auto flex-grow">
                 <table className="dashboard-table">
                   <thead className="dashboard-thead">
                     <tr>
@@ -1809,57 +1871,79 @@ const Dashboard = () => {
                   <tbody className="dashboard-tbody">
                     {obApproval.length > 0 ? (
                       obApproval.slice(0, 5).map((ob, index) => (
-                        <tr key={`ap-ob-${index}`} className="dashboard-tbody dashboard-tr">
-                          <td className="dashboard-td text-nowrap">{dayjs(ob.dateapplied).format("MM/DD/YYYY")}</td>
-                          <td className="dashboard-td text-nowrap">{dayjs(ob.obstart).format("MM/DD/YYYY hh:mm a")}</td>
-                          <td className="dashboard-td text-nowrap">{dayjs(ob.obend).format("MM/DD/YYYY hh:mm a")}</td>
-                          <td className="dashboard-td text-right">{ob.duration} hr(s)</td>
-                          <td className="dashboard-td text-wrap">{ob.empname}</td>
+                        <tr
+                          key={index}
+                          className="dashboard-tbody dashboard-tr"
+                        >
+                          <td className="dashboard-td text-nowrap">
+                            {dayjs(ob.dateapplied).format("MM/DD/YYYY")}
+                          </td>
+                          <td className="dashboard-td text-nowrap">
+                            {dayjs(ob.obstart).format("MM/DD/YYYY hh:mm a")}
+                          </td>
+                          <td className="dashboard-td text-nowrap">
+                            {dayjs(ob.obend).format("MM/DD/YYYY hh:mm a")}
+                          </td>
+                          <td className="dashboard-td text-right">
+                            {ob.duration} hr(s)
+                          </td>
+                          <td className="dashboard-td text-wrap">
+                            {ob.empname}
+                          </td>
                           <td className="dashboard-td text-center">
-                            <span className={`inline-block w-[90px] px-2 py-1 rounded-full ${
-                              ob.obstatus === "Pending" ? "bg-yellow-100 text-yellow-600" : 
-                              ob.obstatus === "Approved" ? "bg-blue-100 text-blue-600" : "bg-red-100 text-red-600"
-                            }`}>
+                            <span
+                              className={`inline-block w-[90px] px-2 py-1 rounded-full 
+                              ${
+                                ob.obstatus === "Pending"
+                                  ? "bg-yellow-100 text-yellow-600"
+                                  : ob.obstatus === "Approved"
+                                    ? "bg-blue-100 text-blue-600"
+                                    : "bg-red-100 text-red-600"
+                              }`}
+                            >
                               {ob.obstatus}
                             </span>
                           </td>
                         </tr>
                       ))
                     ) : (
-                      <tr><td colSpan="6"><div className="dashboard-div-norecords">No official business records for approval found.</div></td></tr>
+                      <tr>
+                        <td colSpan="6">
+                          <div className="dashboard-div-norecords">
+                            No official business records for approval found.
+                          </div>
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* View All Button - Fixed on Small Screens */}
+              {obApproval.length > 0 && (
+                <div className="relative flex justify-end">
+                  <button
+                    onClick={() => navigate("/OfficialBusinessApproval")}
+                    className="dashboard-button-viewall"
+                  >
+                    View All <span className="ml-1">→</span>
+                  </button>
+                </div>
               )}
             </div>
-
-            <div className="relative flex justify-end mt-2">
-              <button
-                onClick={() => {
-                  if (activeApproverTab === "leave") navigate("/leaveApproval");
-                  if (activeApproverTab === "ot") navigate("/overtimeApproval");
-                  if (activeApproverTab === "ob") navigate("/OfficialBusinessApproval");
-                }}
-                className="dashboard-button-viewall text-blue-800 hover:text-blue-900 font-semibold text-sm"
-              >
-                View All <span className="ml-1">→</span>
-              </button>
-            </div>
-          </div>
+          </>
         )}
-
         {showBackToTop && (
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="fixed bottom-6 right-6 z-50 bg-blue-800 text-white p-3 rounded-full shadow-lg hover:bg-blue-900 transition duration-300"
+            className="fixed bottom-6 right-6 z-50 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition duration-300"
             aria-label="Back to top"
           >
             <FontAwesomeIcon icon={faArrowUp} size="sm" />
           </button>
         )}
-        </div>
       </div>
-    // </div>
+    </div>
   );
 };
 

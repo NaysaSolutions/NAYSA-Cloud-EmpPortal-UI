@@ -588,6 +588,127 @@ const normalizeDtrApiPayload = (payload, selectedEndpoint) => {
   }
 };
 
+const DTR_IMAGE_FIELD_KEYS = [
+  "time_in_image_path",
+  "TIME_IN_IMAGE_PATH",
+  "timeInImagePath",
+  "time_in_image",
+  "TIME_IN_IMAGE",
+  "timeInImage",
+  "time_in_photo",
+  "TIME_IN_PHOTO",
+  "timeInPhoto",
+  "time_in_photo_path",
+  "TIME_IN_PHOTO_PATH",
+  "timeInPhotoPath",
+  "time_in_picture",
+  "TIME_IN_PICTURE",
+  "timeInPicture",
+  "image_in",
+  "IMAGE_IN",
+  "in_image",
+  "IN_IMAGE",
+  "time_in_file",
+  "TIME_IN_FILE",
+  "image_timein",
+  "IMAGE_TIMEIN",
+  "image_time_in",
+  "IMAGE_TIME_IN",
+  "timein_image",
+  "TIMEIN_IMAGE",
+  "time_in_image_url",
+  "TIME_IN_IMAGE_URL",
+  "timeInImageUrl",
+  "img_in",
+  "IMG_IN",
+  "in_filename",
+  "IN_FILENAME",
+  "time_in_image_id",
+  "TIME_IN_IMAGE_ID",
+  "timeInImageId",
+  "timeInImageID",
+  "time_in_imageid",
+  "TIME_IN_IMAGEID",
+  "timein_image_id",
+  "TIMEIN_IMAGE_ID",
+  "time_in_photo_id",
+  "TIME_IN_PHOTO_ID",
+  "time_out_image_path",
+  "TIME_OUT_IMAGE_PATH",
+  "timeOutImagePath",
+  "time_out_image",
+  "TIME_OUT_IMAGE",
+  "timeOutImage",
+  "time_out_photo",
+  "TIME_OUT_PHOTO",
+  "timeOutPhoto",
+  "time_out_photo_path",
+  "TIME_OUT_PHOTO_PATH",
+  "timeOutPhotoPath",
+  "time_out_picture",
+  "TIME_OUT_PICTURE",
+  "timeOutPicture",
+  "image_out",
+  "IMAGE_OUT",
+  "out_image",
+  "OUT_IMAGE",
+  "time_out_file",
+  "TIME_OUT_FILE",
+  "image_timeout",
+  "IMAGE_TIMEOUT",
+  "image_time_out",
+  "IMAGE_TIME_OUT",
+  "timeout_image",
+  "TIMEOUT_IMAGE",
+  "time_out_image_url",
+  "TIME_OUT_IMAGE_URL",
+  "timeOutImageUrl",
+  "img_out",
+  "IMG_OUT",
+  "out_filename",
+  "OUT_FILENAME",
+  "time_out_image_id",
+  "TIME_OUT_IMAGE_ID",
+  "timeOutImageId",
+  "timeOutImageID",
+  "time_out_imageid",
+  "TIME_OUT_IMAGEID",
+  "timeout_image_id",
+  "TIMEOUT_IMAGE_ID",
+  "time_out_photo_id",
+  "TIME_OUT_PHOTO_ID",
+];
+
+const getDtrDateKey = (row) => {
+  const rawDate = normalizeText(
+    getValue(row, [
+      "date",
+      "DATE",
+      "dtrDate",
+      "DTR_DATE",
+      "recordDate",
+      "record_date",
+    ]),
+  );
+  const dateMatch = rawDate.match(/\d{4}[-/]\d{1,2}[-/]\d{1,2}/);
+
+  return dateMatch ? dateMatch[0].replace(/\//g, "-") : rawDate.split("T")[0];
+};
+
+const mergeDtrPhotoFields = (targetRow, photoRow) => {
+  const mergedRow = { ...targetRow };
+
+  DTR_IMAGE_FIELD_KEYS.forEach((key) => {
+    const value = photoRow?.[key];
+
+    if (value != null && normalizeText(value)) {
+      mergedRow[key] = value;
+    }
+  });
+
+  return mergedRow;
+};
+
 const preserveAcronym = (word) => {
   const acronym = word.toUpperCase();
   if (["DTR", "HR", "OT", "AWOL", "AM", "PM"].includes(acronym)) {
@@ -641,7 +762,13 @@ const buildTimekeepingImageCandidates = (
   const addCandidate = (value) => {
     const cleanValue = normalizeText(value);
     if (!cleanValue) return;
-    candidates.push(cleanValue.replace(/([^:]\/)\/+/g, "$1"));
+
+    // Preserve data/blob previews exactly; their slashes are part of the payload.
+    candidates.push(
+      /^(?:https?:|data:|blob:)/i.test(cleanValue)
+        ? cleanValue
+        : cleanValue.replace(/([^:]\/)\/+/g, "$1"),
+    );
   };
 
   const normalizePath = (value) => {
@@ -761,7 +888,12 @@ const buildTimekeepingImageCandidates = (
 
   return getUniqueImageCandidates(candidates);
 };
-const normalizeDtrRow = (row, index, assetOrigin) => {
+const normalizeDtrRow = (
+  row,
+  index,
+  assetOrigin,
+  { fallbackEmpNo = "", fallbackBranchCode = "" } = {},
+) => {
   const source = normalizeText(getValue(row, ["source", "SOURCE", "type", "TYPE"]));
   const empNo = normalizeText(
     getValue(row, [
@@ -792,6 +924,17 @@ const normalizeDtrRow = (row, index, assetOrigin) => {
   const department = normalizeText(
     getValue(row, ["Department", "department", "DEPARTMENT", "deptName", "DEPT_NAME"]),
   );
+  const branchCode = normalizeText(
+    getValue(row, [
+      "branchcode",
+      "branchCode",
+      "BRANCHCODE",
+      "BRANCH_CODE",
+      "branch_code",
+      "branch",
+      "BRANCH",
+    ]),
+  ) || normalizeText(fallbackBranchCode);
   const date = normalizeText(getValue(row, ["date", "DATE", "dtrDate", "DTR_DATE"]));
   const timeIn = getFirstNonBlankValue(row, [
     "time_in_datetime",
@@ -863,6 +1006,9 @@ const normalizeDtrRow = (row, index, assetOrigin) => {
     "time_in_photo",
     "TIME_IN_PHOTO",
     "timeInPhoto",
+    "time_in_photo_path",
+    "TIME_IN_PHOTO_PATH",
+    "timeInPhotoPath",
     "time_in_picture",
     "TIME_IN_PICTURE",
     "image_in",
@@ -873,6 +1019,13 @@ const normalizeDtrRow = (row, index, assetOrigin) => {
     "TIME_IN_FILE",
     "image_timein",
     "IMAGE_TIMEIN",
+    "image_time_in",
+    "IMAGE_TIME_IN",
+    "timein_image",
+    "TIMEIN_IMAGE",
+    "time_in_image_url",
+    "TIME_IN_IMAGE_URL",
+    "timeInImageUrl",
     "img_in",
     "IMG_IN",
     "in_filename",
@@ -886,6 +1039,10 @@ const normalizeDtrRow = (row, index, assetOrigin) => {
     "timeInImageID",
     "time_in_imageid",
     "TIME_IN_IMAGEID",
+    "timein_image_id",
+    "TIMEIN_IMAGE_ID",
+    "time_in_photo_id",
+    "TIME_IN_PHOTO_ID",
   ]);
 
   const timeOutImagePath = getValue(row, [
@@ -898,6 +1055,9 @@ const normalizeDtrRow = (row, index, assetOrigin) => {
     "time_out_photo",
     "TIME_OUT_PHOTO",
     "timeOutPhoto",
+    "time_out_photo_path",
+    "TIME_OUT_PHOTO_PATH",
+    "timeOutPhotoPath",
     "time_out_picture",
     "TIME_OUT_PICTURE",
     "image_out",
@@ -908,6 +1068,13 @@ const normalizeDtrRow = (row, index, assetOrigin) => {
     "TIME_OUT_FILE",
     "image_timeout",
     "IMAGE_TIMEOUT",
+    "image_time_out",
+    "IMAGE_TIME_OUT",
+    "timeout_image",
+    "TIMEOUT_IMAGE",
+    "time_out_image_url",
+    "TIME_OUT_IMAGE_URL",
+    "timeOutImageUrl",
     "img_out",
     "IMG_OUT",
     "out_filename",
@@ -921,18 +1088,28 @@ const normalizeDtrRow = (row, index, assetOrigin) => {
     "timeOutImageID",
     "time_out_imageid",
     "TIME_OUT_IMAGEID",
+    "timeout_image_id",
+    "TIMEOUT_IMAGE_ID",
+    "time_out_photo_id",
+    "TIME_OUT_PHOTO_ID",
   ]);
+
+  const imageRecord = {
+    ...row,
+    empno: empNo || normalizeText(fallbackEmpNo),
+    branchcode: branchCode,
+  };
 
   const timeInImageCandidates = buildTimekeepingImageCandidates(
     timeInImagePath,
     timeInImageId,
-    row,
+    imageRecord,
     assetOrigin,
   );
   const timeOutImageCandidates = buildTimekeepingImageCandidates(
     timeOutImagePath,
     timeOutImageId,
-    row,
+    imageRecord,
     assetOrigin,
   );
 
@@ -1153,6 +1330,15 @@ export default function DTRMonitoring() {
   );
   const currentEmpNo = normalizeText(getUserEmpNo(resolvedUser));
   const currentEmpName = normalizeText(getUserName(resolvedUser)) || currentEmpNo;
+  const currentBranchCode = normalizeText(
+    getValue(resolvedUser, [
+      "branchcode",
+      "branchCode",
+      "BRANCHCODE",
+      "BRANCH_CODE",
+      "branch_code",
+    ]),
+  );
   const currentHrFlag = normalizeFlag(getUserHrFlag(resolvedUser));
   const currentApprover = normalizeText(getUserApprover(resolvedUser));
   const isApprover = currentApprover === "1";
@@ -1237,8 +1423,14 @@ export default function DTRMonitoring() {
       : layoutMode;
 
   const normalizedRows = useMemo(
-    () => records.map((row, index) => normalizeDtrRow(row, index, assetOrigin)),
-    [records, assetOrigin],
+    () =>
+      records.map((row, index) =>
+        normalizeDtrRow(row, index, assetOrigin, {
+          fallbackEmpNo: currentEmpNo,
+          fallbackBranchCode: currentBranchCode,
+        }),
+      ),
+    [records, assetOrigin, currentEmpNo, currentBranchCode],
   );
 
   const employeeOptions = useMemo(() => {
@@ -1479,6 +1671,39 @@ console.log("DTR PRODUCTION RESPONSE:", {
 });
 
 let nextRows = parseDtrPayloadRows(payload, selectedEndpoint);
+
+// The personal endpoint is the authoritative source for timekeeping photo
+// references. Some getAllDTR responses contain attendance data without those
+// image columns, so enrich the existing My DTR rows when needed.
+if (!shouldUseApproverDtrEndpoint && currentEmpNo) {
+  try {
+    const personalDtrEndpoint = `${API_ENDPOINTS.getDTRRecords}/${encodeURIComponent(
+      currentEmpNo,
+    )}/${startDate}/${endDate}`;
+    const personalResponse = await axios.get(personalDtrEndpoint, {
+      headers: { Accept: "application/json" },
+    });
+    const personalPayload = normalizeDtrApiPayload(
+      personalResponse.data,
+      personalDtrEndpoint,
+    );
+    const personalRows = parseDtrPayloadRows(
+      personalPayload,
+      personalDtrEndpoint,
+    );
+    const personalRowsByDate = new Map(
+      personalRows
+        .map((row) => [getDtrDateKey(row), row])
+        .filter(([dateKey]) => dateKey),
+    );
+
+    nextRows = nextRows.map((row) =>
+      mergeDtrPhotoFields(row, personalRowsByDate.get(getDtrDateKey(row))),
+    );
+  } catch (photoError) {
+    console.warn("Unable to enrich My DTR rows with timekeeping photos:", photoError);
+  }
+}
 
 if (nextRows.length === 0) {
   console.warn("DTR API returned 0 parsed rows:", payload);
