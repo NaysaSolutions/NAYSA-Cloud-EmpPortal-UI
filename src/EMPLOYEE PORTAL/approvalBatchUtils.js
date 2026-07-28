@@ -2,15 +2,19 @@ import API_ENDPOINTS from "@/apiConfig.jsx";
 
 const getStamp = (row, type) => {
   const fields = {
-    ot: ["otStamp", "OT_STAMP", "stamp", "Stamp", "guid", "OT_STAMP_ID"],
-    leave: ["LV_STAMP", "lvStamp", "leaveStamp", "stamp", "Stamp", "guid"],
-    ob: ["obStamp", "OB_STAMP", "stamp", "Stamp", "guid"],
-    dtr: ["dtrStamp", "DTR_STAMP", "stamp", "Stamp", "guid"],
+    ot: ["otstamp", "ot_stamp", "stamp", "guid", "ot_stamp_id"],
+    leave: ["lv_stamp", "lvstamp", "leavestamp", "stamp", "guid"],
+    ob: ["obstamp", "ob_stamp", "stamp", "guid"],
+    dtr: ["dtrstamp", "dtr_stamp", "stamp", "guid"],
   };
-  return (fields[type] || []).map((field) => row?.[field]).find(Boolean);
+  const key = Object.keys(row || {}).find((candidate) => (fields[type] || []).includes(candidate.toLowerCase()));
+  return key ? row[key] : undefined;
 };
 
-const getEmployeeNo = (row) => row?.empno || row?.empNo || row?.EMP_NO || "";
+const getEmployeeNo = (row, fallback = "") => {
+  const key = Object.keys(row || {}).find((candidate) => ["empno", "employee_no", "employeeno"].includes(candidate.toLowerCase()));
+  return (key ? row[key] : undefined) || fallback;
+};
 
 const approvalConfig = {
   ot: { endpoint: API_ENDPOINTS.overtimeApproval, stamp: "otStamp" },
@@ -25,7 +29,7 @@ export const sendApprovalDecision = async ({ type, row, appStat, userEmpNo, appR
   if (!config || !stamp) throw new Error(`Missing ${type} record identifier.`);
 
   const inner = {
-    empNo: getEmployeeNo(row),
+    empNo: getEmployeeNo(row, userEmpNo),
     appRemarks,
     [config.stamp]: stamp,
     appStat,
@@ -56,7 +60,7 @@ export const sendApprovalDecision = async ({ type, row, appStat, userEmpNo, appR
   if (!response.ok) throw new Error(result?.message || "Approval request failed.");
 };
 
-export const cancelApprovedRecord = async ({ type, row, appRemarks = "" }) => {
+export const cancelApprovedRecord = async ({ type, row, userEmpNo = "", appRemarks = "" }) => {
   const endpoint = {
     ot: API_ENDPOINTS.cancelOvertimeApplication,
     leave: API_ENDPOINTS.cancelLeaveApplication,
@@ -67,7 +71,7 @@ export const cancelApprovedRecord = async ({ type, row, appRemarks = "" }) => {
   const stamp = getStamp(row, type);
   if (!endpoint || !stamp) throw new Error(`Missing ${type} record identifier.`);
 
-  const payload = { empNo: getEmployeeNo(row), appRemarks, [field]: stamp };
+  const payload = { empNo: getEmployeeNo(row, userEmpNo), appRemarks, [field]: stamp };
   const response = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

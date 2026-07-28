@@ -148,7 +148,7 @@ const OvertimeApproval = () => {
     try {
       for (const index of indexes) {
         const row = rows[index];
-        if (action === "cancel") await cancelApprovedRecord({ type: "ot", row, appRemarks: confirm.value?.trim() || "" });
+        if (action === "cancel") await cancelApprovedRecord({ type: "ot", row, userEmpNo: user.empNo, appRemarks: confirm.value?.trim() || "" });
         else await sendApprovalDecision({ type: "ot", row, appStat: action === "approve" ? 1 : 0, userEmpNo: user.empNo, appRemarks: confirm.value?.trim() || "" });
       }
       setSelectedPending([]); setSelectedHistory([]);

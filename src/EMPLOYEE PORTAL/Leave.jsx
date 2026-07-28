@@ -53,7 +53,7 @@ const Leave = () => {
 
   // --- Pagination ---
   const [currentPage, setCurrentPage] = useState(1);
-  const recordsPerPage = 10;
+  const recordsPerPage = 6;
   const totalPages = Math.ceil(filteredApplications.length / recordsPerPage) || 1;
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
@@ -646,7 +646,7 @@ const getLeaveStamp = (row) => {
 
 
   const cancelLeaveApplication = async (entry) => {
-  if ((entry?.leaveStatus || entry?.status || "") !== "Pending") return;
+  if (!(entry?.leaveStatus || entry?.status) || !["Pending", "Approved"].includes(entry?.leaveStatus || entry?.status)) return;
 
   const lvStamp = getLeaveStamp(entry);
   if (!lvStamp) {
@@ -697,7 +697,7 @@ const getLeaveStamp = (row) => {
     title: "Cancel this application?",
     html: `
       <div style="text-align:left;">
-        <p style="margin:0 0 8px; font-size:13px;">This will mark your pending leave request as <b>Cancelled</b>.</p>
+        <p style="margin:0 0 8px; font-size:13px;">This will mark your leave request as <b>Cancelled</b>.</p>
         <table style="width:100%; font-size:14px;">
           <tr><td style="width:160px;"><b>Leave Type:</b></td><td>${escapeHTML(display.type)}</td></tr>
           <tr><td><b>Start:</b></td><td>${display.startDay}, ${display.startDate}</td></tr>
@@ -966,7 +966,7 @@ const getLeaveStamp = (row) => {
 
           {error && <p className="text-red-500 text-center mt-2">{error}</p>}
 
-          {/* Card View */}
+          {/* CARD VIEW */}
           {viewMode === "card" && (
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {currentRecords.length > 0 ? (
@@ -983,19 +983,31 @@ const getLeaveStamp = (row) => {
 
                   return (
                     <div key={idx} className="border rounded-xl p-4 shadow-sm">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="font-semibold text-sm md:text-base">
-                          {dayjs(entry.leaveStart).format("MM/DD/YYYY")} – {dayjs(entry.leaveEnd).format("MM/DD/YYYY")}
+                      <div className="flex items-center justify-between mb-2 gap-2">
+                        <div className="text-sm sm:text-base font-semibold">
+                          {applicationFileDate(entry)}
+                          {/* {dayjs(entry.leaveStart).isSame(dayjs(entry.leaveEnd), "day")
+                          ? dayjs(entry.leaveStart).format("MM/DD/YYYY")
+                          : `${dayjs(entry.leaveStart).format("MM/DD/YYYY")} – ${dayjs(entry.leaveEnd).format("MM/DD/YYYY")}`} */}
                         </div>
-                        <span className={`inline-flex justify-center items-center text-sm w-28 py-1 md:py-2 rounded-xl ${statusClass}`}>
-                          {entry.leaveStatus || "N/A"}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {(["Pending", "Approved"].includes(entry?.leaveStatus)) && <button className="inline-flex justify-center items-center text-xs sm:text-sm w-[90px] sm:w-[100px] py-1.5 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelLeaveApplication(entry)}>Cancel</button>}
+                          <span className={`inline-flex justify-center items-center text-xs sm:text-sm w-[90px] sm:w-[100px] py-1.5 rounded-xl ${statusClass}`}>{entry.leaveStatus || "N/A"}</span>
+                        </div>
                       </div>
 
                       <div className="space-y-1 text-[12px] md:text-sm">
                         <div className="flex justify-between">
+                          <span className="text-gray-500 font-semibold">Filing Date</span>
+                          <span className="font-medium">{applicationFileDate(entry)}</span>
+                        </div>                        
+                        <div className="flex justify-between">
                           <span className="text-gray-500 font-semibold">Days</span>
                           <span className="font-medium">{entry.leaveDays} day(s)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-semibold">Hours</span>
+                          <span className="font-medium">{entry.leaveHrs} hour(s)</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500 font-semibold">Type</span>
@@ -1003,34 +1015,19 @@ const getLeaveStamp = (row) => {
                         </div>
                         <br />
                         <div>
-                          <div className="text-gray-500 font-semibold">Filing Date:</div>
-                          <div>{applicationFileDate(entry)}</div>
-                          <div className="text-gray-500 font-semibold mt-2">Employee Remarks:</div>
+                          <div className="text-gray-500 font-semibold mt-2">Employee Remarks</div>
                           <div className="font-normal break-words text-black">{entry.leaveRemarks || "N/A"}</div>
                         </div>
                         <br />
                         <div>
-                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.leaveStatus).actor}:</div>
+                          <div className="text-gray-500 font-semibold">{approvalLabels(entry.leaveStatus).remarks}</div>
+                          <div className="font-normal break-words text-blue-700">{approvalRemarks(entry) || "N/A"}</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.leaveStatus).actor}</div>
                           <div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div>
-                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.leaveStatus).date}:</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.leaveStatus).date}</div>
                           <div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div>
-                          <div className="text-gray-500 font-semibold mt-2">Approver's Remarks:</div>
-                          <div className="font-normal break-words text-blue-700">{approvalRemarks(entry)}</div>
-                          
                         </div>
                       </div>
-                      {/* Existing card body … */}
-                      {entry?.leaveStatus === "Pending" && (
-                        <div className="mt-3 text-right">
-                          <button
-                            className="px-3 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700"
-                            onClick={() => cancelLeaveApplication(entry)}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      )}
-
                     </div>
                   );
                 })
@@ -1040,7 +1037,7 @@ const getLeaveStamp = (row) => {
             </div>
           )}
 
-          {/* Accordion View */}
+          {/* ACCORDION VIEW */}
           {viewMode === "accordion" && (
             <div className="mt-4 divide-y border rounded-xl">
               {currentRecords.length > 0 ? (
@@ -1060,36 +1057,18 @@ const getLeaveStamp = (row) => {
                         <div className="font-medium">
                           {dayjs(entry.leaveStart).format("MM/DD/YYYY")} – {dayjs(entry.leaveEnd).format("MM/DD/YYYY")} • {entry.leaveDays} day(s) • {entry.leaveDesc}
                         </div>
-                        <span className={`inline-flex justify-center items-center w-28 py-1 rounded-xl ${statusClass}`}>{entry.leaveStatus || "N/A"}</span>
+                        <div className="flex flex-col items-end gap-2">
+                          <span className={`inline-flex justify-center items-center w-28 py-1 rounded-xl ${statusClass}`}>{entry.leaveStatus || "N/A"}</span>
+                          {(["Pending", "Approved"].includes(entry?.leaveStatus)) && <button className="inline-flex justify-center items-center text-sm w-28 py-1 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelLeaveApplication(entry)}>Cancel</button>}
+                        </div>
                       </summary>
-                      <div className="mt-3 space-y-2">
-                        <div>
-                          <div className="text-gray-500 font-semibold">Remarks</div>
-                          <div className="text-gray-500 font-semibold">Filing Date</div>
-                          <div>{applicationFileDate(entry)}</div>
-                          <div>{entry.leaveRemarks || "N/A"}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500 font-semibold">Approver's Remarks</div>
-                          <div className="font-normal break-words text-blue-700">{approvalRemarks(entry)}</div>
-                          <div className="text-gray-500 font-semibold">{approvalLabels(entry.leaveStatus).actor}</div>
-                          <div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div>
-                          <div className="text-gray-500 font-semibold">{approvalLabels(entry.leaveStatus).date}</div>
-                          <div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div>
-                        </div>
-                      </div>
-                      {/* Inside <details> content */}
-                      {entry?.leaveStatus === "Pending" && (
-                        <div className="pt-2 text-right">
-                          <button
-                            className="px-3 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700"
-                            onClick={() => cancelLeaveApplication(entry)}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      )}
-
+                                            <div className="mt-3 space-y-2">
+                                              <div><div className="text-gray-500 font-semibold">Filing Date</div><div>{applicationFileDate(entry)}</div></div>
+                                              <div><div className="text-gray-500 font-semibold">Remarks</div><div>{entry.leaveRemarks || "N/A"}</div></div>
+                                              <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.leaveStatus).remarks}</div><div className="font-normal break-words text-blue-700">{approvalRemarks(entry) || "N/A"}</div></div>
+                                              <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.leaveStatus).actor}</div><div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div></div>
+                                              <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.leaveStatus).date}</div><div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div></div>
+                                            </div>
                     </details>
                   );
                 })
@@ -1102,18 +1081,19 @@ const getLeaveStamp = (row) => {
           {/* Table View */}
           {viewMode === "table" && (
             <div className="w-full overflow-x-auto mt-4 rounded-xl">
-              <table className="min-w-[900px] w-full text-sm text-center border">
-                <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm">
+              <table className="w-full text-sm text-center border ">
+                <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm lg:text-sm ">
                   <tr>
                     {[
+                      { key: "fileDate", label: "Filing Date" },
                       { key: "startDate", label: "Start Date" },
                       { key: "endDate", label: "End Date" },
-                      { key: "durationDays", label: "Duration" },
+                      { key: "durationDays", label: "Days" },
+                      { key: "durationHours", label: "Hours" },
                       { key: "type", label: "Leave Type" },
-                      { key: "remark", label: "Remarks" },
+                      { key: "remark", label: "Employee's Remarks" },
                       { key: "appRemarks", label: "Approver's Remarks" },
                       { key: "status", label: "Status" },
-                      { key: "actions", label: "Actions" },   // ← add this
                     ].map(({ key, label }) => (
                       <th key={key} className="py-2 px-3 cursor-pointer whitespace-nowrap" onClick={() => sortData(key)}>
                         {label} {getSortIndicator(key)}
@@ -1122,7 +1102,8 @@ const getLeaveStamp = (row) => {
                   </tr>
                   
   {/* 🔎 Search row (Date range uses the first TWO columns) */}
-  <tr>
+                  <tr>
+                    <td className="px-1 py-2 bg-white whitespace-nowrap"><input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readOnly /></td>
     {/* Start Date (column 1: OT Date) */}
     <td className="px-1 py-2 bg-white whitespace-nowrap">
       <input
@@ -1142,6 +1123,19 @@ const getLeaveStamp = (row) => {
         type="date"
         value={searchFields.leaveDateEnd}
         onChange={(e) => handleSearchChange(e, "leaveDateEnd")}
+        className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
+        placeholder="N/A..."
+        disabled
+        readonly
+      />
+    </td>
+
+    {/* Duration  */}
+    <td className="px-1 py-2 bg-white whitespace-nowrap ">
+      <input
+        type="text"
+        value={searchFields.durationDays}
+        onChange={(e) => handleSearchChange(e, "durationDays")}
         className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer"
         placeholder="N/A..."
         disabled
@@ -1212,9 +1206,6 @@ const getLeaveStamp = (row) => {
                       </select>
                     </td>
 
-                    <td className="px-1 py-2 bg-white whitespace-nowrap">
-                      <input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
-                    </td>
 
 
   </tr>
@@ -1233,35 +1224,27 @@ const getLeaveStamp = (row) => {
 
                       return (
                         <tr key={index} className="global-tr">
-                          <td className="global-td text-center whitespace-nowrap">{dayjs(entry.leaveStart).format("MM/DD/YYYY")}</td>
-                          <td className="global-td text-center whitespace-nowrap">{dayjs(entry.leaveEnd).format("MM/DD/YYYY")}</td>
-                          <td className="global-td text-right whitespace-nowrap">{entry.leaveDays} day(s)</td>
-                          <td className="global-td text-left whitespace-nowrap">{entry.leaveDesc}</td>
-                          <td className="global-td text-left max-w-[240px]">
-                            <div className="truncate">{entry.leaveRemarks || "N/A"}</div>
-                            <div className="text-xs text-slate-600">Filing Date: {applicationFileDate(entry)}</div>
+                          <td className="global-td whitespace-nowrap w-[50px]">{applicationFileDate(entry)}</td>
+                          <td className="global-td whitespace-nowrap w-[50px]">{dayjs(entry.leaveStart).format("MM/DD/YYYY")}</td>
+                          <td className="global-td whitespace-nowrap w-[50px]">{dayjs(entry.leaveEnd).format("MM/DD/YYYY")}</td>
+                          <td className="global-td whitespace-nowrap text-right w-[70px]">{entry.leaveDays} day(s)</td>
+                          <td className="global-td whitespace-nowrap text-right w-[70px]">{entry.leaveHrs} hr(s)</td>
+                          <td className="global-td whitespace-nowrap text-left w-[150px]">{entry.leaveDesc}</td>
+                          <td className="global-td text-wrap text-left w-[200px] truncate">{entry.leaveRemarks || "N/A"}</td>
+                          <td className="global-td text-wrap text-left w-[200px] truncate">
+                            <div className="global-td text-slate-600 font-semibold">{approvalLabels(entry.leaveStatus).remarks} </div>
+                            <div className="global-td text-blue-700">{entry.appRemarks || "N/A"} </div>
+                            <div className="global-td text-slate-600 font-semibold">{approvalLabels(entry.leaveStatus).actor} </div>
+                            <div className="global-td text-xs text-blue-700">{approvalUser(entry)} </div>
+                            <div className="global-td text-xs text-slate-600 font-semibold">{approvalLabels(entry.leaveStatus).date} </div>
+                            <div className="global-td text-xs text-blue-700">{approvalDateTime(entry)} </div>
                           </td>
-                          <td className="global-td text-left max-w-[240px]" title={entry.appRemarks || "N/A"}>
-                            <div className="truncate">{entry.appRemarks || "N/A"}</div>
-                            <div className="mt-1 text-xs text-slate-600">{approvalLabels(entry.leaveStatus).actor}: {approvalUser(entry)}</div>
-                            <div className="text-xs text-slate-600">{approvalLabels(entry.leaveStatus).date}: {approvalDateTime(entry)}</div>
-                          </td>
-                          <td className="global-td text-center whitespace-nowrap">
-                            <span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-xl ${statusClass}`}>
-                              {entry.leaveStatus || "N/A"}
-                            </span>
-                          </td>
-                          <td className="global-td text-center whitespace-nowrap">
-                            {entry?.leaveStatus === "Pending" ? (
-                              <button
-                                className="px-2 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700"
-                                onClick={() => cancelLeaveApplication(entry)}
-                              >
-                                Cancel
-                              </button>
-                            ) : (
-                              "—"
-                            )}
+                          <td className="global-td text-center whitespace-nowrap w-[100px] p-2">
+                            <div className="inline-flex flex-col items-center gap-2">
+                              <span className={`inline-flex justify-center items-center text-xs w-[85px] py-1.5 rounded-xl ${statusClass}`}>{entry.leaveStatus || "N/A"}</span>
+                              {(["Pending", "Approved"].includes(entry?.leaveStatus)) ? 
+                              <button className="inline-flex justify-center items-center text-xs w-[85px] py-1.5 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors  " onClick={() => cancelLeaveApplication(entry)}>Cancel</button> : ""}
+                            </div>
                           </td>
 
                         </tr>
@@ -1269,7 +1252,7 @@ const getLeaveStamp = (row) => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan="7" className="px-4 py-6 text-center text-gray-500">
+                      <td colSpan="8" className="px-4 py-6 text-center text-gray-500">
                         No leave applications found.
                       </td>
                     </tr>

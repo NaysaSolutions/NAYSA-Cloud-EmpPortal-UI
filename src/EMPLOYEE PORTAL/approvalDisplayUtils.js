@@ -34,6 +34,6 @@ export const approvalLabels = (status) => {
   const value = String(status || "").toLowerCase();
   if (value === "pending") return { remarks: "",actor: " ", date: " " };
   if (value === "cancelled" || value === "canceled") return { remarks: "Approver's Remarks", actor: "Cancelled By", date: "Cancelled Date" };
-  if (value === "disapproved") return { remarks: "Approver's Remarks", actor: "Disapproved By", date: "Disapprove Date" };
+  if (value === "disapproved") return { remarks: "Approver's Remarks", actor: "Disapproved By", date: "Disapproved Date" };
   return { remarks: "Approver's Remarks", actor: "Approved By", date: "Approved Date" };
 };

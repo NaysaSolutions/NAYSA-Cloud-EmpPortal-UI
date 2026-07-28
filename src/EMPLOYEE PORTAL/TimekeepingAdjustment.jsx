@@ -6,7 +6,7 @@ import Swal from "sweetalert2";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
-import { approvalUser, approvalDateTime, applicationFileDate, approvalLabels } from "./approvalDisplayUtils";
+import { approvalUser, approvalDateTime, approvalRemarks, applicationFileDate, approvalLabels } from "./approvalDisplayUtils";
 
 
 const TimekeepingAdjustment = () => {
@@ -44,6 +44,40 @@ const TimekeepingAdjustment = () => {
 
   const hasId = (r) => r?.dtrId ?? r?.id ?? r?.requestId ?? null;
 
+  const parseHistoryRows = (payload) => {
+    let source = payload;
+    if (payload?.data?.[0]?.result !== undefined) source = payload.data[0].result;
+    else if (payload?.data?.result !== undefined) source = payload.data.result;
+    else if (payload?.result !== undefined) source = payload.result;
+
+    if (typeof source === "string") {
+      try { return parseHistoryRows(JSON.parse(source)); } catch { return []; }
+    }
+    if (Array.isArray(source)) return source;
+    if (Array.isArray(source?.data)) return source.data;
+    if (Array.isArray(source?.records)) return source.records;
+    if (Array.isArray(source?.result)) return source.result;
+    return [];
+  };
+
+  const normalizeHistoryRow = (row) => {
+    const read = (...names) => {
+      const key = Object.keys(row || {}).find((candidate) => names.includes(candidate.toLowerCase()));
+      return key ? row[key] : undefined;
+    };
+    return {
+      ...row,
+      dtrDate: read("dtrdate", "dtr_date", "shiftdate", "shift_date", "date"),
+      dtrType: read("dtrtype", "dtr_type", "type"),
+      dtrStart: read("dtrstart", "dtr_start", "actualdatetime", "actual_datetime", "actualdateTime", "actualtime", "actual_time"),
+      dtrRemarks: read("dtrremarks", "dtr_remarks", "remarks"),
+      dtrStatus: String(read("dtrstatus", "dtr_status", "status") ?? "").trim(),
+      appRemarks: read("appremarks", "app_remarks"),
+      fileDate: read("filedate", "file_date"),
+      dtrStamp: read("dtrstamp", "dtr_stamp", "stamp"),
+    };
+  };
+
   const fetchHistory = async () => {
     try {
       const body = JSON.stringify({
@@ -52,13 +86,12 @@ const TimekeepingAdjustment = () => {
         END_DATE: filters.dateEnd,
       });
       const res = await fetch(API_ENDPOINTS.getDTRAppHistory, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+      if (!res.ok) throw new Error(`History request failed (${res.status})`);
       const j = await res.json();
-      if (j?.success && Array.isArray(j.data) && j.data[0]?.result) {
-        const rows = JSON.parse(j.data[0].result);
-        setError(null);
-        setData(rows);
-        setFiltered(rows);
-      } else { setData([]); setFiltered([]); }
+      const rows = parseHistoryRows(j).map(normalizeHistoryRow);
+      setError(null);
+      setData(rows);
+      setFiltered(rows);
     } catch (e) { setError("Failed to load history."); console.error(e); }
   };
 
@@ -297,7 +330,7 @@ dtrType: ${dtrType}
 
 
   const cancelApplication = async (row) => {
-    if ((row?.dtrStatus || "") !== "Pending") return;
+    if (!(row?.dtrStatus) || !["Pending", "Approved"].includes(row.dtrStatus)) return;
 
     const dtrStamp = getDtrStamp(row);
     if (!dtrStamp) {
@@ -311,7 +344,7 @@ dtrType: ${dtrType}
 
     const conf = await Swal.fire({
       title: "Cancel this application?",
-      text: "This will mark your pending DTR adjustment as cancelled.",
+      text: "This will mark your DTR adjustment as cancelled.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Yes",
@@ -427,11 +460,11 @@ dtrType: ${dtrType}
       <div className="global-div-header-ui"><h1 className="global-div-headertext-ui">My Timekeeping Adjustments</h1></div>
 
       {/* FORM */}
-      <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-lg text-sm">
+      <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-xl text-sm">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="flex flex-col">
             <label className="font-semibold mb-1">Type</label>
-            <select className="w-full p-2 border rounded" value={dtrType} onChange={(e) => setDtrType(e.target.value)}>
+            <select className="w-full p-2 border rounded-xl" value={dtrType} onChange={(e) => setDtrType(e.target.value)}>
               <option value="timeIn">Time In</option>
               <option value="timeOut">Time Out</option>
             </select>
@@ -443,7 +476,7 @@ dtrType: ${dtrType}
                   type="date"
                   value={shiftDate}
                   onChange={(e) => setShiftDate(e.target.value)}
-                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
                 />
               </div>
           </div>
@@ -454,22 +487,22 @@ dtrType: ${dtrType}
                   type="datetime-local"
                   value={actualDateTime}
                   onChange={(e) => setActualDateTime(e.target.value)}
-                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                  className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
                 />
               </div>
           </div>
         </div>
         <div className="mt-6">
           <label className="font-semibold mb-1 block">Remarks</label>
-          <textarea rows="4" className="w-full p-2 border rounded resize-none" value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+          <textarea rows="4" className="w-full p-2 border rounded-xl resize-none" value={remarks} onChange={(e) => setRemarks(e.target.value)} />
         </div>
         <div className="mt-4 flex justify-center">
-          <button className="bg-blue-800 text-white px-12 py-2 rounded-md hover:bg-blue-700" onClick={handleSubmit}>Submit</button>
+          <button className="bg-blue-800 text-white px-12 py-2 rounded-xl hover:bg-blue-700" onClick={handleSubmit}>Submit</button>
         </div>
       </div>
 
       {/* FILTERS */}
-      <div className="mt-4 bg-white p-4 shadow-md rounded-lg">
+      <div className="mt-4 bg-white p-4 shadow-md rounded-xl">
         <h2 className="text-base font-semibold">Filter Timekeeping Adjustments</h2>
       <div className="mt-4 grid grid-cols-1 md:grid-cols-5 gap-2">
         <div className="relative">
@@ -477,7 +510,7 @@ dtrType: ${dtrType}
               type="date"
               value={filters.dateStart}
               onChange={(e) => setFilters((p) => ({ ...p, dateStart: e.target.value }))}
-              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
             />
           </div>
           <div className="relative">
@@ -485,28 +518,28 @@ dtrType: ${dtrType}
               type="date"
               value={filters.dateEnd}
               onChange={(e) => setFilters((p) => ({ ...p, dateEnd: e.target.value }))}
-              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-md focus:ring-blue-500 focus:border-blue-500 appearance-none"
+              className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
             />
           </div>
         
         
-        <select value={filters.type} onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
+        <select value={filters.type} onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))} className="w-full px-2 py-2 border rounded-xl text-sm bg-white">
           <option value="">All Types</option>
           {typeOptions.map((t) => (<option key={t} value={t}>{t}</option>))}
         </select>
-        <select value={filters.status} onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm bg-white">
+        <select value={filters.status} onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))} className="w-full px-2 py-2 border rounded-xl text-sm bg-white">
           <option value="">All Status</option>
           {statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}
         </select>
-        <input type="text" placeholder="Search remarks" value={filters.empRemarks} onChange={(e) => setFilters((p) => ({ ...p, empRemarks: e.target.value }))} className="w-full px-2 py-2 border rounded text-sm" />
+        <input type="text" placeholder="Search remarks" value={filters.empRemarks} onChange={(e) => setFilters((p) => ({ ...p, empRemarks: e.target.value }))} className="w-full px-2 py-2 border rounded-xl text-sm" />
       </div>
       </div>
 
       {/* HISTORY */}
-       <div className="mt-4 bg-white p-4 shadow-lg rounded-lg">
+       <div className="mt-4 bg-white p-4 shadow-lg rounded-xl">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <h2 className="text-base font-semibold">Timekeeping Application History</h2>
-          <div className="inline-flex rounded-lg border overflow-hidden">
+          <div className="inline-flex rounded-xl border overflow-hidden self-start">
             <button className={`px-8 py-2 text-sm ${viewMode === "card" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("card")}>Card</button>
             <button className={`px-8 py-2 text-sm border-l ${viewMode === "accordion" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("accordion")}>Accordion</button>
             <button className={`px-8 py-2 text-sm border-l ${viewMode === "table" ? "bg-blue-800 text-white" : "bg-white"}`} onClick={() => setViewMode("table")}>Table</button>
@@ -519,23 +552,32 @@ dtrType: ${dtrType}
             {current.length ? current.map((r, i) => {
               const badge = r.dtrStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : r.dtrStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : r.dtrStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
               return (
-                <div key={i} className="border rounded-lg p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="font-semibold">{dayjs(r.dtrDate).format("MM/DD/YYYY")}</div>
-                    <span className={`inline-flex justify-center items-center text-sm w-28 py-1 rounded-lg ${badge}`}>{r.dtrStatus || "N/A"}</span>
+                <div key={i} className="border rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-2 gap-2">
+                    <div className="text-sm sm:text-base font-semibold">{applicationFileDate(r)}</div>
+                    <div className="flex items-center gap-2">
+                      {(["Pending", "Approved"].includes(r?.dtrStatus)) && <button className="inline-flex justify-center items-center text-xs sm:text-sm w-[90px] sm:w-[100px] py-1.5 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelApplication(r)}>Cancel</button>}
+                      <span className={`inline-flex justify-center items-center text-xs sm:text-sm w-[90px] sm:w-[100px] py-1.5 rounded-xl ${badge}`}>{r.dtrStatus || "N/A"}</span>
+                    </div>
                   </div>
-                  <div className="text-sm space-y-1">
+                  <div className="space-y-1 text-[12px] md:text-sm">
+                    <div className="flex justify-between"><span className="text-gray-500 font-semibold">Filing Date</span><span>{applicationFileDate(r)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-semibold">Type</span><span className="font-medium">{r.dtrType}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-semibold">Actual</span><span className="font-medium">{dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm a")}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500 font-semibold">Filing Date</span><span>{applicationFileDate(r)}</span></div>
-                    <div className="mt-2"><div className="text-gray-500 font-semibold">Employee Remarks</div><div className="break-words">{r.dtrRemarks || "N/A"}</div></div>
-                    <div className="mt-2"><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="text-blue-700">{r.appRemarks || "N/A"}</div></div>
-                    <div className="flex justify-between"><span className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).actor}</span><span>{approvalUser(r)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).date}</span><span>{approvalDateTime(r)}</span></div>
-                  </div>
-                  {r?.dtrStatus === "Pending" && (
-                    <div className="mt-3 text-right"><button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(r)}>Cancel</button></div>
-                  )}
+                    <div>
+                        <br />
+                      <div className="text-gray-500 font-semibold">Employee Remarks</div><div className="font-normal break-words text-black">{r.dtrRemarks || "N/A"}</div></div>
+                    <br />
+                        <div>
+                          <div className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).remarks}</div>
+                          <div className="font-normal break-words text-blue-700">{approvalRemarks(r) || "N/A"}</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(r.dtrStatus).actor}</div>
+                          <div className="font-normal break-words text-blue-700">{approvalUser(r)}</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(r.dtrStatus).date}</div>
+                          <div className="font-normal break-words text-blue-700">{approvalDateTime(r)}</div>
+                        </div>
+
+                     </div>
                 </div>
               );
             }) : (<div className="col-span-full text-center text-gray-500 py-6">No applications found.</div>)}
@@ -544,22 +586,24 @@ dtrType: ${dtrType}
 
         {/* ACCORDION */}
         {viewMode === "accordion" && (
-          <div className="mt-4 divide-y border rounded-lg">
+          <div className="mt-4 divide-y border rounded-xl">
             {current.length ? current.map((r, i) => {
               const badge = r.dtrStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : r.dtrStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : r.dtrStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
               return (
-                <details key={i} className="group p-2 text-sm">
+                <details key={i} className="group p-2 text-[12px] md:text-sm">
                   <summary className="flex items-center justify-between cursor-pointer list-none">
                     <div className="font-medium">{dayjs(r.dtrDate).format("MM/DD/YYYY")} • {r.dtrType} • {dayjs(r.dtrStart).format("hh:mm a")}</div>
-                    <span className={`inline-flex justify-center items-center w-28 py-1 rounded-lg ${badge}`}>{r.dtrStatus || "N/A"}</span>
+                    <div className="flex flex-col items-end gap-2">
+                      <span className={`inline-flex justify-center items-center w-28 py-1 rounded-xl ${badge}`}>{r.dtrStatus || "N/A"}</span>
+                      {(["Pending", "Approved"].includes(r?.dtrStatus)) && <button className="inline-flex justify-center items-center text-sm w-28 py-1 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelApplication(r)}>Cancel</button>}
+                    </div>
                   </summary>
                   <div className="mt-3 space-y-2">
                     <div><div className="text-gray-500 font-semibold">Filing Date</div><div>{applicationFileDate(r)}</div></div>
                     <div><div className="text-gray-500 font-semibold">Remarks</div><div>{r.dtrRemarks || "N/A"}</div></div>
-                    <div><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="text-blue-800">{r.appRemarks || "N/A"}</div></div>
-                    <div><div className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).actor}</div><div>{approvalUser(r)}</div></div>
-                    <div><div className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).date}</div><div>{approvalDateTime(r)}</div></div>
-                    {r?.dtrStatus === "Pending" && (<div className="pt-2 text-right"><button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(r)}>Cancel</button></div>)}
+                    <div><div className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).remarks}</div><div className="font-normal break-words text-blue-700">{approvalRemarks(r) || "N/A"}</div></div>
+                    <div><div className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).actor}</div><div className="font-normal break-words text-blue-700">{approvalUser(r)}</div></div>
+                    <div><div className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).date}</div><div className="font-normal break-words text-blue-700">{approvalDateTime(r)}</div></div>
                   </div>
                 </details>
               );
@@ -569,22 +613,22 @@ dtrType: ${dtrType}
 
         {/* TABLE */}
         {viewMode === "table" && (
-          <div className="w-full overflow-x-auto mt-4 rounded-lg">
-            <table className="min-w-[900px] w-full text-sm text-center border">
-              <thead className="sticky top-0 z-10 bg-blue-800 text-white">
+          <div className="w-full overflow-x-auto mt-4 rounded-xl">
+            <table className="w-full text-sm text-center border ">
+              <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm lg:text-sm ">
                 <tr>
-                  {[{ key: "dtrDate", label: "Shift Date" }, { key: "dtrType", label: "Type" }, { key: "dtrStart", label: "Actual Time" }, { key: "dtrRemarks", label: "Remarks" }, { key: "appRemarks", label: "Approver's Remarks" }, { key: "dtrStatus", label: "Status" }, { key: "actions", label: "Actions" }].map(({ key, label }) => (
+                  {[{ key: "fileDate", label: "Filing Date" }, { key: "dtrDate", label: "Shift Date" }, { key: "dtrType", label: "Type" }, { key: "dtrStart", label: "Actual Time" }, { key: "dtrRemarks", label: "Employee's Remarks" }, { key: "appRemarks", label: "Approver's Remarks" }, { key: "dtrStatus", label: "Status" }].map(({ key, label }) => (
                     <th key={key} className="py-2 px-3 whitespace-nowrap cursor-pointer" onClick={() => key !== "actions" && setSortConfig((s) => ({ key, direction: s.key === key && s.direction === "asc" ? "desc" : "asc" }))}>{label} {sortConfig.key === key ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}</th>
                   ))}
                 </tr>
                 <tr>
-                  <td className="px-1 py-2 bg-white"><input type="date" value={filters.dateStart} onChange={(e) => setFilters((p) => ({ ...p, dateStart: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs text-gray-800" /></td>
-                  <td className="px-1 py-2 bg-white text-gray-800"><select value={filters.type} onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs bg-white"><option value="">All</option>{typeOptions.map((t) => (<option key={t} value={t}>{t}</option>))}</select></td>
+                  <td className="px-1 py-2 bg-white whitespace-nowrap"><input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readOnly /></td>
                   <td className="px-1 py-2 bg-white"></td>
-                  <td className="px-1 py-2 bg-white"><input type="text" value={filters.empRemarks} onChange={(e) => setFilters((p) => ({ ...p, empRemarks: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs" placeholder="Filter..." /></td>
-                  <td className="px-1 py-2 bg-white"><input type="text" value={filters.appRemarks} onChange={(e) => setFilters((p) => ({ ...p, appRemarks: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs" placeholder="Filter..." /></td>
-                  <td className="px-1 py-2 bg-white text-gray-800"><select value={filters.status} onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-lg text-xs bg-white"><option value="">All</option>{statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>                   
+                  <td className="px-1 py-2 bg-white text-gray-800"><select value={filters.type} onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs bg-white"><option value="">All</option>{typeOptions.map((t) => (<option key={t} value={t}>{t}</option>))}</select></td>
                   <td className="px-1 py-2 bg-white"></td>
+                  <td className="px-1 py-2 bg-white"><input type="text" value={filters.empRemarks} onChange={(e) => setFilters((p) => ({ ...p, empRemarks: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs" placeholder="Filter..." /></td>
+                  <td className="px-1 py-2 bg-white"><input type="text" value={filters.appRemarks} onChange={(e) => setFilters((p) => ({ ...p, appRemarks: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs" placeholder="Filter..." /></td>
+                  <td className="px-1 py-2 bg-white text-gray-800"><select value={filters.status} onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs bg-white"><option value="">All</option>{statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
                 </tr>
               </thead>
               <tbody className="global-tbody">
@@ -592,16 +636,16 @@ dtrType: ${dtrType}
               const badge = r.dtrStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : r.dtrStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : r.dtrStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
                   return (
                     <tr key={i} className="global-tr">
-                      <td className="global-td whitespace-nowrap">{dayjs(r.dtrDate).format("MM/DD/YYYY")}</td>
-                      <td className="global-td whitespace-nowrap">{r.dtrType}</td>
-                      <td className="global-td whitespace-nowrap">{dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm a")}</td>
-                      <td className="global-td text-left max-w-[240px]"><div className="truncate">{r.dtrRemarks || "N/A"}</div><div className="text-xs text-slate-600">Filing Date: {applicationFileDate(r)}</div></td>
-                      <td className="global-td text-left max-w-[240px]" title={r.appRemarks || "N/A"}><div className="truncate">{r.appRemarks || "N/A"}</div><div className="text-xs text-slate-600">{approvalLabels(r.dtrStatus).actor}: {approvalUser(r)}</div><div className="text-xs text-slate-600">{approvalLabels(r.dtrStatus).date}: {approvalDateTime(r)}</div></td>
-                      <td className="global-td text-center whitespace-nowrap"><span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-lg ${badge}`}>{r.dtrStatus || "N/A"}</span></td>
-                      <td className="global-td text-center whitespace-nowrap">{r?.dtrStatus === "Pending" ? (<button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(r)}>Cancel</button>) : ("—")}</td>
+                      <td className="global-td whitespace-nowrap w-[50px]">{applicationFileDate(r)}</td>
+                      <td className="global-td whitespace-nowrap w-[50px]">{dayjs(r.dtrDate).format("MM/DD/YYYY")}</td>
+                      <td className="global-td whitespace-nowrap w-[100px]">{r.dtrType}</td>
+                      <td className="global-td whitespace-nowrap w-[100px]">{dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm a")}</td>
+                      <td className="global-td text-left max-w-[240px]"><div className="truncate">{r.dtrRemarks || "N/A"}</div></td>
+                      <td className="global-td text-left max-w-[240px]" title={r.appRemarks || "N/A"}><div className="global-td text-slate-600 font-semibold">{approvalLabels(r.dtrStatus).remarks} </div><div className="global-td text-blue-700">{r.appRemarks || "N/A"} </div><div className="global-td text-slate-600 font-semibold">{approvalLabels(r.dtrStatus).actor} </div><div className="global-td text-xs text-blue-700">{approvalUser(r)} </div><div className="global-td text-xs text-slate-600 font-semibold">{approvalLabels(r.dtrStatus).date} </div><div className="global-td text-xs text-blue-700">{approvalDateTime(r)} </div></td>
+                      <td className="global-td text-center whitespace-nowrap w-[100px] p-2"><div className="inline-flex flex-col items-center gap-2"><span className={`inline-flex justify-center items-center text-xs w-[85px] py-1.5 rounded-xl ${badge}`}>{r.dtrStatus || "N/A"}</span>{(["Pending", "Approved"].includes(r?.dtrStatus)) ? <button className="inline-flex justify-center items-center text-xs w-[85px] py-1.5 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelApplication(r)}>Cancel</button> : ""}</div></td>
                     </tr>
                   );
-                }) : (<tr><td colSpan="7" className="px-4 py-6 text-center text-gray-500">No applications found.</td></tr>)}
+                }) : (<tr><td colSpan="8" className="px-4 py-6 text-center text-gray-500">No applications found.</td></tr>)}
               </tbody>
             </table>
           </div>
@@ -609,13 +653,13 @@ dtrType: ${dtrType}
 
         {/* PAGINATION */}
         <div className="flex justify-between items-center mt-2 pt-2">
-          <div className="text-xs text-gray-600">Showing <b>{Math.min(indexOfFirst + 1, filtered.length)}-{Math.min(indexOfLast, filtered.length)}</b> of {filtered.length} entries</div>
-          <div className="flex items-center text-sm border rounded-lg overflow-hidden">
-            <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border-r hover:bg-gray-100 disabled:text-gray-400">&lt;</button>
+          <div className="text-xs text-gray-600">Showing <b>{filtered.length === 0 ? 0 : indexOfFirst + 1}-{Math.min(indexOfLast, filtered.length)}</b> of {filtered.length} entries</div>
+          <div className="flex items-center text-sm border rounded-xl overflow-hidden">
+            <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border-r text-gray-700 hover:bg-blue-200 disabled:text-gray-400 disabled:cursor-not-allowed">&lt;</button>
             {[...Array(totalPages)].map((_, i) => (
-              <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 border-r ${currentPage === i + 1 ? "bg-blue-800 text-white" : "hover:bg-gray-100"}`}>{i + 1}</button>
+              <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 border-r ${currentPage === i + 1 ? "bg-blue-800 text-white" : "text-gray-700 hover:bg-gray-200"}`}>{i + 1}</button>
             ))}
-            <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 hover:bg-gray-100 disabled:text-gray-400">&gt;</button>
+            <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 text-gray-700 hover:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed">&gt;</button>
           </div>
         </div>
       </div>

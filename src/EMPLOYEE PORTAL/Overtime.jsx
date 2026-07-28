@@ -37,7 +37,7 @@ const OvertimeApplication = () => {
     }, []);
     
   const [currentPage, setCurrentPage] = useState(1);
-  const recordsPerPage = 10;
+  const recordsPerPage = 6;
 
   // filters / sorting
   const monthStart = dayjs().startOf("month").format("YYYY-MM-DD");
@@ -362,7 +362,7 @@ const getStamp = (r) =>
   r?.otStamp || r?.OT_STAMP || r?.stamp || r?.Stamp || r?.guid || r?.OT_STAMP_ID || null;
 
 const cancelApplication = async (entry) => {
-  if ((entry?.otStatus || "") !== "Pending") return;
+  if (!(entry?.otStatus) || !["Pending", "Approved"].includes(entry.otStatus)) return;
 
   const otStamp = getStamp(entry);
   if (!otStamp) {
@@ -376,7 +376,7 @@ const cancelApplication = async (entry) => {
 
   const conf = await Swal.fire({
     title: "Cancel this application?",
-    text: "This will mark your pending request as cancelled.",
+    text: "This will mark your request as cancelled.",
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Yes",
@@ -432,7 +432,7 @@ const cancelApplication = async (entry) => {
 
         {/* Form */}
         <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-xl text-sm">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div className="min-w-0">
               <label className="block font-semibold mb-1">Date of Overtime</label>
               <div className="relative">
@@ -521,12 +521,19 @@ const cancelApplication = async (entry) => {
                 const statusClass = entry.otStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : entry.otStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : entry.otStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
                 return (
                   <div key={idx} className="border rounded-xl p-4 shadow-sm">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="font-semibold text-sm md:text-base">{dayjs(entry.otDate).format("MM/DD/YYYY")}</div>
-                      <span className={`inline-flex justify-center items-center text-sm w-28 py-1 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span>
+                    <div className="flex items-center justify-between mb-2 gap-2">
+                      <div className="text-sm sm:text-base font-semibold">{dayjs(entry.otDate).format("MM/DD/YYYY")}</div>
+                      <div className="flex items-center gap-2">
+                        {(["Pending", "Approved"].includes(entry?.otStatus)) && <button className="inline-flex justify-center items-center text-xs sm:text-sm w-[90px] sm:w-[100px] py-1.5 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelApplication(entry)}>Cancel</button>}
+                        <span className={`inline-flex justify-center items-center text-xs sm:text-sm w-[90px] sm:w-[100px] py-1.5 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span>
+                      </div>
                     </div>
 
                       <div className="space-y-1 text-[12px] md:text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 font-semibold">Filing Date</span>
+                          <span className="font-medium">{applicationFileDate(entry)}</span>
+                        </div>
                         <div className="flex justify-between">
                           <span className="text-gray-500 font-semibold">OT Hours</span>
                           <span className="font-medium">{entry.otHrs} hr(s)</span>
@@ -537,28 +544,20 @@ const cancelApplication = async (entry) => {
                         </div>
                         <br />
                         <div>
-                          <div className="text-gray-500 font-semibold">Filing Date:</div>
-                          <div>{applicationFileDate(entry)}</div>
-                          <div className="text-gray-500 font-semibold mt-2">Employee Remarks:</div>
+                          <div className="text-gray-500 font-semibold mt-2">Employee Remarks</div>
                           <div className="font-normal break-words text-black">{entry.otRemarks || "N/A"}</div>
                         </div>
                         <br />
                         <div>
-                          <div className="text-gray-500 font-semibold">Approver's Remarks:</div>
-                          <div className="font-normal break-words text-blue-700">{approvalRemarks(entry)}</div>
-                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.otStatus).actor}:</div>
+                          <div className="text-gray-500 font-semibold">{approvalLabels(entry.otStatus).remarks}</div>
+                          <div className="font-normal break-words text-blue-700">{approvalRemarks(entry) || "N/A"}</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.otStatus).actor}</div>
                           <div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div>
-                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.otStatus).date}:</div>
+                          <div className="text-gray-500 font-semibold mt-2">{approvalLabels(entry.otStatus).date}</div>
                           <div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div>
                         </div>
                       </div>
 
-
-                    {entry?.otStatus === "Pending" && (
-                      <div className="mt-3 text-right">
-                        <button className="px-3 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button>
-                      </div>
-                    )}
                   </div>
                 );
               }) : (<div className="col-span-full text-center text-gray-500 py-6">No overtime applications found.</div>)}
@@ -574,17 +573,17 @@ const cancelApplication = async (entry) => {
                   <details key={idx} className="group p-2 text-[12px] md:text-sm">
                     <summary className="flex items-center justify-between cursor-pointer list-none">
                       <div className="font-medium">{dayjs(entry.otDate).format("MM/DD/YYYY")} • {entry.otHrs} hr(s) • {getOvertimeTypeLabel(entry.otType)}</div>
-                      <span className={`inline-flex justify-center items-center w-28 py-1 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span>
+                      <div className="flex flex-col items-end gap-2">
+                        <span className={`inline-flex justify-center items-center w-28 py-1 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span>
+                        {(["Pending", "Approved"].includes(entry?.otStatus)) && <button className="inline-flex justify-center items-center text-sm w-28 py-1 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelApplication(entry)}>Cancel</button>}
+                      </div>
                     </summary>
                     <div className="mt-3 space-y-2">
                       <div><div className="text-gray-500 font-semibold">Filing Date</div><div>{applicationFileDate(entry)}</div></div>
                       <div><div className="text-gray-500 font-semibold">Remarks</div><div>{entry.otRemarks || "N/A"}</div></div>
-                      <div><div className="text-gray-500 font-semibold">Approver's Remarks</div><div className="font-normal break-words text-blue-700">{approvalRemarks(entry)}</div></div>
+                      <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.otStatus).remarks}</div><div className="font-normal break-words text-blue-700">{approvalRemarks(entry) || "N/A"}</div></div>
                       <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.otStatus).actor}</div><div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div></div>
                       <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.otStatus).date}</div><div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div></div>
-                      {entry?.otStatus === "Pending" && (
-                        <div className="pt-2 text-right"><button className="px-3 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button></div>
-                      )}
                     </div>
                   </details>
                 );
@@ -595,16 +594,17 @@ const cancelApplication = async (entry) => {
           {/* TABLE VIEW */}
           {viewMode === "table" && (
             <div className="w-full overflow-x-auto mt-4 rounded-xl">
-              <table className="min-w-[900px] w-full text-sm text-center border ">
-                <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm">
+              <table className="w-full text-sm text-center border ">
+                <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm lg:text-sm ">
                   <tr>
-                    {[{ key: "date", label: "OT Date" }, { key: "durationHours", label: "Duration" }, { key: "type", label: "Overtime Type" }, { key: "remark", label: "Remarks" }, { key: "appRemarks", label: "Approver's Remarks" }, { key: "status", label: "Status" }, { key: "actions", label: "Actions" }].map(({ key, label }) => (
-                      <th key={key} className="py-2 px-3 whitespace-nowrap cursor-pointer" onClick={() => key !== "actions" && sortData(key)}>
-                        {label} {key !== "actions" ? getSortIndicator(key) : ""}
+                    {[{ key: "fileDate", label: "Filing Date" }, { key: "date", label: "OT Date" }, { key: "durationHours", label: "Duration" }, { key: "type", label: "Overtime Type" }, { key: "remark", label: "Employee's Remarks" }, { key: "appRemarks", label: "Approver's Remarks" }, { key: "status", label: "Status" }].map(({ key, label }) => (
+                      <th key={key} className="py-2 px-3 whitespace-nowrap cursor-pointer" onClick={() => sortData(key)}>
+                        {label} {getSortIndicator(key)}
                       </th>
                     ))}
                   </tr>
                   <tr>
+                    <td className="px-1 py-2 bg-white whitespace-nowrap"><input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readOnly /></td>
                     {/* <td className="px-1 py-2 bg-white"><input type="date" value={searchFields.otDateStart} onChange={(e) => setSearchFields((p) => ({ ...p, otDateStart: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800" /></td> */}
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
                       <input
@@ -617,16 +617,11 @@ const cancelApplication = async (entry) => {
                         readonly
                       />
                     </td>
-                    <td className="px-1 py-2 bg-white whitespace-nowrap">
-                      <input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
-                    </td>
+                    <td className="px-1 py-2 bg-white whitespace-nowrap"><input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readOnly /></td>
                     <td className="px-1 py-2 bg-white"><select value={searchFields.otType} onChange={(e) => setSearchFields((p) => ({ ...p, otType: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800"><option value="">All</option>{typeOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
                     <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.otRemarks} onChange={(e) => setSearchFields((p) => ({ ...p, otRemarks: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800" placeholder="Filter..." /></td>
                     <td className="px-1 py-2 bg-white"><input type="text" value={searchFields.appRemarks} onChange={(e) => setSearchFields((p) => ({ ...p, appRemarks: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800" placeholder="Filter..." /></td>
                     <td className="px-1 py-2 bg-white"><select value={searchFields.otStatus} onChange={(e) => setSearchFields((p) => ({ ...p, otStatus: e.target.value }))} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-white"><option value="">All</option>{statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
-                    <td className="px-1 py-2 bg-white whitespace-nowrap">
-                      <input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100 select-none cursor-pointer" placeholder="N/A..." disabled readonly/>
-                    </td>
                   </tr>
                 </thead>
                 <tbody className="global-tbody">
@@ -634,21 +629,17 @@ const cancelApplication = async (entry) => {
                 const statusClass = entry.otStatus === "Pending" ? "text-yellow-700 bg-yellow-100 font-semibold" : entry.otStatus === "Approved" ? "text-blue-700 bg-blue-100 font-semibold" : entry.otStatus === "Cancelled" ? "text-gray-700 bg-gray-200 font-semibold" : "text-red-700 bg-red-100 font-semibold";
                     return (
                       <tr key={i} className="global-tr">
-                        <td className="global-td whitespace-nowrap">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
-                        <td className="global-td whitespace-nowrap text-right">{entry.otHrs} hr(s)</td>
-                        <td className="global-td whitespace-nowrap text-left">{getOvertimeTypeLabel(entry.otType)}</td>
-                        <td className="global-td text-left max-w-[240px]"><div className="truncate">{entry.otRemarks || "N/A"}</div><div className="text-xs text-slate-600">Filing Date: {applicationFileDate(entry)}</div></td>
-                        <td className="global-td text-left max-w-[240px]" title={entry.appRemarks || "N/A"}><div className="truncate">{entry.appRemarks || "N/A"}</div><div className="text-xs text-slate-600">{approvalLabels(entry.otStatus).actor}: {approvalUser(entry)}</div><div className="text-xs text-slate-600">{approvalLabels(entry.otStatus).date}: {approvalDateTime(entry)}</div></td>
-                        <td className="global-td text-center whitespace-nowrap"><span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span></td>
-                        <td className="global-td text-center whitespace-nowrap">
-                          {entry?.otStatus === "Pending" ? (
-                            <button className="px-2 py-1 text-xs rounded-xl bg-red-600 text-white hover:bg-red-700" onClick={() => cancelApplication(entry)}>Cancel</button>
-                          ) : ("—")}
-                        </td>
+                        <td className="global-td whitespace-nowrap w-[50px]">{applicationFileDate(entry)}</td>
+                        <td className="global-td whitespace-nowrap w-[50px]">{dayjs(entry.otDate).format("MM/DD/YYYY")}</td>
+                        <td className="global-td whitespace-nowrap text-right w-[50px]">{entry.otHrs} hr(s)</td>
+                        <td className="global-td whitespace-nowrap text-left w-[150px]">{getOvertimeTypeLabel(entry.otType)}</td>
+                        <td className="global-td text-left max-w-[240px]"><div className="truncate">{entry.otRemarks || "N/A"}</div></td>
+                        <td className="global-td text-left max-w-[240px]" title={entry.appRemarks || "N/A"}><div className="global-td text-slate-600 font-semibold">{approvalLabels(entry.otStatus).remarks} </div><div className="global-td text-blue-700">{entry.appRemarks || "N/A"} </div><div className="global-td text-slate-600 font-semibold">{approvalLabels(entry.otStatus).actor} </div><div className="global-td text-xs text-blue-700">{approvalUser(entry)} </div><div className="global-td text-xs text-slate-600 font-semibold">{approvalLabels(entry.otStatus).date} </div><div className="global-td text-xs text-blue-700">{approvalDateTime(entry)} </div></td>
+                        <td className="global-td text-center whitespace-nowrap w-[100px] p-2"><div className="inline-flex flex-col items-center gap-2"><span className={`inline-flex justify-center items-center text-xs w-[85px] py-1.5 rounded-xl ${statusClass}`}>{entry.otStatus || "N/A"}</span>{(["Pending", "Approved"].includes(entry?.otStatus)) ? <button className="inline-flex justify-center items-center text-xs w-[85px] py-1.5 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelApplication(entry)}>Cancel</button> : ""}</div></td>
                       </tr>
                     );
                   }) : (
-                    <tr><td colSpan="7" className="px-4 py-6 text-center text-gray-500">No overtime applications found.</td></tr>
+                    <tr><td colSpan="8" className="px-4 py-6 text-center text-gray-500">No overtime applications found.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -657,13 +648,13 @@ const cancelApplication = async (entry) => {
 
           {/* Pagination */}
           <div className="flex justify-between items-center mt-2 pt-2">
-            <div className="text-xs text-gray-600">Showing <b>{Math.min(indexOfFirstRecord + 1, filteredApplications.length)}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries</div>
+            <div className="text-xs text-gray-600">Showing <b>{filteredApplications.length === 0 ? 0 : indexOfFirstRecord + 1}-{Math.min(indexOfLastRecord, filteredApplications.length)}</b> of {filteredApplications.length} entries</div>
             <div className="flex items-center text-sm border rounded-xl overflow-hidden">
-              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border-r hover:bg-gray-100 disabled:text-gray-400">&lt;</button>
+              <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-3 py-1 border-r text-gray-700 hover:bg-blue-200 disabled:text-gray-400 disabled:cursor-not-allowed">&lt;</button>
               {[...Array(totalPages)].map((_, i) => (
-                <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 border-r ${currentPage === i + 1 ? "bg-blue-800 text-white" : "hover:bg-gray-100"}`}>{i + 1}</button>
+                <button key={i} onClick={() => setCurrentPage(i + 1)} className={`px-3 py-1 border-r ${currentPage === i + 1 ? "bg-blue-800 text-white" : "text-gray-700 hover:bg-gray-200"}`}>{i + 1}</button>
               ))}
-              <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 hover:bg-gray-100 disabled:text-gray-400">&gt;</button>
+              <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-3 py-1 text-gray-700 hover:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed">&gt;</button>
             </div>
           </div>
         </div>

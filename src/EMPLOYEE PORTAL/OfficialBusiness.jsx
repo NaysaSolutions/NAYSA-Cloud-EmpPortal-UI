@@ -61,7 +61,7 @@ const OfficialBusiness = () => {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const recordsPerPage = 10;
+  const recordsPerPage = 6;
   const totalPages = Math.ceil(filteredApplications.length / recordsPerPage) || 1;
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
@@ -223,6 +223,10 @@ const OfficialBusiness = () => {
       });
     }
 
+    if (searchFields.fileDate) {
+      const q = searchFields.fileDate.toLowerCase();
+      filtered = filtered.filter((row) => String(row.fileDate ?? "").toLowerCase().includes(q));
+    }
     if (searchFields.obRemarks) {
       const q = searchFields.obRemarks.toLowerCase();
       filtered = filtered.filter((row) => String(row.obRemarks ?? "").toLowerCase().includes(q));
@@ -567,48 +571,6 @@ const handleShiftDateChange = (value) => {
               </div>
             </div>
 
-            {/* <div className="flex flex-col">
-              <span className="block font-semibold mb-1">Start Datetime</span>
-              <div className="relative">
-                <DatePicker
-                  wrapperClassName="w-full"
-                  selected={selectedStartDate}
-                  onChange={(d) => handleDateChange("start", d)}
-                  showTimeSelect
-                  timeFormat="hh:mm"
-                  timeIntervals={30}
-                  dateFormat="MM/dd/yyyy hh:mm aa"
-                  placeholderText="Select Start Datetime"
-                  className="w-full p-2 pl-10 border rounded h-[42px]"
-                  popperPlacement="bottom-start"
-                  portalId="root-portal"
-                />
-                <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              </div>
-            </div>
-
-            <div className="flex flex-col">
-              <span className="block font-semibold mb-1">End Datetime</span>
-              <div className="relative">
-                <DatePicker
-                  wrapperClassName="w-full"
-                  selected={selectedEndDate}
-                  onChange={(d) => handleDateChange("end", d)}
-                  showTimeSelect
-                  timeFormat="hh:mm"
-                  timeIntervals={30}
-                  dateFormat="MM/dd/yyyy hh:mm aa"
-                  placeholderText="Select End Datetime"
-                  className="w-full p-2 pl-10 border rounded h-[42px]"
-                  minDate={selectedStartDate || undefined}
-                  popperPlacement="bottom-start"
-                  portalId="root-portal"
-                />
-                <FaCalendarAlt className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              </div>
-            </div> */}
-
-
             <div className="flex flex-col">
               <span className="block font-semibold mb-1">Start Datetime</span>
               <div className="relative">
@@ -708,10 +670,10 @@ const handleShiftDateChange = (value) => {
                   return (
                     <div key={idx} className="border rounded-xl p-4 shadow-sm">
                       <div className="flex items-center justify-between mb-2 gap-2">
-                        <div className="font-semibold">{toDispDate(entry.obDate)}</div>
+                        <div className="text-sm sm:text-base font-semibold">{toDispDate(entry.obDate)}</div>
                         <div className="flex items-center gap-2">
-                          {["Pending", "Approved"].includes(entry?.obStatus) && <button className="inline-flex justify-center items-center text-sm w-28 py-1 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelOB(entry)}>Cancel</button>}
-                          <span className={`inline-flex justify-center items-center text-sm w-28 py-1 rounded-xl ${statusClass}`}>{entry.obStatus || "N/A"}</span>
+                          {["Pending", "Approved"].includes(entry?.obStatus) && <button className="inline-flex justify-center items-center text-xs sm:text-sm w-[90px] sm:w-[100px] py-1.5 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelOB(entry)}>Cancel</button>}
+                          <span className={`inline-flex justify-center items-center text-xs sm:text-sm w-[90px] sm:w-[100px] py-1.5 rounded-xl ${statusClass}`}>{entry.obStatus || "N/A"}</span>
                         </div>
                       </div>
 
@@ -752,11 +714,6 @@ const handleShiftDateChange = (value) => {
                         </div>
                       </div>
 
-                      {/* {entry?.obStatus === "Pending" && (
-                        <div className="mt-3 text-right">
-                          <button className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => cancelOB(entry)}>Cancel</button>
-                        </div>
-                      )} */}
                     </div>
                   );
                 })
@@ -800,18 +757,17 @@ const handleShiftDateChange = (value) => {
           {/* TABLE VIEW */}
           {viewMode === "table" && (
             <div className="w-full overflow-x-auto mt-4 rounded-xl">
-              <table className="min-w-[1000px] w-full text-sm text-center border ">
+              <table className="w-full text-sm text-center border ">
                 <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm lg:text-sm ">
                   <tr>
                     {[
+                      { key: "fileDate", label: "Filing Date" },
                       { key: "obDate", label: "OB Date" },
                       { key: "obStart", label: "Start" },
                       { key: "obEnd", label: "End" },
                       { key: "obHrs", label: "Duration" },
-                      { key: "obRemarks", label: "Remarks" },
+                      { key: "obRemarks", label: "Employee's Remarks" },
                       { key: "appRemarks", label: "Approver's Remarks" },
-                      { key: "appUser", label: "Action By" },
-                      { key: "appDateTime", label: "Action Date" },
                       { key: "obStatus", label: "Status" },
                     ].map(({ key, label }) => (
                       <th key={key} className="py-2 px-3 cursor-pointer whitespace-nowrap" onClick={() => sortData(key)}>
@@ -822,6 +778,9 @@ const handleShiftDateChange = (value) => {
 
                   {/* Search Row */}
                   <tr>
+                    <td className="px-1 py-2 bg-white whitespace-nowrap">
+                      <input type="text" value={searchFields.fileDate} onChange={(e) => handleSearchChange(e, "fileDate")} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800" placeholder="Filter..." />
+                    </td>
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
                       <input
                         type="date"
@@ -864,8 +823,6 @@ const handleShiftDateChange = (value) => {
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
                       <input type="text" value={searchFields.appRemarks} onChange={(e) => handleSearchChange(e, "appRemarks")} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800" placeholder="Filter..." />
                     </td>
-                    <td className="px-1 py-2 bg-white whitespace-nowrap"><input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100" placeholder="N/A..." disabled readonly /></td>
-                    <td className="px-1 py-2 bg-white whitespace-nowrap"><input className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-gray-100" placeholder="N/A..." disabled readonly /></td>
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
                       <select value={searchFields.obStatus} onChange={(e) => handleSearchChange(e, "obStatus")} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-white">
                         <option value="">All</option>
@@ -882,28 +839,25 @@ const handleShiftDateChange = (value) => {
 
                       return (
                         <tr key={index} className="global-tr">
-                          <td className="global-td whitespace-nowrap">{toDispDate(entry.obDate)}</td>
-                          <td className="global-td whitespace-nowrap text-left">{toDispDateTime(entry.obStart)}</td>
-                          <td className="global-td whitespace-nowrap text-left">{toDispDateTime(entry.obEnd)}</td>
-                          <td className="global-td whitespace-nowrap text-right">{entry.obHrs} hr(s)</td>
-                          <td className="global-td text-left max-w-[190px]">
-                            <div className="truncate">{entry.obRemarks}</div>
-                            <div className="text-xs text-slate-600">Filing Date: {applicationFileDate(entry)}</div>
+                          <td className="global-td whitespace-nowrap w-[50px]">{applicationFileDate(entry)}</td>
+                          <td className="global-td whitespace-nowrap w-[50px]">{toDispDate(entry.obDate)}</td>
+                          <td className="global-td whitespace-nowrap w-[100px]">{toDispDateTime(entry.obStart)}</td>
+                          <td className="global-td whitespace-nowrap w-[100px]">{toDispDateTime(entry.obEnd)}</td>
+                          <td className="global-td whitespace-nowrap text-right w-[50px]">{entry.obHrs} hr(s)</td>
+                          <td className="global-td text-wrap text-left w-[200px] truncate">{entry.obRemarks || "N/A"}</td>
+                          <td className="global-td text-wrap text-left w-[200px] truncate">
+                            <div className="global-td text-slate-600 font-semibold">{approvalLabels(entry.obStatus).remarks} </div>
+                            <div className="global-td text-blue-700">{entry.appRemarks || "N/A"} </div>
+                            <div className="global-td text-slate-600 font-semibold">{approvalLabels(entry.obStatus).actor} </div>
+                            <div className="global-td text-xs text-blue-700">{approvalUser(entry)} </div>
+                            <div className="global-td text-xs text-slate-600 font-semibold">{approvalLabels(entry.obStatus).date} </div>
+                            <div className="global-td text-xs text-blue-700">{approvalDateTime(entry)} </div>
                           </td>
-                          <td className="global-td text-left max-w-[190px] truncate" title={entry.appRemarks}>{entry.appRemarks}</td>
-                          <td className="global-td text-left whitespace-nowrap">
-                            <div className="text-xs text-slate-600">{approvalLabels(entry.obStatus).actor} </div>
-                            <div className="text-xs text-slate-600">{approvalUser(entry)} </div>
-                          </td>
-                          <td className="global-td text-left whitespace-nowrap">
-                            <div className="text-xs text-slate-600">{approvalLabels(entry.obStatus).date} </div>
-                            <div className="text-xs text-slate-600">{approvalDateTime(entry)} </div>
-                          </td>
-                          <td className="global-td text-center whitespace-nowrap">
+                          <td className="global-td text-center whitespace-nowrap w-[100px] p-2">
                             <div className="inline-flex flex-col items-center gap-2">
-                              <span className={`inline-flex justify-center items-center text-xs w-28 py-1 rounded-xl ${badgeClass}`}>{entry.obStatus}</span>
+                              <span className={`inline-flex justify-center items-center text-xs w-[85px] py-1.5 rounded-xl ${badgeClass}`}>{entry.obStatus}</span>
                               {["Pending", "Approved"].includes(entry?.obStatus) && (
-                                <button className="inline-flex justify-center items-center text-xs w-28 py-1 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelOB(entry)}>Cancel</button>
+                                <button className="inline-flex justify-center items-center text-xs w-[85px] py-1.5 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelOB(entry)}>Cancel</button>
                               )}
                             </div>
                           </td>
