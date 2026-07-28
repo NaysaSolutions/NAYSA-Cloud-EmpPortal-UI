@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext";
@@ -14,6 +14,7 @@ const Leave = () => {
   const [leaveApplications, setLeaveApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
   const [error, setError] = useState(null);
+  const applicationsRequestRef = useRef(0);
 
   // --- Form state ---
   const [selectedStartDate, setSelectedStartDate] = useState("");
@@ -132,6 +133,7 @@ useEffect(() => {
     if (!user?.empNo) return;
 
     const fetchLeaveApplications = async () => {
+      const requestId = ++applicationsRequestRef.current;
       try {
         const response = await fetch(API_ENDPOINTS.fetchLeaveApplications, {
           method: "POST",
@@ -143,23 +145,34 @@ useEffect(() => {
           }),
         });
         const result = await response.json();
+        if (requestId !== applicationsRequestRef.current) return;
+
         if (result?.success && result?.data?.length > 0) {
-          const parsed = JSON.parse(result.data[0].result) || [];
+          const rawRows = result.data[0]?.result;
+          const parsed = Array.isArray(rawRows)
+            ? rawRows
+            : JSON.parse(rawRows || "[]");
           setError(null);
           setLeaveApplications(parsed);
           setFilteredApplications(parsed);
         } else {
           setLeaveApplications([]);
           setFilteredApplications([]);
-          setError("No leave applications found.");
+          setError(null);
         }
       } catch (err) {
+        if (requestId !== applicationsRequestRef.current) return;
         console.error("Error fetching leave applications:", err);
-        setError("An error occurred while fetching leave applications.");
+        setError((currentError) =>
+          leaveApplications.length > 0 ? null : "An error occurred while fetching leave applications."
+        );
       }
     };
 
     fetchLeaveApplications();
+    return () => {
+      applicationsRequestRef.current += 1;
+    };
   }, [user?.empNo, searchFields.leaveDateStart, searchFields.leaveDateEnd]);
 
   // --- Init defaults ---

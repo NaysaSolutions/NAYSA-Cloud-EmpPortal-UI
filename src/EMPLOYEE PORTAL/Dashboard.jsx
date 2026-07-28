@@ -672,7 +672,7 @@ const Dashboard = () => {
     },
     {
       code: "DTR",
-      label: "DTR Adjustments",
+      label: "DTR Adjustments Applications",
       count: approvalsum?.DTRApplicationCount ?? 0,
       route: "/timekeepingAdj",
     },
@@ -729,7 +729,7 @@ const Dashboard = () => {
 
           <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             <div className="min-w-0">
-              <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-semibold text-blue-50 backdrop-blur">
+              <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm font-semibold text-blue-50 backdrop-blur">
                 Welcome to Employee Portal Dashboard !
               </div>
               {/* <p className="text-sm font-medium text-blue-100">Welcome back, {employeeDisplayName}</p> */}
@@ -1215,7 +1215,7 @@ const Dashboard = () => {
             <div className="rounded-xl border border-yellow-100 bg-yellow-50 p-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <h3 className="text-xs font-bold uppercase text-yellow-700">
-                  Pending Leaves for Approval
+                  Pending Leaves
                 </h3>
                 <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-yellow-700">
                   {personalCalendarLists.pendingLeaves.length}
@@ -1406,16 +1406,16 @@ const Dashboard = () => {
                 <p className="text-sm font-bold text-blue-900">Loan Repayment</p>
                 <p className="text-xs text-gray-500">Loan amount, paid amount, and remaining balance</p>
               </div>
-              <div className="flex flex-wrap items-center gap-3 text-[11px] font-semibold text-gray-600">
-                <span className="inline-flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold text-gray-600">
+                <span className="inline-flex items-center gap-1">
                   <span className="h-2.5 w-2.5 rounded-sm bg-blue-800" />
                   Loan Amount
                 </span>
-                <span className="inline-flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1">
                   <span className="h-2.5 w-2.5 rounded-sm bg-green-700" />
                   Total Paid
                 </span>
-                <span className="inline-flex items-center gap-1.5">
+                <span className="inline-flex items-center gap-1">
                   <span className="h-2.5 w-2.5 rounded-sm bg-red-600" />
                   Balance
                 </span>

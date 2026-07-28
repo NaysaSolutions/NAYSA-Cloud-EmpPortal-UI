@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import dayjs from "dayjs";
@@ -39,6 +39,7 @@ const OfficialBusiness = () => {
   const [obApplications, setOBApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
   const [error, setError] = useState(null);
+  const applicationsRequestRef = useRef(0);
 
   // Sorting
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
@@ -163,6 +164,7 @@ const OfficialBusiness = () => {
   // ---------- Fetch ----------
   const fetchOBApplications = async () => {
     if (!user?.empNo) return;
+    const requestId = ++applicationsRequestRef.current;
     try {
       const response = await fetch(API_ENDPOINTS.fetchOfficialBusinessApplicationsHistory, {
         method: "POST",
@@ -174,9 +176,13 @@ const OfficialBusiness = () => {
         }),
       });
       const result = await response.json();
+      if (requestId !== applicationsRequestRef.current) return;
 
       if (result?.success && Array.isArray(result.data) && result.data[0]?.result) {
-        const parsed = JSON.parse(result.data[0].result) ?? [];
+        const rawRows = result.data[0]?.result;
+        const parsed = Array.isArray(rawRows)
+          ? rawRows
+          : JSON.parse(rawRows || "[]");
         const normalized = parsed.map(normalize);
         setError(null);
         setOBApplications(normalized);
@@ -184,10 +190,16 @@ const OfficialBusiness = () => {
       } else {
         setOBApplications([]);
         setFilteredApplications([]);
+        setError(null);
       }
     } catch (err) {
+      if (requestId !== applicationsRequestRef.current) return;
       console.error("Error fetching Official Business applications:", err);
-      setError("An error occurred while fetching Official Business applications.");
+      setError(
+        obApplications.length > 0
+          ? null
+          : "An error occurred while fetching Official Business applications."
+      );
     }
   };
 
@@ -203,6 +215,7 @@ const OfficialBusiness = () => {
     fetchOBApplications();
 
     return () => {
+      applicationsRequestRef.current += 1;
       mq.removeEventListener("change", setByScreen);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

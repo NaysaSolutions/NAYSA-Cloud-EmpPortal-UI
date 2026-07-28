@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
 import { useAuth } from "./AuthContext";
@@ -18,6 +18,7 @@ const OvertimeApplication = () => {
   const [overtimeApplications, setOvertimeApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
   const [error, setError] = useState(null);
+  const applicationsRequestRef = useRef(0);
 
   // form
   const [otDate, setOTDate] = useState("");
@@ -68,6 +69,7 @@ const OvertimeApplication = () => {
   useEffect(() => {
     if (!user?.empNo) return;
     const run = async () => {
+      const requestId = ++applicationsRequestRef.current;
       try {
         const res = await fetch(API_ENDPOINTS.fetchOvertimeApplications, {
           method: "POST",
@@ -79,22 +81,35 @@ const OvertimeApplication = () => {
           }),
         });
         const j = await res.json();
+        if (requestId !== applicationsRequestRef.current) return;
+
         if (j?.success && j.data?.length) {
-          const rows = JSON.parse(j.data[0].result || "[]");
+          const rawRows = j.data[0]?.result;
+          const rows = Array.isArray(rawRows)
+            ? rawRows
+            : JSON.parse(rawRows || "[]");
           setError(null);
           setOvertimeApplications(rows);
           setFilteredApplications(rows);
         } else {
           setOvertimeApplications([]);
           setFilteredApplications([]);
-          setError("No overtime applications found.");
+          setError(null);
         }
       } catch (e) {
+        if (requestId !== applicationsRequestRef.current) return;
         console.error(e);
-        setError("An error occurred while fetching overtime applications.");
+        setError(
+          overtimeApplications.length > 0
+            ? null
+            : "An error occurred while fetching overtime applications."
+        );
       }
     };
     run();
+    return () => {
+      applicationsRequestRef.current += 1;
+    };
   }, [user?.empNo, searchFields.otDateStart, searchFields.otDateEnd]);
 
   
