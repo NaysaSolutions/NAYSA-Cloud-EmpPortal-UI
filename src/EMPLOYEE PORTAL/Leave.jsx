@@ -571,7 +571,7 @@ const clampRequestToBalance = (days, hours) => {
 
     // --- Reset form + refresh listing ---
     const today = dayjs().format("YYYY-MM-DD");
-    setApplicationDate(today);
+    // setApplicationDate(today);
     setSelectedStartDate(today);
     setSelectedEndDate(today);
     setLeaveType("");
