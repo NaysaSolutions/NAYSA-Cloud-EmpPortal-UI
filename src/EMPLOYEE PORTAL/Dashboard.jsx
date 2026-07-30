@@ -723,17 +723,17 @@ const Dashboard = () => {
   return (
     <div className="mt-[80px] min-h-screen bg-slate-100/80 p-3 sm:p-4 lg:ml-[200px] lg:p-4">
       <div className="mx-auto w-full max-w-[1600px] space-y-4">
-        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-900 to-blue-600 p-5 text-white shadow-xl sm:p-4">
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-900 to-blue-600 p-5 text-white shadow-xl sm:p-3">
           <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
           <div className="pointer-events-none absolute -bottom-24 left-1/3 h-52 w-52 rounded-full bg-blue-300/10 blur-3xl" />
 
           <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             <div className="min-w-0">
               <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm font-semibold text-blue-50 backdrop-blur">
-                Welcome to Employee Portal Dashboard !
+                Welcome to Employee Dashboard  !
               </div>
               {/* <p className="text-sm font-medium text-blue-100">Welcome back, {employeeDisplayName}</p> */}
-              <h1 className="mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <h1 className="ml-1 mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
                 {currentDate ? currentDate.format("dddd, MMMM DD, YYYY") : "Verifying Philippine date…"}
               </h1>
               {/* <p className="mt-2 max-w-2xl text-sm text-blue-100/90">

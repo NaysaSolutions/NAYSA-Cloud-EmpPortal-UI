@@ -116,7 +116,7 @@ const Navbar = () => {
 
           <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
             <img src="/naysa_logo.png" className="w-[75px] h-[45px]" alt="Naysa Logo" />
-            <span className="text-blue-800 font-bold mt-1 text-base sm:text-base md:text-base">Employee Portal</span>
+            <span className="text-blue-800 font-bold mt-1 text-[14px] sm:text-base md:text-base">Employee Portal</span>
           </div>
         </div>
 

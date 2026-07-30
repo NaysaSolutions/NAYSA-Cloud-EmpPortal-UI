@@ -19,6 +19,7 @@ import {
   Download,
   Image as ImageIcon,
   CircleCheck,
+  Clock3,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -152,6 +153,11 @@ const formatPositionCoords = (position) => ({
   accuracy: Number(position.coords.accuracy ?? 999999),
   ts: Date.now(),
 });
+
+const formatEventTypeLabel = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 
 const Timekeeping = ({ onBreakStart }) => {
   const { user } = useAuth();
@@ -2127,7 +2133,7 @@ capturedImageInfo = await captureImageProcess(type);
 
     console.log("Upsert Payload:", eventData);
 
-    setLoading({ show: true, message: `Saving ${type}...` });
+    setLoading({ show: true, message: `Saving ${formatEventTypeLabel(type)} record...` });
 
     const response = await axios.post(API_ENDPOINTS.upsertTimeIn, eventData);
 
@@ -2402,15 +2408,55 @@ if (!confirm) return;
 
   const SpinnerOverlay = ({ show, message }) => {
     if (!show) return null;
+    const statusText = message || "Processing...";
+    const normalized = statusText.toLowerCase();
+    const steps = [
+      { label: "Location", active: normalized.includes("location") || normalized.includes("address") },
+      { label: "Photo", active: normalized.includes("capture") || normalized.includes("face") || normalized.includes("photo") },
+      { label: "Saving", active: normalized.includes("saving") },
+    ];
 
     return (
-      <div className="fixed inset-0 z-[9999] bg-black/40 flex flex-col items-center justify-center">
-        <div className="h-12 w-12 border-4 border-white/30 border-t-white rounded-full animate-spin" />
-        {message && (
-          <p className="mt-3 text-white text-sm font-medium text-center px-4">
-            {message}
-          </p>
-        )}
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/55 px-4 backdrop-blur-sm">
+        <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-white/20 bg-white shadow-2xl">
+          <div className="bg-blue-800 px-5 py-4 text-white">
+            <div className="flex items-center gap-3">
+              <div className="relative h-12 w-12 shrink-0">
+                <div className="absolute inset-0 rounded-full border-4 border-white/25" />
+                <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-white animate-spin" />
+                <Camera className="absolute left-1/2 top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2" />
+              </div>
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-100">
+                  Timekeeping in progress
+                </div>
+                <div className="mt-0.5 text-lg font-bold">{statusText}</div>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-4 p-5">
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full w-2/3 rounded-full bg-blue-700 transition-all animate-pulse" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {steps.map((step) => (
+                <div
+                  key={step.label}
+                  className={`rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${
+                    step.active
+                      ? "border-blue-200 bg-blue-50 text-blue-800"
+                      : "border-slate-200 bg-slate-50 text-slate-500"
+                  }`}
+                >
+                  {step.label}
+                </div>
+              ))}
+            </div>
+            <p className="text-center text-xs text-slate-500">
+              Please keep this screen open while we complete your transaction.
+            </p>
+          </div>
+        </div>
       </div>
     );
   };
@@ -2669,6 +2715,44 @@ if (!confirm) return;
             Offset
           </button>
         )}
+      </div>
+    );
+  };
+
+  const StatusPill = ({ active, label, activeClass = "bg-green-50 text-green-700 border-green-200" }) => (
+    <span
+      className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${
+        active ? activeClass : "border-gray-200 bg-gray-50 text-gray-500"
+      }`}
+    >
+      {label}: {active ? "ON" : "OFF"}
+    </span>
+  );
+
+  const TodayTimelineItem = ({ label, value, location, tone = "blue" }) => {
+    const toneClass = tone === "red" ? "text-red-800" : "text-blue-800";
+    const iconClass = tone === "red" ? "text-red-500" : "text-blue-600";
+
+    return (
+      <div className="rounded-xl border border-slate-100 bg-slate-50 p-2 sm:p-3">
+        <div className="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-2 gap-y-2">
+          <Clock3 className={`mt-0.5 h-4 w-4 ${iconClass}`} />
+          <div className="min-w-0 sm:flex sm:items-start sm:justify-between sm:gap-3">
+            <div className={`text-sm font-extrabold ${toneClass}`}>{label}:</div>
+            <div className={`break-words text-sm font-semibold ${value ? "text-slate-800" : "text-red-700"}`}>
+              {value || "Not Recorded"}
+            </div>
+          </div>
+          {shouldShowLocationAddress && (
+            <>
+              <MapPin className={`mt-0.5 h-4 w-4 ${iconClass}`} />
+              <div className="min-w-0 text-[12px] font-medium leading-relaxed text-slate-600">
+                <span className="font-bold text-slate-700">Location:</span>{" "}
+                <span className="break-words">{location || "Not Recorded"}</span>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     );
   };
@@ -3459,31 +3543,50 @@ if (!confirm) return;
   return (
     <div className="ml-0 lg:ml-[200px] mt-[70px] p-2 sm:p-4 bg-gray-100 min-h-screen">
 
-      <div className="bg-blue-800 mt-2 px-3 py-2 sm:p-3 rounded-xl text-white flex flex-row items-center justify-between gap-3 mb-3 w-full shadow-lg">
-        <div className="min-w-0">
-          <p className="text-[10px] sm:text-xs font-light leading-none">Today</p>
-          <h1 className="text-sm sm:text-lg md:text-2xl font-extrabold leading-tight truncate">
-            {currentDate ? currentDate.format("MMMM DD, YYYY") : "Verifying..."}
-          </h1>
+      <section className="relative mb-2 mt-2 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-900 to-blue-600 p-3 text-white shadow-xl sm:p-3">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-blue-300/10 blur-3xl" />
+
+        <div className="relative flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="mb-1 flex items-start justify-between gap-2 sm:block">
+            <div className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-50 backdrop-blur">
+              Timekeeping
+            </div>
+            <h1 className="max-w-[13rem] text-right text-lg font-extrabold leading-snug tracking-tight sm:ml-1 sm:mt-2 sm:max-w-none sm:text-left sm:text-2xl">
+              {currentDate ? currentDate.format("dddd, MMMM DD, YYYY") : "Verifying Philippine date..."}
+            </h1>
+            </div>
+          </div>
+
+          <div className="w-full rounded-2xl border border-white/15 bg-white/10 px-3 py-2 backdrop-blur sm:w-auto sm:min-w-[250px]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-blue-100">
+                  Philippine Standard Time
+                </p>
+                <p className="mt-1 text-lg sm:text-3xl font-extrabold leading-none tabular-nums">
+                  {time || "Syncing..."}
+                </p>
+              </div>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                <Clock3 className="h-5 w-5" />
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="text-right shrink-0">
-          <p className="text-[9px] sm:text-xs font-extrabold leading-none mb-1">
-            Philippine Standard Time
-          </p>
-          <p className="text-base sm:text-2xl font-bold leading-none">
-            {time || "00:00 PM"}
-          </p>
-        </div>
-      </div>
-
-      {clockSyncStatus !== "synced" && (
-        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-          {clockSyncStatus === "syncing"
-            ? "Verifying server time..."
-            : "Philippine Standard Time could not be verified from the server. Timekeeping buttons are disabled until sync is restored."}
-        </div>
-      )}
+        {clockSyncStatus !== "synced" && (
+          <div className="relative mt-4 inline-flex items-start gap-2 rounded-xl border border-amber-200/50 bg-amber-100/15 px-3 py-2 text-xs font-semibold text-amber-50">
+            <span className="mt-1 h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-300" />
+            <span>
+              {clockSyncStatus === "syncing"
+                ? "Verifying server time..."
+                : "Philippine Standard Time could not be verified from the server. Timekeeping buttons are disabled until sync is restored."}
+            </span>
+          </div>
+        )}
+      </section>
 
       {hasPreviousTimeIn && !hasPreviousTimeOut && (
         <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -3496,10 +3599,10 @@ if (!confirm) return;
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row justify-center gap-6 w-full">
-        <div className="flex flex-col items-center p-4 bg-white rounded-xl shadow-md flex-1">
+      <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-md">
           {isImageCaptureRequired && (
-            <div className="relative w-full max-w-[320px] mb-4">
+            <div className="relative mx-auto mb-4 w-full max-w-[420px] overflow-hidden rounded-2xl bg-slate-900 shadow-md">
               <video
                 ref={videoRef}
                 width={320}
@@ -3507,29 +3610,37 @@ if (!confirm) return;
                 autoPlay
                 playsInline
                 muted
-                className="bg-black rounded-xl shadow-md transform scale-x-[-1]"
+                className="aspect-[4/3] w-full bg-black object-cover transform scale-x-[-1]"
               />
               <canvas ref={canvasRef} width={320} height={240} className="hidden" />
 
               {capturing && (
-  <div className="absolute inset-0 z-50 flex items-center justify-center rounded-xl pointer-events-none">
-    {countdown > 0 ? (
-      <span className="text-7xl font-bold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
-        {countdown}
-      </span>
-    ) : (
-      <span className="text-3xl font-semibold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
-        Smile!
-      </span>
-    )}
-  </div>
-)}
+                <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-slate-950/35">
+                  <div className="rounded-2xl border border-white/25 bg-black/35 px-6 py-5 text-center text-white shadow-2xl backdrop-blur-sm">
+                    {countdown > 0 ? (
+                      <>
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-100">Capturing photo</div>
+                        <div className="mt-1 text-7xl font-black leading-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+                          {countdown}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="mx-auto h-8 w-8" />
+                        <div className="mt-2 text-2xl font-bold drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+                          Smile!
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          <div className="w-full grid grid-cols-2 gap-4">
+          <div className="grid w-full grid-cols-2 gap-3 sm:gap-4">
             <button
-              className="bg-blue-800 hover:bg-blue-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
+              className="rounded-xl bg-blue-800 px-4 py-4 text-sm font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:py-5"
               onClick={() => handleTimeEvent("TIME IN")}
               disabled={
                 !isClockSynced ||
@@ -3545,7 +3656,7 @@ if (!confirm) return;
             </button>
 
             <button
-              className="bg-red-600 hover:bg-red-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
+              className="rounded-xl bg-red-600 px-4 py-4 text-sm font-bold text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:py-5"
               onClick={() => handleTimeEvent("BREAK IN")}
               disabled={
                 !isClockSynced ||
@@ -3562,7 +3673,7 @@ if (!confirm) return;
             </button>
 
             <button
-              className="bg-red-600 hover:bg-red-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
+              className="rounded-xl bg-red-500 px-4 py-4 text-sm font-bold text-white shadow-md transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50 sm:py-5"
               onClick={() => handleTimeEvent("BREAK OUT")}
               disabled={
                 !isClockSynced ||
@@ -3579,7 +3690,7 @@ if (!confirm) return;
             </button>
 
             <button
-              className="bg-blue-800 hover:bg-blue-700 text-white font-bold py-5 px-4 rounded-xl shadow-md transition disabled:opacity-50"
+              className="rounded-xl bg-blue-800 px-4 py-4 text-sm font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:py-5"
               onClick={handleTimeOutClick}
               disabled={
                 !isClockSynced ||
@@ -3602,37 +3713,30 @@ if (!confirm) return;
           </div>
         </div>
 
-        <div className="w-full md:w-1/3 p-4 bg-white rounded-xl shadow-md flex flex-col">
-          <p className="text-blue-800 text-[14px] md:text-lg mb-2">
+        <div className="flex w-full flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-md">
+          <div className="border-b border-slate-100 pb-3">
+          <p className="text-blue-800 text-base md:text-lg mb-2">
             <span className="font-extrabold">
               {branchLocation?.branchname || "Assigned Location Not Loaded"}
             </span>
           </p>
 
-          <p className="text-gray-800 text-[14px] md:text-sm mb-2">
-            <span className="font-bold">Branch Location:</span>{" "}
+          <p className="break-words text-xs font-medium leading-relaxed text-gray-800 md:text-sm">
+            <span className="font-bold">Assigned Location:</span>{" "}
             {branchLocation?.address || "N/A"}
           </p>
 
-          <div className="flex flex-wrap gap-2 mb-3">
-            <span className={`px-2 py-1 rounded-full text-[11px] font-semibold ${
-              shouldShowLocationAddress
-                ? "bg-green-50 text-green-700 border border-green-200"
-                : "bg-gray-50 text-gray-500 border border-gray-200"
-            }`}>
-              Geotagging: {shouldShowLocationAddress ? "ON" : "OFF"}
-            </span>
-            <span className={`px-2 py-1 rounded-full text-[11px] font-semibold ${
-              shouldShowGeofenceDetails
-                ? "bg-blue-50 text-blue-700 border border-blue-200"
-                : "bg-gray-50 text-gray-500 border border-gray-200"
-            }`}>
-              Geofence: {shouldShowGeofenceDetails ? "ON" : "OFF"}
-            </span>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <StatusPill active={shouldShowLocationAddress} label="Geotagging" />
+            <StatusPill
+              active={shouldShowGeofenceDetails}
+              label="Geofence"
+              activeClass="border-blue-200 bg-blue-50 text-blue-700"
+            />
           </div>
 
           {shouldShowGeofenceDetails && (
-            <p className="text-gray-800 text-[12px] md:text-sm mb-6">
+            <p className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-xs font-medium text-blue-900">
               <span className="font-bold">Allowed Radius:</span>{" "}
               {branchLocation?.allowedRadius ?? "N/A"} meters
               {locationAccuracy != null && (
@@ -3644,62 +3748,32 @@ if (!confirm) return;
               )}
             </p>
           )}
+          </div>
 
-          <p className="text-blue-800 text-[14px] md:text-lg mb-2">
-            <span className="font-extrabold">🕐 Time In:</span>{" "}
-            {todayRecord?.time_in
-              ? formatDtrActualDateTime(todayRecord, "timeIn")
-              : "Not Recorded"}
-          </p>
-
-          {shouldShowLocationAddress && (
-            <p className="text-gray-800 text-[14px] md:text-sm mb-4">
-              <span className="font-bold">📍Location:</span>{" "}
-              {todayRecord?.time_in_address || "Not Recorded"}
-            </p>
-          )}
-
-          <p className="text-red-800 text-[14px] md:text-lg mb-2">
-            <span className="font-extrabold">🕐 Break In:</span>{" "}
-            {todayRecord?.break_in
-              ? formatDtrBreakDateTime(todayRecord, "breakIn")
-              : "Not Recorded"}
-          </p>
-
-          {shouldShowLocationAddress && (
-            <p className="text-gray-800 text-[14px] md:text-sm mb-4">
-              <span className="font-bold">📍Location:</span>{" "}
-              {todayRecord?.break_in_address || "Not Recorded"}
-            </p>
-          )}
-
-          <p className="text-red-800 text-[14px] md:text-lg mb-2">
-            <span className="font-extrabold">🕐 Break Out:</span>{" "}
-            {todayRecord?.break_out
-              ? formatDtrBreakDateTime(todayRecord, "breakOut")
-              : "Not Recorded"}
-          </p>
-
-          {shouldShowLocationAddress && (
-            <p className="text-gray-800 text-[14px] md:text-sm mb-4">
-              <span className="font-bold">📍Location:</span>{" "}
-              {todayRecord?.break_out_address || "Not Recorded"}
-            </p>
-          )}
-
-          <p className="text-blue-800 text-[14px] md:text-lg mb-2">
-            <span className="font-bold">🕐 Time Out:</span>{" "}
-            {todayRecord?.time_out
-              ? formatDtrActualDateTime(todayRecord, "timeOut")
-              : "Not Recorded"}
-          </p>
-
-          {shouldShowLocationAddress && (
-            <p className="text-gray-800 text-[14px] md:text-sm mb-4">
-              <span className="font-bold">📍Location:</span>{" "}
-              {todayRecord?.time_out_address || "Not Recorded"}
-            </p>
-          )}
+          <div className="mt-3 space-y-1">
+            <TodayTimelineItem
+              label="Time In"
+              value={todayRecord?.time_in ? formatDtrActualDateTime(todayRecord, "timeIn") : ""}
+              location={todayRecord?.time_in_address}
+            />
+            <TodayTimelineItem
+              label="Break In"
+              tone="red"
+              value={todayRecord?.break_in ? formatDtrBreakDateTime(todayRecord, "breakIn") : ""}
+              location={todayRecord?.break_in_address}
+            />
+            <TodayTimelineItem
+              label="Break Out"
+              tone="red"
+              value={todayRecord?.break_out ? formatDtrBreakDateTime(todayRecord, "breakOut") : ""}
+              location={todayRecord?.break_out_address}
+            />
+            <TodayTimelineItem
+              label="Time Out"
+              value={todayRecord?.time_out ? formatDtrActualDateTime(todayRecord, "timeOut") : ""}
+              location={todayRecord?.time_out_address}
+            />
+          </div>
         </div>
       </div>
 
