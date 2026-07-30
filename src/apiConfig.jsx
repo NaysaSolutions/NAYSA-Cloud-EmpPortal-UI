@@ -42,6 +42,7 @@ const API_ENDPOINTS = {
      leaveTypes:                `${API_BASE_URL}/leaveTypes`,
      cancelLeaveApplication:    `${API_BASE_URL}/cancelLV`,
      fetchLeaveBalance:         `${API_BASE_URL}/getLVBalance`,
+     getLeaveInquiry:           `${API_BASE_URL}/getLVInquiry`,
      saveLeaveApplication:      `${API_BASE_URL}/upsertLV`,
      LeaveHistoryApplication:   `${API_BASE_URL}/getLVApprInq`,
      approvedLeaveHistory:      `${API_BASE_URL}/getLVApprHistory`,

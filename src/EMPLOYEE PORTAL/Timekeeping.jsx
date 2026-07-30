@@ -515,7 +515,33 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   }, [getTrustedPhilippineNow]);
 
   const reverseGeocode = async (lat, lon) => {
-  const key = `${roundCoord(lat, 5)},${roundCoord(lon, 5)}`;
+  const latitude = Number(lat);
+  const longitude = Number(lon);
+
+  // Validate coordinates before sending the request.
+  if (
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude) ||
+    latitude < -90 ||
+    latitude > 90 ||
+    longitude < -180 ||
+    longitude > 180
+  ) {
+    console.error("Invalid coordinates:", {
+      lat,
+      lon,
+      latitude,
+      longitude,
+    });
+
+    return {
+      actualCapturedLocation: "Invalid coordinates",
+      nearestLandmark: "N/A",
+      fullMapAddress: "Invalid coordinates",
+    };
+  }
+
+  const key = `${roundCoord(latitude, 5)},${roundCoord(longitude, 5)}`;
 
   if (revGeoCacheRef.current.has(key)) {
     return revGeoCacheRef.current.get(key);
@@ -526,17 +552,23 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
       "https://nominatim.openstreetmap.org/reverse",
       {
         params: {
-          lat,
-          lon,
-          format: "json",
+          lat: latitude,
+          lon: longitude,
+          format: "jsonv2",
           addressdetails: 1,
           zoom: 18,
+          "accept-language": "en",
         },
-        timeout: 8000,
+        timeout: 15000,
       }
     );
 
-    const data = response.data || {};
+    const data = response.data;
+
+    if (!data || data.error) {
+      throw new Error(data?.error || "No reverse-geocoding result returned");
+    }
+
     const address = data.address || {};
 
     const nearestLandmark =
@@ -546,17 +578,33 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
       address.shop ||
       address.tourism ||
       address.office ||
+      address.leisure ||
       "N/A";
 
-    const streetLine = [address.house_number, address.road]
+    const streetLine = [
+      address.house_number,
+      address.road ||
+        address.pedestrian ||
+        address.residential ||
+        address.footway,
+    ]
       .filter(Boolean)
       .join(" ");
 
     const actualCapturedParts = [
       streetLine,
-      address.neighbourhood || address.suburb || address.village,
-      address.city_district || address.district,
-      address.city || address.municipality,
+      address.neighbourhood ||
+        address.quarter ||
+        address.suburb ||
+        address.village,
+      address.city_district ||
+        address.district ||
+        address.county ||
+        address.state_district,
+      address.city ||
+        address.town ||
+        address.municipality ||
+        address.village,
       address.state,
       address.postcode,
       address.country,
@@ -565,23 +613,48 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
     const actualCapturedLocation =
       actualCapturedParts.length > 0
         ? [...new Set(actualCapturedParts)].join(", ")
-        : data.display_name || "Unknown location";
+        : data.display_name || "Address not available";
 
     const result = {
       actualCapturedLocation,
       nearestLandmark,
-      fullMapAddress: data.display_name || "Unknown location",
+      fullMapAddress:
+        data.display_name || actualCapturedLocation || "Address not available",
     };
 
     revGeoCacheRef.current.set(key, result);
+
     return result;
   } catch (err) {
-    console.error("Reverse geocoding failed:", err);
+    const status = err.response?.status;
+
+    console.error("Reverse geocoding failed:", {
+      message: err.message,
+      code: err.code,
+      status,
+      responseData: err.response?.data,
+      latitude,
+      longitude,
+    });
+
+    let errorLocation = "Unknown location";
+
+    if (err.code === "ECONNABORTED") {
+      errorLocation = "Location address request timed out";
+    } else if (status === 403) {
+      errorLocation = "Location service access denied";
+    } else if (status === 429) {
+      errorLocation = "Location service request limit reached";
+    } else if (status === 404) {
+      errorLocation = "No mapped address found near the coordinates";
+    } else if (!err.response) {
+      errorLocation = "Unable to connect to the location service";
+    }
 
     return {
-      actualCapturedLocation: "Unknown location",
+      actualCapturedLocation: errorLocation,
       nearestLandmark: "N/A",
-      fullMapAddress: "Unknown location",
+      fullMapAddress: errorLocation,
     };
   }
 };
@@ -2185,6 +2258,23 @@ capturedImageInfo = await captureImageProcess(type);
     }, 0);
   }, [filteredRecords]);
 
+  const finalRecordCount = useMemo(
+    () => filteredRecords.filter((record) => record.stat === "F").length,
+    [filteredRecords]
+  );
+
+  const incompleteRecordCount = useMemo(
+    () =>
+      filteredRecords.filter(
+        (record) =>
+          record.time_in == null ||
+          String(record.time_in).trim() === "" ||
+          record.time_out == null ||
+          String(record.time_out).trim() === ""
+      ).length,
+    [filteredRecords]
+  );
+
   const handleExport = () => {
     const employeeNumber = String(user?.empNo || user?.empno || "").padStart(10, "0") || "N/A";
     const employeeName = records[0]?.empName || records[0]?.empname || "N/A";
@@ -2477,6 +2567,112 @@ if (!confirm) return;
   const getTimekeepingImageFallbacks = (imagePath, imageId, record = {}) =>
     buildTimekeepingImageCandidates(imagePath, imageId, record).slice(1);
 
+  const getRecordImages = (record) => {
+    const timeInImagePath = getRecordValue(record, [
+      "time_in_image_preview",
+      "timeInImagePreview",
+      "time_in_image_path",
+      "timeInImagePath",
+      "TIME_IN_IMAGE_PATH",
+      "time_in_image",
+      "timeInImage",
+    ]);
+    const timeInImageId = getRecordValue(record, [
+      "time_in_image_id",
+      "timeInImageId",
+      "TIME_IN_IMAGE_ID",
+      "time_in_imageid",
+      "timeInImageID",
+    ]);
+    const timeOutImagePath = getRecordValue(record, [
+      "time_out_image_preview",
+      "timeOutImagePreview",
+      "time_out_image_path",
+      "timeOutImagePath",
+      "TIME_OUT_IMAGE_PATH",
+      "time_out_image",
+      "timeOutImage",
+    ]);
+    const timeOutImageId = getRecordValue(record, [
+      "time_out_image_id",
+      "timeOutImageId",
+      "TIME_OUT_IMAGE_ID",
+      "time_out_imageid",
+      "timeOutImageID",
+    ]);
+
+    return {
+      timeInImagePath,
+      timeInImageId,
+      timeInImageUrl: getTimekeepingImageUrl(timeInImagePath, timeInImageId, record),
+      timeInImageFallbacks: getTimekeepingImageFallbacks(timeInImagePath, timeInImageId, record),
+      timeOutImagePath,
+      timeOutImageId,
+      timeOutImageUrl: getTimekeepingImageUrl(timeOutImagePath, timeOutImageId, record),
+      timeOutImageFallbacks: getTimekeepingImageFallbacks(timeOutImagePath, timeOutImageId, record),
+    };
+  };
+
+  const isBlankRecordValue = (value) => value == null || String(value).trim() === "";
+
+  const getWorkedHoursDisplay = (record) =>
+    record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs";
+
+  const TimeValue = ({ label, value, missing = "N/A", tone = "slate" }) => (
+    <div className="rounded-xl bg-slate-50 p-3">
+      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</div>
+      <div
+        className={`mt-1 break-words font-semibold ${
+          value ? (tone === "blue" ? "text-blue-900" : "text-slate-800") : "text-rose-600"
+        }`}
+      >
+        {value || missing}
+      </div>
+    </div>
+  );
+
+  const RecordBadge = ({ isFinal }) => (
+    <span
+      className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ${
+        isFinal
+          ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+          : "bg-amber-50 text-amber-700 ring-amber-200"
+      }`}
+    >
+      {isFinal ? "FINAL" : "OPEN"}
+    </span>
+  );
+
+  const RecordActions = ({ record, className = "" }) => {
+    const isFinal = record.stat === "F";
+    const hasCompleteTime = !isBlankRecordValue(record.time_in) && !isBlankRecordValue(record.time_out);
+    const canAdjust = !isFinal && !hasCompleteTime;
+    const canOffset = isFinal && hasCompleteTime;
+
+    if (!canAdjust && !canOffset) return null;
+
+    return (
+      <div className={`flex flex-wrap gap-2 ${className}`}>
+        {canAdjust && (
+          <button
+            onClick={() => navigate("/timekeepingAdj", { state: { record } })}
+            className="inline-flex items-center justify-center rounded-lg bg-yellow-500 px-3 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-yellow-600"
+          >
+            Adjust Time
+          </button>
+        )}
+        {canOffset && (
+          <button
+            onClick={() => navigate("/offsetApplication", { state: { record } })}
+            className="inline-flex items-center justify-center rounded-lg bg-blue-800 px-3 py-2 text-[11px] font-bold text-white shadow-sm transition hover:bg-blue-700"
+          >
+            Offset
+          </button>
+        )}
+      </div>
+    );
+  };
+
   const handleTimekeepingImageError = (event, label = "Timekeeping") => {
     const fallbackSrcs = event.currentTarget.dataset.fallbackSrcs
       ? JSON.parse(event.currentTarget.dataset.fallbackSrcs)
@@ -2503,8 +2699,16 @@ if (!confirm) return;
       navigate("/offsetApplication", { state: { record } });
     };
 
+    if (filteredRecords.length === 0) {
+      return (
+        <div className="rounded-xl border border-gray-200 bg-white p-10 text-center text-xs font-medium text-slate-500 shadow-sm">
+          No records found.
+        </div>
+      );
+    }
+
     return (
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
         {filteredRecords.map((record, index) => {
           const isFinal = record.stat === "F";
           const hasCompleteTime = !isBlank(record.time_in) && !isBlank(record.time_out);
@@ -2558,28 +2762,25 @@ if (!confirm) return;
           return (
             <div
               key={index}
-              className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden p-4 lg:p-6"
+              className="overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md lg:p-5"
             >
-              <div className="flex justify-between items-start mb-4">
-                <div>
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm lg:text-xl font-bold text-gray-900">
+                    <h3 className="truncate text-sm font-bold text-gray-900 lg:text-base">
                       {dayjs(record.date).format("MMMM D, YYYY")}
                     </h3>
-                    {isFinal && (
-                      <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-600 border border-green-200">
-                        FINAL
-                      </span>
-                    )}
+                    <RecordBadge isFinal={isFinal} />
                   </div>
-                  <p className="text-base text-gray-500 font-medium">
-                    {record.worked_hrs != null
-                      ? `${Number(record.worked_hrs).toFixed(2)} hrs`
-                      : "0.00 hrs"}
+                  <p className="text-[11px] font-medium text-gray-500">
+                    {dayjs(record.date).format("dddd")}
                   </p>
                 </div>
 
                 <div className="text-right">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                    Worked Hours
+                  </div>
                   {/* <div className="text-[10px] lg:text-[11px] text-gray-400 uppercase tracking-widest mb-1 font-bold">
                     IN • OUT
                   </div> */}
@@ -2604,9 +2805,9 @@ if (!confirm) return;
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-xl px-4 py-2 mb-6 flex justify-between items-center border border-gray-100">
-                <span className="text-[10px] sm:text-sm text-gray-500">Break</span>
-                <span className="text-[10px] sm:text-sm font-medium text-gray-700 font-mono">
+              <div className="mb-4 flex flex-col gap-1 rounded-xl border border-gray-100 bg-gray-50 px-4 py-2 sm:flex-row sm:items-center sm:justify-between">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 sm:text-xs">Break</span>
+                <span className="break-words text-[10px] font-medium text-gray-700 sm:text-xs">
                   {record.break_in
                     ? formatDtrBreakDateTime(record, "breakIn")
                     : "N/A"}
@@ -2617,10 +2818,10 @@ if (!confirm) return;
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-y-6 lg:gap-x-12">
-                <div className="flex flex-row gap-4 lg:gap-6">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="flex min-w-0 flex-col gap-2">
                   <div className="flex flex-col gap-2 shrink-0">
-                  <div className="flex items-center gap-1.5 text-[11px] text-gray-400 uppercase font-bold tracking-wide">
+                  <div className="flex items-center gap-1.5 text-[10px] text-gray-400 uppercase font-bold tracking-wide sm:text-[11px]">
                       <Camera size={14} /> Time In
                     </div>
                     {timeInImageUrl ? (
@@ -2628,7 +2829,7 @@ if (!confirm) return;
     key={`time-in-${timeInImageKey}`}
     src={timeInImageUrl}
     alt="Time In"
-    className="w-32 lg:w-40 aspect-square object-cover rounded-xl border border-gray-100 shadow-sm"
+    className="aspect-square w-full object-cover rounded-xl border border-gray-100 shadow-sm"
     data-fallback-srcs={JSON.stringify(
       getTimekeepingImageFallbacks(timeInImagePath, timeInImageId, record)
     )}
@@ -2636,27 +2837,27 @@ if (!confirm) return;
     onError={(e) => handleTimekeepingImageError(e, "Time In")}
   />
 ) : (
-  <div className="flex items-center justify-center w-32 lg:w-40 aspect-square bg-gray-50 rounded-xl border border-dashed border-gray-200">
+  <div className="flex aspect-square w-full items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white">
     <ImageIcon size={24} className="text-gray-300" />
   </div>
 )}
                   </div>
 
                   {shouldShowLocationAddress && (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-1.5 text-[11px] text-gray-400 uppercase font-bold tracking-wide">
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <div className="flex items-center gap-1.5 text-[10px] text-gray-400 uppercase font-bold tracking-wide sm:text-[11px]">
                         <MapPin size={14} className="text-green-500" /> Time In Location
                       </div>
-                      <p className="text-xs lg:text-[13px] text-gray-600 leading-relaxed font-medium max-w-[200px] lg:max-w-xs">
+                      <p className="break-words text-[11px] font-medium leading-relaxed text-gray-600 sm:text-xs">
                         {record.time_in_address || "N/A"}
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="flex flex-row gap-4 lg:gap-6">
+                <div className="flex min-w-0 flex-col gap-2">
                   <div className="flex flex-col gap-2 shrink-0">
-                    <div className="flex items-center gap-1.5 text-[11px] text-gray-400 uppercase font-bold tracking-wide">
+                    <div className="flex items-center gap-1.5 text-[10px] text-gray-400 uppercase font-bold tracking-wide sm:text-[11px]">
                       <Camera size={14} /> Time Out
                     </div>
                     {timeOutImageUrl ? (
@@ -2664,7 +2865,7 @@ if (!confirm) return;
     key={`time-out-${timeOutImageKey}`}
     src={timeOutImageUrl}
     alt="Time Out"
-    className="w-32 lg:w-40 aspect-square object-cover rounded-xl border border-gray-100 shadow-sm"
+    className="aspect-square w-full object-cover rounded-xl border border-gray-100 shadow-sm"
     data-fallback-srcs={JSON.stringify(
       getTimekeepingImageFallbacks(timeOutImagePath, timeOutImageId, record)
     )}
@@ -2672,45 +2873,49 @@ if (!confirm) return;
     onError={(e) => handleTimekeepingImageError(e, "Time Out")}
   />
 ) : (
-  <div className="flex items-center justify-center w-32 lg:w-40 aspect-square bg-gray-50 rounded-xl border border-dashed border-gray-200">
+  <div className="flex aspect-square w-full items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white">
     <ImageIcon size={24} className="text-gray-300" />
   </div>
 )}
                   </div>
 
-                  <div className="flex flex-col gap-2 flex-1">
-                    {shouldShowLocationAddress && record.time_out_address ? (
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    {shouldShowLocationAddress ? (
                       <>
-                        <div className="flex items-center gap-1.5 text-[11px] text-gray-400 uppercase font-bold tracking-wide">
+                        <div className="flex items-center gap-1.5 text-[10px] text-gray-400 uppercase font-bold tracking-wide sm:text-[11px]">
                           <MapPin size={14} className="text-red-400" /> Time Out Location
                         </div>
-                        <p className="text-xs lg:text-[13px] text-gray-600 leading-relaxed font-medium max-w-[200px] lg:max-w-xs">
-                          {record.time_out_address}
+                        <p className="break-words text-[11px] font-medium leading-relaxed text-gray-600 sm:text-xs">
+                          {record.time_out_address || "N/A"}
                         </p>
                       </>
                     ) : (
-                      <div className="mt-auto flex gap-2">
-                        {canAdjust && (
-                          <button
-                            onClick={() => handleAdjustClick(record)}
-                            className="w-32 lg:w-40 py-2 text-xs bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl transition-all font-bold shadow-sm"
-                          >
-                            Adjust Time
-                          </button>
-                        )}
-                        {canOffset && (
-                          <button
-                            onClick={() => handleOffsetClick(record)}
-                            className="w-32 lg:w-40 py-2 text-xs bg-blue-800 hover:bg-blue-700 text-white rounded-xl transition-all font-bold shadow-sm"
-                          >
-                            Offset
-                          </button>
-                        )}
-                      </div>
+                      null
                     )}
                   </div>
                 </div>
               </div>
+
+              {(canAdjust || canOffset) && (
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                  {canAdjust && (
+                    <button
+                      onClick={() => handleAdjustClick(record)}
+                      className="rounded-xl bg-yellow-500 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-yellow-600"
+                    >
+                      Adjust Time
+                    </button>
+                  )}
+                  {canOffset && (
+                    <button
+                      onClick={() => handleOffsetClick(record)}
+                      className="rounded-xl bg-blue-800 px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-blue-700"
+                    >
+                      Offset
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -2836,34 +3041,39 @@ if (!confirm) return;
             return (
               <div
                 key={index}
-                className="grid grid-cols-3 gap-4 items-center p-4 border-b border-gray-100 last:border-b-0 hover:bg-gray-50 transition-colors"
+                className="grid grid-cols-1 gap-3 border-b border-gray-100 p-4 transition-colors last:border-b-0 hover:bg-blue-50/50 sm:grid-cols-[8rem_minmax(0,1fr)_8rem] sm:items-center"
               >
-                <div className="text-xs text-gray-800 font-medium">
-                  {dayjs(record.date).format("MM/DD/YYYY")}
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-gray-900">
+                    {dayjs(record.date).format("MM/DD/YYYY")}
+                  </div>
+                  <div className="mt-1">
+                    <RecordBadge isFinal={isFinal} />
+                  </div>
                 </div>
 
-                <div className="flex justify-center">
-                  <div className="flex flex-col text-xs space-y-2">
+                <div className="min-w-0">
+                  <div className="grid grid-cols-1 gap-2 text-xs md:grid-cols-3">
                     <div className="text-gray-500">
-                      <span className="inline-block w-16">Time In:</span>
-                      <span className={!record.time_in ? "text-red-500 font-medium" : "text-gray-800 whitespace-nowrap"}> {timeInDisplay}
+                      <span className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">Time In</span>
+                      <span className={!record.time_in ? "font-medium text-red-500" : "break-words font-semibold text-gray-800"}> {timeInDisplay}
                       </span>
                     </div>
                     <div className="text-gray-500">
-                      <span className="inline-block w-16">Time Out:</span>
-                      <span className={!record.time_out ? "text-red-500 font-medium" : "text-gray-800 whitespace-nowrap"}> {timeOutDisplay}
+                      <span className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">Time Out</span>
+                      <span className={!record.time_out ? "font-medium text-red-500" : "break-words font-semibold text-gray-800"}> {timeOutDisplay}
                       </span>
                     </div>
                   <div className="text-gray-500">
-                      <span className="inline-block w-16">Break Time:</span>
-                      <span className="text-gray-800 text-[12px] whitespace-nowrap"> {breakInDisplay} - {breakOutDisplay}
+                      <span className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">Break</span>
+                      <span className="break-words text-[12px] font-semibold text-gray-800"> {breakInDisplay} - {breakOutDisplay}
                       </span>
                     </div>
                     
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end justify-center space-y-1.5">
+                <div className="flex flex-row items-center justify-between gap-2 sm:flex-col sm:items-end sm:justify-center">
                   <div className="text-sm font-semibold text-blue-600">
                     {record.worked_hrs ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs"}
                   </div>
@@ -2871,7 +3081,7 @@ if (!confirm) return;
                   {isIncomplete && !isFinal && (
                     <button
                       onClick={() => handleAdjustClick(record)}
-                      className="px-2 py-4 text-[11px] bg-yellow-500 hover:bg-yellow-600 text-white rounded font-medium shadow-sm transition-colors"
+                      className="rounded-lg bg-yellow-500 px-3 py-2 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-yellow-600"
                     >
                       Adjust Time
                     </button>
@@ -2880,7 +3090,7 @@ if (!confirm) return;
                   {canOffset && (
                     <button
                       onClick={() => handleOffsetClick(record)}
-                      className="px-3 py-1 text-[11px] bg-blue-800 hover:bg-blue-700 text-white rounded font-medium shadow-sm transition-colors"
+                      className="rounded-lg bg-blue-800 px-3 py-2 text-[11px] font-bold text-white shadow-sm transition-colors hover:bg-blue-700"
                     >
                       Offset
                     </button>
@@ -2910,12 +3120,12 @@ if (!confirm) return;
     );
 
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-4 mb-6">
-        <div className="p-3 sm:p-5 border-b border-gray-100">
+      <div className="mt-4 mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-100 p-3 sm:p-5">
           <h2 className="text-sm sm:text-base font-bold text-gray-900">Daily Time Record Summary</h2>
         </div>
 
-        <div className="sm:hidden divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100 sm:hidden">
           {filteredRecords.length > 0 ? (
             filteredRecords.map((record, index) => {
               const isFinal = record.stat === "F";
@@ -2923,7 +3133,7 @@ if (!confirm) return;
               const showAdjOut = isBlank(record.time_out);
 
               return (
-                <div key={index} className="p-3 space-y-2">
+                <div key={index} className="space-y-2 p-3">
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-bold text-gray-900">
@@ -3000,17 +3210,17 @@ if (!confirm) return;
           )}
         </div>
 
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-gray-200 text-xs font-bold text-gray-900 bg-gray-50">
-                <th className="px-3 py-3 whitespace-nowrap">Shift Date</th>
-                <th className="px-3 py-3 whitespace-nowrap">Time In</th>
+        <div className="hidden max-h-[460px] overflow-x-auto sm:block">
+          <table className="w-full min-w-[980px] border-collapse text-left">
+            <thead className="sticky top-0 z-10 bg-blue-800 shadow-sm">
+              <tr className="border-b border-blue-900 text-xs font-bold text-white">
+                <th className="whitespace-nowrap px-3 py-3">Shift Date</th>
+                <th className="whitespace-nowrap px-3 py-3">Time In</th>
                 {shouldShowLocationAddress && <th className="px-3 py-3">Location In</th>}
-                <th className="px-3 py-3 whitespace-nowrap">Break</th>
-                <th className="px-3 py-3 whitespace-nowrap">Time Out</th>
+                <th className="whitespace-nowrap px-3 py-3">Break</th>
+                <th className="whitespace-nowrap px-3 py-3">Time Out</th>
                 {shouldShowLocationAddress && <th className="px-3 py-3">Location Out</th>}
-                <th className="px-3 py-3 text-right whitespace-nowrap">Total hrs</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right">Total hrs</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-xs text-gray-800">
@@ -3021,7 +3231,7 @@ if (!confirm) return;
                   const showAdjOut = isBlank(record.time_out);
 
                   return (
-                    <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                    <tr key={index} className="transition-colors hover:bg-blue-50/50">
                       <td className="px-3 py-3 align-top whitespace-nowrap">
                         <div className="flex flex-col gap-1">
                           <span>{dayjs(record.date).format("MM/DD/YYYY")}</span>
@@ -3113,19 +3323,19 @@ if (!confirm) return;
     };
 
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-4 mb-6">
-        <div className="p-3 sm:p-5 border-b border-gray-100">
+      <div className="mt-4 mb-6 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className="border-b border-gray-100 p-3 sm:p-5">
           <h2 className="text-sm sm:text-base font-bold text-gray-900">Daily Time Record Summary</h2>
         </div>
 
-        <div className="hidden sm:block overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-gray-200 text-xs font-bold text-gray-900 bg-gray-50">
-                <th className="px-3 py-3 whitespace-nowrap">Shift Date</th>
-                <th className="px-3 py-3 whitespace-nowrap">Time In</th>
-                <th className="px-3 py-3 whitespace-nowrap">Time Out</th>
-                <th className="px-3 py-3 text-right whitespace-nowrap">Total hrs</th>
+        <div className="hidden max-h-[460px] overflow-x-auto sm:block">
+          <table className="w-full min-w-[720px] border-collapse text-left">
+            <thead className="sticky top-0 z-10 bg-blue-800 shadow-sm">
+              <tr className="border-b border-blue-900 text-xs font-bold text-white">
+                <th className="whitespace-nowrap px-3 py-3">Shift Date</th>
+                <th className="whitespace-nowrap px-3 py-3">Time In</th>
+                <th className="whitespace-nowrap px-3 py-3">Time Out</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right">Total hrs</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 text-xs text-gray-800">
@@ -3137,7 +3347,7 @@ if (!confirm) return;
                   const dateStr = dayjs(record.date).format("MM/DD/YYYY");
 
                   return (
-                    <tr key={index} className="hover:bg-gray-50/50 transition-colors">
+                    <tr key={index} className="transition-colors hover:bg-blue-50/50">
                       <td className="px-3 py-3 align-top whitespace-nowrap text-gray-900">
                         {dateStr}
                       </td>
@@ -3188,33 +3398,35 @@ if (!confirm) return;
           </table>
         </div>
 
-        <div className="sm:hidden divide-y divide-gray-100">
+        <div className="divide-y divide-gray-100 sm:hidden">
           {filteredRecords.length > 0 ? (
             filteredRecords.map((record, index) => {
               const dateStr = dayjs(record.date).format("MM/DD/YYYY");
 
               return (
-                <div key={index} className="p-3 space-y-2">
+                <div key={index} className="space-y-2 p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-bold text-gray-900">{dateStr}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-gray-900">{dateStr}</span>
+                      <RecordBadge isFinal={record.stat === "F"} />
+                    </div>
                     <span className="text-xs font-semibold text-blue-600">
                       {record.worked_hrs != null
                         ? `${Number(record.worked_hrs).toFixed(2)} hrs`
                         : "0.00 hrs"}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-700">
-                    Time In:{" "}
-                    {record.time_in
-                      ? formatDtrActualDateTime(record, "timeIn")
-                      : "N/A"}
+                  <div className="grid grid-cols-1 gap-2">
+                    <TimeValue
+                      label="Time In"
+                      value={record.time_in ? formatDtrActualDateTime(record, "timeIn") : ""}
+                    />
+                    <TimeValue
+                      label="Time Out"
+                      value={record.time_out ? formatDtrActualDateTime(record, "timeOut") : ""}
+                    />
                   </div>
-                  <div className="text-xs text-gray-700">
-                    Time Out:{" "}
-                    {record.time_out
-                      ? formatDtrActualDateTime(record, "timeOut")
-                      : "N/A"}
-                  </div>
+                  <RecordActions record={record} />
                 </div>
               );
             })
@@ -3560,7 +3772,26 @@ if (!confirm) return;
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-0 border border-gray-200 rounded-xl overflow-hidden">
+            <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Displayed Records</div>
+                <div className="mt-1 text-lg font-bold text-blue-900">{filteredRecords.length}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Final Records</div>
+                <div className="mt-1 text-lg font-bold text-emerald-700">{finalRecordCount}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Incomplete</div>
+                <div className="mt-1 text-lg font-bold text-amber-700">{incompleteRecordCount}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Total Hours</div>
+                <div className="mt-1 text-lg font-bold text-blue-900">{totalWorkedHours.toFixed(2)}</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-0 overflow-hidden rounded-xl border border-gray-200 sm:grid-cols-4">
               <button
                 onClick={() => setViewMode("cards")}
                 className={`py-2 text-sm font-medium transition-all ${
@@ -3584,9 +3815,9 @@ if (!confirm) return;
               </button>
 
               <button
-                onClick={() => setViewMode("tableSummary")}
+                onClick={() => setViewMode("summary")}
                 className={`py-2 text-sm font-medium transition-all ${
-                  viewMode === "tableSummary"
+                  viewMode === "summary"
                     ? "bg-blue-800 text-white"
                     : "bg-white text-gray-600 hover:bg-gray-50 border-r border-gray-200"
                 }`}
@@ -3595,9 +3826,9 @@ if (!confirm) return;
               </button>
 
               <button
-                onClick={() => setViewMode("summary")}
+                onClick={() => setViewMode("tableSummary")}
                 className={`py-2 text-sm font-medium transition-all ${
-                  viewMode === "summary"
+                  viewMode === "tableSummary"
                     ? "bg-blue-800 text-white"
                     : "bg-white text-gray-600 hover:bg-gray-50"
                 }`}

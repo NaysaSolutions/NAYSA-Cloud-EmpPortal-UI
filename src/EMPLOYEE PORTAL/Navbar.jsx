@@ -45,6 +45,14 @@ const Navbar = () => {
       : []),
     { path: "/dtrMonitoring", label: "DTR Monitoring" },
   ];
+  const leaveChildren = [
+    { path: "/leave", label: "Leave Application" },
+    ...(isApprover
+      ? [{ path: "/leaveapproval", label: "Leave for Approval" }]
+      : []),
+    { path: "/leaveMonitoring", label: "Leave Monitoring" },
+  ];
+ 
 
   // Build nav items only if user is loaded
   const navItems = user ? [
@@ -64,16 +72,10 @@ const Navbar = () => {
         ]
       }]
     ),
-    ...(user.approver !== "1"
-      ? [{ path: "/leave", label: "Leave" }]
-      : [{
-        label: "Leave",
-        children: [
-          { path: "/leave", label: "Leave Application" },
-          { path: "/leaveapproval", label: "Leave for Approval" }
-        ]
-      }]
-    ),
+    {
+      label: "Leave",
+      children: leaveChildren
+    },
     ...(user.approver !== "1"
       ? [{ path: "/official-business", label: "Official Business" }]
       : [{

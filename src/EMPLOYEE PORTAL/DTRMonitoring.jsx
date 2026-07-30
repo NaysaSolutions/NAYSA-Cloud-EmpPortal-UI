@@ -7,15 +7,17 @@ import React, {
   useState,
 } from "react";
 import axios from "axios";
-import * as XLSX from "xlsx";
+import html2pdf from "html2pdf.js";
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  CalendarDays,
   ChevronDown,
   ChevronRight,
   ChevronsDown,
   ChevronsUp,
+  FileText,
   FileSpreadsheet,
   FilterX,
   Image as ImageIcon,
@@ -71,7 +73,7 @@ const resolveApiEndpoint = (configuredEndpoint, fallbackPath) => {
     API_ENDPOINTS?.upsertTimeIn ||
       API_ENDPOINTS?.saveImage ||
       API_ENDPOINTS?.getNewImageId ||
-      API_ENDPOINTS?.getDTRRecords,
+      API_ENDPOINTS?.getAllDTRHR,
   );
 
   if (knownEndpoint) {
@@ -91,8 +93,6 @@ const resolveApiEndpoint = (configuredEndpoint, fallbackPath) => {
 const getApiAssetOrigin = () => {
   const endpoint = normalizeEndpoint(
     API_ENDPOINTS?.getAllDTRHR ||
-      API_ENDPOINTS?.getAllDTR ||
-      API_ENDPOINTS?.getDTRRecords ||
       API_ENDPOINTS?.saveImage,
   );
 
@@ -277,6 +277,127 @@ const parseHours = (value) => {
 
 const formatHours = (value) => parseHours(value).toFixed(2);
 
+const escapeHtml = (value) =>
+  String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+const formatEmployeeNoExport = (value) => {
+  const clean = normalizeText(value);
+  if (!clean) return "";
+  return /^\d+$/.test(clean) ? clean.padStart(10, "0") : clean;
+};
+
+const buildExportTableHtml = (
+  title,
+  subtitle,
+  exportRows,
+  fontSize = 11,
+  { excelMode = false } = {},
+) => {
+  const headers = Object.keys(exportRows[0] || {});
+  const autoFilterLastRow = exportRows.length + 4;
+  const autoFilterLastColumn = headers.length;
+  const isTextColumn = (header) => header === "Employee No";
+  const isDateTimeTextColumn = (header) => ["Time In", "Time Out", "Approval Date"].includes(header);
+  const getColumnWidth = (header) => {
+    const widths = {
+      "Time In": 155,
+      "Time Out": 155,
+      "Approval Date": 155,
+      "Leave Remarks": 260,
+      "Approval Remarks": 260,
+    };
+
+    return widths[header] || null;
+  };
+  const isGrandTotalRow = (row) => row?.Type === "Grand Total";
+  const renderCell = (row, header) => {
+    const textStyle = isTextColumn(header) || isDateTimeTextColumn(header) ? 'mso-number-format:"\\@";' : "";
+    const noWrapStyle = isDateTimeTextColumn(header) ? "white-space: nowrap;" : "";
+    const totalStyle = isGrandTotalRow(row) ? "font-weight: 700;" : "";
+
+    const value = row[header];
+    const displayValue =
+      excelMode && (isTextColumn(header) || isDateTimeTextColumn(header)) && value
+        ? `="${String(value).replace(/"/g, '""')}"`
+        : value;
+
+    return `<td style="${textStyle}${noWrapStyle}${totalStyle}">${escapeHtml(displayValue)}</td>`;
+  };
+
+  return `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+      <head>
+        <meta charset="utf-8" />
+        <!--[if gte mso 9]><xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>${escapeHtml(title)}</x:Name>
+                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+                <x:AutoFilter x:Range="R4C1:R${autoFilterLastRow}C${autoFilterLastColumn}"/>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml><![endif]-->
+        <style>
+          body { font-family: Arial, sans-serif; color: #0f172a; }
+          h1 { font-size: 18px; margin: 0 0 4px; }
+          p { font-size: 11px; margin: 0 0 20px; color: #475569; font-weight: 700; }
+          table { width: 100%; border-collapse: collapse; font-size: ${fontSize}px; }
+          th { border: 1px solid #cbd5e1; background: #e2e8f0; padding: 4px; text-align: left; font-weight: 700; }
+          td { border: 1px solid #e2e8f0; padding: 4px; vertical-align: top; }
+        </style>
+      </head>
+      <body>
+        <h1>${escapeHtml(title)}</h1>
+        <p>${escapeHtml(subtitle)}</p>
+        <table>
+          <colgroup>
+            ${headers
+              .map((header) => {
+                const width = getColumnWidth(header);
+                return width ? `<col style="width: ${width}px;" />` : "<col />";
+              })
+              .join("")}
+          </colgroup>
+          <thead>
+            <tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr>
+          </thead>
+          <tbody>
+            ${exportRows
+              .map(
+                (row) =>
+                  `<tr>${headers
+                    .map((header) => renderCell(row, header))
+                    .join("")}</tr>`,
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </body>
+    </html>
+  `;
+};
+
+const downloadExcelHtml = (filename, html) => {
+  const blob = new Blob([html], {
+    type: "application/vnd.ms-excel;charset=utf-8;",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
 const parseDateValue = (value) => {
   if (!value) return null;
   const raw = String(value).split("T")[0];
@@ -284,9 +405,8 @@ const parseDateValue = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const formatDateDisplay = (value) => {
-  const date = parseDateValue(value);
-  if (!date) return normalizeText(value) || "-";
+const formatDateOnlyDisplay = (date) => {
+  if (!date || Number.isNaN(date.getTime())) return "-";
 
   return date.toLocaleDateString("en-US", {
     month: "2-digit",
@@ -294,6 +414,27 @@ const formatDateDisplay = (value) => {
     year: "numeric",
   });
 };
+
+const formatDateDisplay = (value) => {
+  const date = parseDateValue(value);
+  if (!date) return normalizeText(value) || "-";
+
+  return formatDateOnlyDisplay(date);
+};
+
+const formatReportDate = (value) => {
+  const date = parseDateValue(value);
+  if (!date) return normalizeText(value) || "-";
+
+  return date.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+};
+
+const formatReportDateRange = (start, end) =>
+  `${formatReportDate(start)} to ${formatReportDate(end)}`;
 
 const formatDayName = (value) => {
   const date = parseDateValue(value);
@@ -462,15 +603,22 @@ const formatDateTimeDisplay = (date) => {
   const timeText = date
     .toLocaleTimeString("en-US", {
       hour12: true,
-      hour: "2-digit",
+      hour: "numeric",
       minute: "2-digit",
+      second: "2-digit",
     })
     .toLowerCase();
 
   return `${dateText} ${timeText}`;
 };
 
-const formatDtrActualDateTime = (row, type) => {
+const formatDateTimeExportText = (date) => {
+  if (!date || Number.isNaN(date.getTime())) return "-";
+
+  return formatDateTimeDisplay(date);
+};
+
+const parseDtrActualDateTime = (row, type) => {
   const actualDate = getActualDateValue(row, type);
   const actualValue = getActualDateTimeValue(row, type);
   const baseDate = actualDate || row?.date || row?.raw?.date || row?.raw?.DATE;
@@ -493,8 +641,27 @@ const formatDtrActualDateTime = (row, type) => {
     }
   }
 
-  return formatDateTimeDisplay(parsedDateTime);
+  return parsedDateTime;
 };
+
+const formatDtrActualDateTime = (row, type) => {
+  return formatDateTimeDisplay(parseDtrActualDateTime(row, type));
+};
+
+const formatDtrActualDateTimeExport = (row, type) => {
+  return formatDateTimeExportText(parseDtrActualDateTime(row, type));
+};
+
+const formatDtrActualDate = (row, type) => {
+  return formatDateOnlyDisplay(parseDtrActualDateTime(row, type));
+};
+
+const isLeaveDtrType = (row) => safeLower(row?.source).includes("leave");
+
+const formatDtrActualDisplay = (row, type) =>
+  isLeaveDtrType(row)
+    ? formatDtrActualDate(row, type)
+    : formatDtrActualDateTime(row, type);
 
 const parseJsonValue = (value) => {
   if (typeof value !== "string") return null;
@@ -935,6 +1102,17 @@ const normalizeDtrRow = (
       "BRANCH",
     ]),
   ) || normalizeText(fallbackBranchCode);
+  const branchName = normalizeText(
+    getValue(row, [
+      "branchName",
+      "branchname",
+      "BRANCH_NAME",
+      "branch_name",
+      "branchDescription",
+      "branch_desc",
+      "BRANCH_DESC",
+    ]),
+  ) || branchCode;
   const date = normalizeText(getValue(row, ["date", "DATE", "dtrDate", "DTR_DATE"]));
   const timeIn = getFirstNonBlankValue(row, [
     "time_in_datetime",
@@ -979,8 +1157,29 @@ const normalizeDtrRow = (
   const workedHours = parseHours(
     getValue(row, ["worked_hrs", "WORKED_HRS", "workedHrs", "WORKED_HOURS"], 0),
   );
+  const leaveDays = parseHours(
+    getValue(row, ["leave_days", "LEAVE_DAYS", "leaveDays", "LEAVEDAYS"], 0),
+  );
   const remarks = normalizeText(
     getValue(row, ["REMARKS", "remarks", "Remarks", "status", "STATUS"]),
+  );
+  const timeInLocation = normalizeText(
+    getValue(row, [
+      "timeInLocation",
+      "TIME_IN_LOCATION",
+      "time_in_location",
+      "time_in_address",
+      "timeInAddress",
+    ]),
+  );
+  const timeOutLocation = normalizeText(
+    getValue(row, [
+      "timeOutLocation",
+      "TIME_OUT_LOCATION",
+      "time_out_location",
+      "time_out_address",
+      "timeOutAddress",
+    ]),
   );
 
   const day =
@@ -1118,19 +1317,23 @@ const normalizeDtrRow = (
     source,
     empNo,
     empName,
+    branchName,
     department,
     date,
     day,
     timeIn,
     timeOut,
     workedHours,
+    leaveDays,
     remarks,
     timeInImageId: normalizeText(timeInImageId),
     timeOutImageId: normalizeText(timeOutImageId),
     timeInImage: timeInImageCandidates[0] || "",
     timeInImageFallbacks: timeInImageCandidates.slice(1),
+    timeInLocation,
     timeOutImage: timeOutImageCandidates[0] || "",
     timeOutImageFallbacks: timeOutImageCandidates.slice(1),
+    timeOutLocation,
     raw: row,
   };
 };
@@ -1163,6 +1366,7 @@ const DateInput = ({ value, onChange, min }) => (
       onChange={onChange}
       className="w-full min-w-0 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
     />
+    <CalendarDays className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-700" aria-hidden="true" />
   </div>
 );
 
@@ -1230,12 +1434,12 @@ const MetricCard = ({ label, value, icon: Icon, accent = "slate" }) => (
     <div className="flex items-center justify-between gap-3">
       <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{label}</div>
       {Icon && (
-        <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${METRIC_ACCENTS[accent] || METRIC_ACCENTS.slate}`}>
-          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+        <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${METRIC_ACCENTS[accent] || METRIC_ACCENTS.slate}`}>
+          <Icon className="h-4 w-4" aria-hidden="true" />
         </span>
       )}
     </div>
-    <div className="mt-1.5 truncate text-lg font-bold text-blue-900 sm:text-xl">{value}</div>
+    <div className="truncate text-xl font-bold text-blue-900 sm:text-xl">{value}</div>
   </div>
 );
 
@@ -1243,14 +1447,18 @@ const columns = [
   { key: "source", label: "Type", minWidth: 130 },
   { key: "empNo", label: "Employee No", minWidth: 110 },
   { key: "empName", label: "Employee Name", minWidth: 220 },
+  { key: "branchName", label: "Branch", minWidth: 150 },
   { key: "department", label: "Department", minWidth: 150 },
   { key: "date", label: "Date", minWidth: 80 },
   { key: "day", label: "Day", minWidth: 80 },
   { key: "timeIn", label: "Time In", minWidth: 140, filterable: false },
   { key: "timeInImage", label: "Time In Photo", minWidth: 105, filterable: false, sortable: false },
+  { key: "timeInLocation", label: "Time In Location", minWidth: 200, maxWidth: 200 },
   { key: "timeOut", label: "Time Out", minWidth: 140, filterable: false },
   { key: "timeOutImage", label: "Time Out Photo", minWidth: 110, filterable: false, sortable: false },
+  { key: "timeOutLocation", label: "Time Out Location", minWidth: 200, maxWidth: 200 },
   { key: "workedHours", label: "Worked Hours", minWidth: 125, numeric: true, filterable: false },
+  { key: "leaveDays", label: "Total Leave Days", minWidth: 135, numeric: true, filterable: false },
   { key: "remarks", label: "Remarks", minWidth: 400 },
 ];
 
@@ -1268,6 +1476,8 @@ const getDisplayValue = (row, key) => {
       return formatDtrActualDateTime(row, "timeOut");
     case "workedHours":
       return formatHours(row.workedHours);
+    case "leaveDays":
+      return formatHours(row.leaveDays);
     case "remarks":
       return row.remarks;
     default:
@@ -1280,6 +1490,10 @@ const compareRows = (left, right, key, direction) => {
 
   if (key === "workedHours") {
     return (left.workedHours - right.workedHours) * multiplier;
+  }
+
+  if (key === "leaveDays") {
+    return (left.leaveDays - right.leaveDays) * multiplier;
   }
 
   if (key === "date") {
@@ -1297,6 +1511,7 @@ const compareRows = (left, right, key, direction) => {
 const groupOptions = [
   { value: "none", label: "No Grouping" },
   { value: "empName", label: "Employee" },
+  { value: "branchName", label: "Branch" },
   { value: "department", label: "Department" },
   { value: "date", label: "Date" },
   { value: "day", label: "Day" },
@@ -1309,6 +1524,8 @@ const getGroupValue = (row, groupBy) => {
       return `${row.empName || "Unknown Employee"} (${row.empNo || "No Employee No"})`;
     case "department":
       return row.department || "No Department";
+    case "branchName":
+      return row.branchName || "No Branch";
     case "date":
       return formatDateDisplay(row.date);
     case "day":
@@ -1354,6 +1571,7 @@ export default function DTRMonitoring() {
   const [selectedEmployeeNo, setSelectedEmployeeNo] = useState("");
   const [columnFilters, setColumnFilters] = useState({});
   const [showColumnFilters, setShowColumnFilters] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [groupBy, setGroupBy] = useState("none");
   const [expandedGroups, setExpandedGroups] = useState({});
   const [expandedRows, setExpandedRows] = useState({});
@@ -1378,9 +1596,6 @@ export default function DTRMonitoring() {
   const recordsSignatureRef = useRef("");
   const hasEmployeeScopeMountedRef = useRef(false);
   const assetOrigin = useMemo(() => getApiAssetOrigin(), []);
-  const shouldUseApproverDtrEndpoint =
-    canUseEmployeeDtr && employeeScope === "EMPLOYEE";
-
   useEffect(() => {
     if (!canUseEmployeeDtr) {
       setEmployeeScope("MY");
@@ -1507,12 +1722,14 @@ export default function DTRMonitoring() {
           row.source,
           row.empNo,
           row.empName,
+          row.branchName,
           row.department,
           row.date,
           row.day,
           // row.timeIn,
           // row.timeOut,
           row.workedHours,
+          row.leaveDays,
           row.remarks,
         ]
           .map((value) => normalizeText(value))
@@ -1552,6 +1769,7 @@ export default function DTRMonitoring() {
         label,
         rows,
         workedHours: rows.reduce((total, row) => total + row.workedHours, 0),
+        leaveDays: rows.reduce((total, row) => total + row.leaveDays, 0),
       }))
       .sort((left, right) =>
         left.label.localeCompare(right.label, undefined, {
@@ -1563,6 +1781,10 @@ export default function DTRMonitoring() {
 
   const totalWorkedHours = useMemo(
     () => filteredRows.reduce((total, row) => total + row.workedHours, 0),
+    [filteredRows],
+  );
+  const totalLeaveDays = useMemo(
+    () => filteredRows.reduce((total, row) => total + row.leaveDays, 0),
     [filteredRows],
   );
 
@@ -1621,12 +1843,9 @@ export default function DTRMonitoring() {
           throw new Error("Start Date must not be greater than End Date.");
         }
 
-        const fallbackPath = shouldUseApproverDtrEndpoint ? "/getAllDTRHR" : "/getAllDTR";
         const selectedEndpoint = resolveApiEndpoint(
-          shouldUseApproverDtrEndpoint
-            ? API_ENDPOINTS?.getAllDTRHR
-            : API_ENDPOINTS?.getAllDTR,
-          fallbackPath,
+          API_ENDPOINTS?.getAllDTRHR,
+          "/getAllDTRHR",
         );
 
         if (!selectedEndpoint) {
@@ -1646,7 +1865,6 @@ export default function DTRMonitoring() {
           endDate,
           START_DATE: startDate,
           END_DATE: endDate,
-          // For getAllDTRHR, this is the logged-in HR/approver employee number.
           // The selected employee dropdown is applied to the returned rows locally.
           empno: currentEmpNo,
           EMPNO: currentEmpNo,
@@ -1671,39 +1889,6 @@ console.log("DTR PRODUCTION RESPONSE:", {
 });
 
 let nextRows = parseDtrPayloadRows(payload, selectedEndpoint);
-
-// The personal endpoint is the authoritative source for timekeeping photo
-// references. Some getAllDTR responses contain attendance data without those
-// image columns, so enrich the existing My DTR rows when needed.
-if (!shouldUseApproverDtrEndpoint && currentEmpNo) {
-  try {
-    const personalDtrEndpoint = `${API_ENDPOINTS.getDTRRecords}/${encodeURIComponent(
-      currentEmpNo,
-    )}/${startDate}/${endDate}`;
-    const personalResponse = await axios.get(personalDtrEndpoint, {
-      headers: { Accept: "application/json" },
-    });
-    const personalPayload = normalizeDtrApiPayload(
-      personalResponse.data,
-      personalDtrEndpoint,
-    );
-    const personalRows = parseDtrPayloadRows(
-      personalPayload,
-      personalDtrEndpoint,
-    );
-    const personalRowsByDate = new Map(
-      personalRows
-        .map((row) => [getDtrDateKey(row), row])
-        .filter(([dateKey]) => dateKey),
-    );
-
-    nextRows = nextRows.map((row) =>
-      mergeDtrPhotoFields(row, personalRowsByDate.get(getDtrDateKey(row))),
-    );
-  } catch (photoError) {
-    console.warn("Unable to enrich My DTR rows with timekeeping photos:", photoError);
-  }
-}
 
 if (nextRows.length === 0) {
   console.warn("DTR API returned 0 parsed rows:", payload);
@@ -1742,7 +1927,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         }
       }
     },
-    [startDate, endDate, shouldUseApproverDtrEndpoint, currentEmpNo],
+    [startDate, endDate, currentEmpNo],
   );
 
   useEffect(() => {
@@ -1837,23 +2022,25 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   };
 
   const openPhoto = (src, label) => setPhotoPreview({ src, label });
+  const isLocationColumn = (key) =>
+    key === "timeInLocation" || key === "timeOutLocation";
 
-  const exportExcel = () => {
-    if (!sortedRows.length) return;
-
+  const buildExportRows = () => {
     const exportRows = [];
 
     const appendRecord = (row) => {
       exportRows.push({
         Type: properCase(row.source),
-        "Employee No": row.empNo,
+        "Employee No": formatEmployeeNoExport(row.empNo),
         "Employee Name": row.empName,
+        Branch: row.branchName,
         Department: row.department,
         Date: formatDateDisplay(row.date),
         Day: row.day,
-        "Time In": formatDtrActualDateTime(row, "timeIn"),
-        "Time Out": formatDtrActualDateTime(row, "timeOut"),
+        "Time In": formatDtrActualDateTimeExport(row, "timeIn"),
+        "Time Out": formatDtrActualDateTimeExport(row, "timeOut"),
         "Worked Hours": Number(row.workedHours.toFixed(2)),
+        "Total Leave Days": Number(row.leaveDays.toFixed(2)),
         Remarks: row.remarks,
       });
     };
@@ -1867,12 +2054,14 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           Type: `${group.label} Subtotal`,
           "Employee No": "",
           "Employee Name": "",
+          Branch: "",
           Department: "",
           Date: "",
           Day: "",
           "Time In": "",
           "Time Out": "",
           "Worked Hours": Number(group.workedHours.toFixed(2)),
+          "Total Leave Days": Number(group.leaveDays.toFixed(2)),
           Remarks: "",
         });
       });
@@ -1882,57 +2071,59 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
       Type: "Grand Total",
       "Employee No": "",
       "Employee Name": "",
+      Branch: "",
       Department: "",
       Date: "",
       Day: "",
       "Time In": "",
       "Time Out": "",
       "Worked Hours": Number(totalWorkedHours.toFixed(2)),
+      "Total Leave Days": Number(totalLeaveDays.toFixed(2)),
       Remarks: "",
     });
 
-    const worksheet = XLSX.utils.json_to_sheet(exportRows);
-    const headers = Object.keys(exportRows[0]);
-    const workedHoursColumnIndex = headers.indexOf("Worked Hours");
+    return exportRows;
+  };
 
-    if (workedHoursColumnIndex >= 0) {
-      for (let rowIndex = 2; rowIndex <= exportRows.length + 1; rowIndex += 1) {
-        const address = XLSX.utils.encode_cell({
-          r: rowIndex - 1,
-          c: workedHoursColumnIndex,
-        });
-        const cell = worksheet[address];
-        if (cell && cell.v !== "" && cell.v !== null && cell.v !== undefined) {
-          const numericValue = Number(cell.v);
-          if (Number.isFinite(numericValue)) {
-            cell.t = "n";
-            cell.v = numericValue;
-            cell.z = "0.00";
-          }
-        }
-      }
-    }
+  const exportExcel = () => {
+    if (!canUseEmployeeDtr || !sortedRows.length) return;
 
-    worksheet["!cols"] = [
-      { wch: 24 },
-      { wch: 14 },
-      { wch: 30 },
-      { wch: 24 },
-      { wch: 13 },
-      { wch: 12 },
-      { wch: 16 },
-      { wch: 16 },
-      { wch: 15 },
-      { wch: 28 },
-    ];
-    worksheet["!autofilter"] = { ref: worksheet["!ref"] };
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "DTR Monitoring");
-    XLSX.writeFile(
-      workbook,
-      `DTR_Monitoring_${startDate}_to_${endDate}.xlsx`,
+    const exportRows = buildExportRows();
+    downloadExcelHtml(
+      `DTR_Monitoring_${startDate}_to_${endDate}.xls`,
+      buildExportTableHtml(
+        "DTR Monitoring",
+        formatReportDateRange(startDate, endDate),
+        exportRows,
+        11,
+        { excelMode: true },
+      ),
     );
+  };
+
+  const exportPdf = () => {
+    if (!sortedRows.length) return;
+
+    const exportRows = buildExportRows();
+    const element = document.createElement("div");
+    element.innerHTML = buildExportTableHtml(
+      "DTR Monitoring",
+      formatReportDateRange(startDate, endDate),
+      exportRows,
+      8,
+    );
+
+    html2pdf()
+      .set({
+        margin: 8,
+        filename: `DTR_Monitoring_${startDate}_to_${endDate}.pdf`,
+        image: { type: "jpeg", quality: 1 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "pt", format: "letter", orientation: "landscape" },
+        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+      })
+      .from(element)
+      .save();
   };
 
   const renderSortIcon = (column) => {
@@ -1979,6 +2170,8 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         );
       case "workedHours":
         return <span className="font-bold text-blue-900">{formatHours(row.workedHours)}</span>;
+      case "leaveDays":
+        return <span className="font-bold text-violet-900">{formatHours(row.leaveDays)}</span>;
       case "remarks":
         return (
           <span
@@ -1997,7 +2190,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   const renderTableRecordRow = (row, rowIndex = 0) => (
     <tr
       key={row.__id}
-      className={`transition hover:bg-blue-50/70 ${rowIndex % 2 === 1 ? "bg-blue-50/40" : "bg-white"}`}
+      className="group bg-white transition hover:bg-blue-50/70"
     >
       {columns.map((column) => (
         <td
@@ -2005,11 +2198,13 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           className={`border-b border-gray-100 px-3 py-2.5 align-middle text-[11px] text-gray-700 ${
             column.numeric ? "text-right" : "text-left"
           } ${
+            isLocationColumn(column.key) ? "whitespace-normal break-words" : "whitespace-nowrap"
+          } ${
             column.key === "empName"
-              ? "sticky left-0 z-[1] bg-inherit shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]"
+              ? "sticky left-0 z-[1] max-w-[220px] overflow-hidden bg-white text-ellipsis shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)] transition-colors group-hover:bg-blue-50/70"
               : ""
           }`}
-          style={{ minWidth: column.minWidth }}
+          style={{ minWidth: column.minWidth, maxWidth: column.maxWidth }}
         >
           {renderTableCell(row, column)}
         </td>
@@ -2028,11 +2223,13 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 className={`border-b border-blue-900 bg-blue-800 px-2 py-2 text-[11px] font-semibold text-white ${
                   column.numeric ? "text-right" : "text-left"
                 } ${
+                  isLocationColumn(column.key) ? "whitespace-normal break-words" : "whitespace-nowrap"
+                } ${
                   column.key === "empName"
                     ? "sticky left-0 z-30 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]"
                     : ""
                 }`}
-                style={{ minWidth: column.minWidth }}
+                style={{ minWidth: column.minWidth, maxWidth: column.maxWidth }}
               >
                 <button
                   type="button"
@@ -2055,9 +2252,11 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 <th
                   key={`filter-${column.key}`}
                   className={`border-b border-blue-100 bg-blue-50 px-2 py-2 ${
+                    isLocationColumn(column.key) ? "whitespace-normal break-words" : "whitespace-nowrap"
+                  } ${
                     column.key === "empName" ? "sticky left-0 z-30 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]" : ""
                   }`}
-                  style={{ minWidth: column.minWidth }}
+                  style={{ minWidth: column.minWidth, maxWidth: column.maxWidth }}
                 >
                   {column.filterable === false ? (
                     <div className="h-8 rounded-xl bg-blue-100" />
@@ -2118,18 +2317,21 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                           {group.rows.length} records
                         </span>
                         <span className="ml-auto text-xs font-bold text-blue-900">
-                          {formatHours(group.workedHours)} hrs
+                          {formatHours(group.workedHours)} hrs · {formatHours(group.leaveDays)} leave days
                         </span>
                       </button>
                     </td>
                   </tr>
                   {expanded && group.rows.map(renderTableRecordRow)}
                   <tr className="bg-blue-50/50">
-                    <td colSpan={10} className="border-b border-blue-100 px-3 py-2 text-right text-[11px] font-semibold text-gray-700">
-                      Subtotal Worked Hours
+                    <td colSpan={11} className="border-b border-blue-100 px-3 py-2 text-right text-[11px] font-semibold text-gray-700">
+                      Subtotal :
                     </td>
                     <td className="border-b border-blue-100 px-3 py-2 text-right text-xs font-bold text-blue-900">
                       {formatHours(group.workedHours)}
+                    </td>
+                    <td className="border-b border-blue-100 px-3 py-2 text-right text-xs font-bold text-violet-900">
+                      {formatHours(group.leaveDays)}
                     </td>
                     <td className="border-b border-blue-100" />
                   </tr>
@@ -2142,11 +2344,14 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         {sortedRows.length > 0 && (
           <tfoot className="sticky bottom-0 z-10 bg-blue-50">
             <tr>
-              <td colSpan={10} className="px-1 py-1 text-right text-[11px] font-semibold text-blue-900">
-                Total Worked Hours
+              <td colSpan={13} className="px-1 py-1 text-right text-[11px] font-semibold text-blue-900">
+                Total  :
               </td>
               <td className="px-2 py-2 text-right text-[11px] font-bold text-blue-900">
                 {formatHours(totalWorkedHours)}
+              </td>
+              <td className="px-2 py-2 text-right text-[11px] font-bold text-violet-900">
+                {formatHours(totalLeaveDays)}
               </td>
               <td className="px-1 py-1" />
             </tr>
@@ -2164,6 +2369,10 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         <div className="text-[11px] text-slate-500">{row.empNo || "-"}</div>
       </div>
       <div className="rounded-xl bg-slate-50 p-3">
+        <div className="text-[11px] font-semibold text-slate-500">Branch</div>
+        <div className="mt-1 font-medium text-slate-800">{row.branchName || "-"}</div>
+      </div>
+      <div className="rounded-xl bg-slate-50 p-3">
         <div className="text-[11px] font-semibold text-slate-500">Department</div>
         <div className="mt-1 font-medium text-slate-800">{row.department || "-"}</div>
       </div>
@@ -2177,7 +2386,12 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             onOpen={openPhoto}
             size="lg"
           />
-          <div className="font-semibold text-slate-800">{formatDtrActualDateTime(row, "timeIn")}</div>
+          <div className="min-w-0">
+            <div className="font-semibold text-slate-800">{formatDtrActualDateTime(row, "timeIn")}</div>
+            <div className="mt-1 max-w-[220px] whitespace-normal break-words text-[11px] font-medium text-slate-500">
+              {row.timeInLocation || "-"}
+            </div>
+          </div>
         </div>
       </div>
       <div className="rounded-xl bg-slate-50 p-3">
@@ -2190,7 +2404,12 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             onOpen={openPhoto}
             size="lg"
           />
-          <div className="font-semibold text-slate-800">{formatDtrActualDateTime(row, "timeOut")}</div>
+          <div className="min-w-0">
+            <div className="font-semibold text-slate-800">{formatDtrActualDateTime(row, "timeOut")}</div>
+            <div className="mt-1 max-w-[220px] whitespace-normal break-words text-[11px] font-medium text-slate-500">
+              {row.timeOutLocation || "-"}
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2200,9 +2419,9 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
     <article key={row.__id} className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition hover:border-blue-200 hover:shadow-md">
       <div className="flex items-start justify-between gap-3 border-b border-gray-100 p-3.5 sm:p-4">
         <div className="min-w-0">
-          <div className="truncate font-bold text-slate-800">{row.empName || "Unknown Employee"}</div>
+          <div className="text-[12px] truncate font-bold text-slate-800">{row.empName || "Unknown Employee"}</div>
           <div className="mt-0.5 truncate text-[11px] text-slate-500">
-            {row.empNo || "-"} · {row.department || "No Department"}
+            {row.empNo || "-"} · {row.branchName || "No Branch"} · {row.department || "No Department"}
           </div>
         </div>
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ${getSourceBadgeClass(row.source)}`}>
@@ -2219,7 +2438,8 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           </div>
           <div className="text-right">
             <div className="text-[11px] font-semibold text-slate-500">Worked Hours</div>
-            <div className="mt-0.5 text-2xl font-bold text-blue-800">{formatHours(row.workedHours)}</div>
+            <div className="mt-0.5 text-2xl font-bold text-blue-800">{formatHours(row.workedHours)} hrs</div>
+            <div className="text-[11px] font-semibold text-violet-700">{formatHours(row.leaveDays)} leave days</div>
           </div>
         </div>
 
@@ -2235,6 +2455,9 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 size="lg"
               />
               <span className="text-[11px] font-semibold text-slate-700">{formatDtrActualDateTime(row, "timeIn")}</span>
+              <span className="max-w-[220px] whitespace-normal break-words text-[10px] font-medium leading-snug text-slate-500">
+                {row.timeInLocation || "-"}
+              </span>
             </div>
           </div>
           <div className="rounded-xl bg-slate-50 p-3">
@@ -2248,6 +2471,9 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 size="lg"
               />
               <span className="text-[11px] font-semibold text-slate-700">{formatDtrActualDateTime(row, "timeOut")}</span>
+              <span className="max-w-[220px] whitespace-normal break-words text-[10px] font-medium leading-snug text-slate-500">
+                {row.timeOutLocation || "-"}
+              </span>
             </div>
           </div>
         </div>
@@ -2284,7 +2510,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 {expanded ? <ChevronDown className="h-4 w-4 text-blue-800" /> : <ChevronRight className="h-4 w-4 text-blue-800" />}
                 <span className="font-semibold text-blue-900">{group.label}</span>
                 <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-blue-800">{group.rows.length}</span>
-                <span className="ml-auto text-xs font-bold text-blue-900">{formatHours(group.workedHours)} hrs</span>
+                <span className="ml-auto text-xs font-bold text-blue-900">{formatHours(group.workedHours)} hrs · {formatHours(group.leaveDays)} leave days</span>
               </button>
               {expanded && (
                 <div className="grid grid-cols-1 gap-4 p-4 md:grid-cols-2 2xl:grid-cols-3">
@@ -2292,7 +2518,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 </div>
               )}
               <div className="border-t border-slate-200 px-4 py-2 text-right text-xs font-semibold text-slate-700">
-                Subtotal Worked Hours: <span className="font-bold">{formatHours(group.workedHours)}</span>
+                Subtotal Worked Hours: <span className="font-bold">{formatHours(group.workedHours)}</span> · Leave Days: <span className="font-bold">{formatHours(group.leaveDays)}</span>
               </div>
             </section>
           );
@@ -2325,6 +2551,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           <div className="shrink-0 text-right">
             <div className="hidden text-[11px] text-slate-500 sm:block">{formatDtrActualDateTime(row, "timeIn")} – {formatDtrActualDateTime(row, "timeOut")}</div>
             <div className="font-bold text-blue-800">{formatHours(row.workedHours)} <span className="text-[10px] font-semibold text-gray-400">hrs</span></div>
+            <div className="text-[10px] font-semibold text-violet-700">{formatHours(row.leaveDays)} leave days</div>
           </div>
         </button>
         {expanded && (
@@ -2332,7 +2559,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             {renderRecordDetails(row)}
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-blue-50 p-3">
               <span className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold ring-1 ${getRemarksBadgeClass(row.remarks)}`}>{(row.remarks)}</span>
-              <span className="font-bold text-slate-800">Worked Hours: {formatHours(row.workedHours)}</span>
+              <span className="font-bold text-slate-800">Worked Hours: {formatHours(row.workedHours)} · Leave Days: {formatHours(row.leaveDays)}</span>
             </div>
           </div>
         )}
@@ -2362,11 +2589,11 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 {expanded ? <ChevronDown className="h-4 w-4 text-blue-800" /> : <ChevronRight className="h-4 w-4 text-blue-800" />}
                 <span className="font-semibold text-blue-900">{group.label}</span>
                 <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-blue-800">{group.rows.length}</span>
-                <span className="ml-auto text-xs font-bold text-blue-900">{formatHours(group.workedHours)} hrs</span>
+                <span className="ml-auto text-xs font-bold text-blue-900">{formatHours(group.workedHours)} hrs · {formatHours(group.leaveDays)} leave days</span>
               </button>
               {expanded && <div className="space-y-2 p-3">{group.rows.map(renderAccordionRow)}</div>}
               <div className="border-t border-slate-200 px-4 py-2 text-right text-xs font-semibold text-slate-700">
-                Subtotal Worked Hours: <span className="font-bold">{formatHours(group.workedHours)}</span>
+                Subtotal Worked Hours: <span className="font-bold">{formatHours(group.workedHours)}</span> · Leave Days: <span className="font-bold">{formatHours(group.leaveDays)}</span>
               </div>
             </section>
           );
@@ -2418,15 +2645,27 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 <span className="truncate">{loading ? "Loading..." : isRefreshing ? "Refreshing..." : "Load"}</span>
               </button>
 
-              <button
-                type="button"
-                onClick={exportExcel}
-                disabled={!sortedRows.length}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-green-800 px-2.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:px-4 sm:text-xs"
-              >
-                <FileSpreadsheet className="h-4 w-4 shrink-0" />
-                <span className="truncate">Export</span>
-              </button>
+              {canUseEmployeeDtr ? (
+                <button
+                  type="button"
+                  onClick={exportExcel}
+                  disabled={!sortedRows.length}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-green-800 px-2.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:px-4 sm:text-xs"
+                >
+                  <FileSpreadsheet className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Export Excel</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={exportPdf}
+                  disabled={!sortedRows.length}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-red-700 px-2.5 py-2 text-[13px] font-semibold text-white shadow-sm transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-60 sm:gap-2 sm:px-4 sm:text-xs"
+                >
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span className="truncate">Export PDF</span>
+                </button>
+              )}
 
               <button
                 type="button"
@@ -2439,6 +2678,18 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             </div>
           </div>
 
+          <div className="mt-3 flex justify-end sm:hidden">
+            <button
+              type="button"
+              onClick={() => setShowFilters((previous) => !previous)}
+              className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800"
+            >
+              {showFilters ? "Hide Filter Options" : "Show Filter Options"}
+              {showFilters ? <ChevronDown className="h-4 w-4 rotate-180" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+          </div>
+
+          <div className={`${showFilters ? "block" : "hidden"} sm:block`}>
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[10rem_10rem_12rem_minmax(18rem,1fr)_10rem]">
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-gray-600">Start Date</label>
@@ -2624,13 +2875,15 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               </div>
             </div>
           )}
+          </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-5">
+          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-6">
             <MetricCard label="Loaded Records" value={records.length} icon={Table2} accent="slate" />
             <MetricCard label="Displayed Records" value={filteredRows.length} icon={Users} accent="sky" />
             <MetricCard label="With DTR" value={withDtrCount} icon={User} accent="emerald" />
             <MetricCard label="No DTR" value={noDtrCount} icon={FilterX} accent="rose" />
             <MetricCard label="Total Worked Hours" value={formatHours(totalWorkedHours)} icon={Table2} accent="amber" />
+            <MetricCard label="Total Leave Days" value={formatHours(totalLeaveDays)} icon={CalendarDays} accent="violet" />
           </div>
         </section>
 

@@ -14,6 +14,7 @@ import TimekeepingAdjustment from "./EMPLOYEE PORTAL/TimekeepingAdjustment";
 import TimekeepingAdjustmentApproval from "./EMPLOYEE PORTAL/TimekeepingAdjustmentApproval";
 import TimekeepingAdjustmentReview from "./EMPLOYEE PORTAL/TimekeepingAdjustmentReview";
 import DTRMonitoring from "./EMPLOYEE PORTAL/DTRMonitoring";
+import LeaveMonitoring from "./EMPLOYEE PORTAL/LeaveMonitoring";
 import OffsetApplication from "./EMPLOYEE PORTAL/OffsetApplication";
 import OffsetApproval from "./EMPLOYEE PORTAL/OffsetApproval";
 import PayslipViewer from "./EMPLOYEE PORTAL/PayslipViewer";
@@ -103,6 +104,7 @@ const App = () => {
             <Route path="/timekeepingAdjApproval" element={<ProtectedRoute><Layout><TimekeepingAdjustmentApproval /></Layout></ProtectedRoute>} />
             <Route path="/timekeepingAdjReview" element={<ProtectedRoute><Layout><TimekeepingAdjustmentReview /></Layout></ProtectedRoute>} />
             <Route path="/dtrMonitoring" element={<ProtectedRoute><Layout><DTRMonitoring /></Layout></ProtectedRoute>} />
+            <Route path="/leaveMonitoring" element={<ProtectedRoute><Layout><LeaveMonitoring /></Layout></ProtectedRoute>} />
             <Route path="/offsetApplication" element={<ProtectedRoute><Layout><OffsetApplication /></Layout></ProtectedRoute>} />
             <Route path="/offsetApproval" element={<ProtectedRoute><Layout><OffsetApproval /></Layout></ProtectedRoute>} />
             <Route path="/payslipviewer" element={<ProtectedRoute><Layout><PayslipViewer /></Layout></ProtectedRoute>} />
