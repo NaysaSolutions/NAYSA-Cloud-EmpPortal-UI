@@ -1506,7 +1506,7 @@ const Dashboard = () => {
             <div className="flex space-x-2 overflow-x-auto">
               <button
                 onClick={() => setActiveTab("leave")}
-                className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
+                className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors ${
                   activeTab === "leave"
                     ? "bg-blue-800 text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"
@@ -1516,7 +1516,7 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={() => setActiveTab("ot")}
-                className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
+                className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors ${
                   activeTab === "ot"
                     ? "bg-blue-800 text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"
@@ -1526,7 +1526,7 @@ const Dashboard = () => {
               </button>
               <button
                 onClick={() => setActiveTab("ob")}
-                className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
+                className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors ${
                   activeTab === "ob"
                     ? "bg-blue-800 text-white"
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"

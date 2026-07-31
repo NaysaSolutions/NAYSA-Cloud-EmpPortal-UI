@@ -3610,7 +3610,7 @@ if (!confirm) return;
                 autoPlay
                 playsInline
                 muted
-                className="aspect-[4/3] w-full bg-black object-cover transform scale-x-[-1]"
+                className="h-[300px] w-full bg-black object-cover transform scale-x-[-1] sm:aspect-[4/3] sm:h-auto"
               />
               <canvas ref={canvasRef} width={320} height={240} className="hidden" />
 
