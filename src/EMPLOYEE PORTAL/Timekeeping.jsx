@@ -2868,7 +2868,7 @@ if (!confirm) return;
                   {/* <div className="text-[10px] lg:text-[11px] text-gray-400 uppercase tracking-widest mb-1 font-bold">
                     IN • OUT
                   </div> */}
-                  <div className="font-mono text-sm lg:text-base font-semibold text-gray-800">
+                  <div className="font-mono text-xs lg:text-base font-semibold text-gray-800">
                     {record.time_in
                       ? formatDtrActualDateTime(record, "timeIn")
                       : "N/A"}{" "}
@@ -2877,7 +2877,7 @@ if (!confirm) return;
                       ? formatDtrActualDateTime(record, "timeOut")
                       : "N/A"} */}
                   </div>
-                  <div className="font-mono text-sm lg:text-base font-semibold text-gray-800">
+                  <div className="font-mono text-xs lg:text-base font-semibold text-gray-800">
                     {/* {record.time_in
                       ? formatDtrActualDateTime(record, "timeIn")
                       : "N/A"}{" "}

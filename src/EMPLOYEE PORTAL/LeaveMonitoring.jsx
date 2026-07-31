@@ -538,14 +538,20 @@ export default function LeaveMonitoring() {
   const isSidebarOpen = useSidebarStore((state) => state.isOpen);
   const currentEmpNo = getUserEmpNo(user);
   const currentEmpName = getUserName(user) || currentEmpNo;
-  const canViewEmployeeLeave =
-    getUserApprover(user) === "1" || getUserHrFlag(user) === "Y";
+  const isHrUser = getUserHrFlag(user) === "Y";
+  const isApproverUser = getUserApprover(user) === "1";
+  const canViewEmployeeLeave = isApproverUser || isHrUser;
+  const leaveInquiryEndpoint =
+    !isHrUser && isApproverUser
+      ? text(API_ENDPOINTS?.getLeaveInquiryApprover) || "/api/getLVInquiryApprover"
+      : text(API_ENDPOINTS?.getLeaveInquiry) || "/api/getLVInquiry";
 
   const [startDate, setStartDate] = useState(monthStart);
   const [endDate, setEndDate] = useState(monthEnd);
   const [scope, setScope] = useState("MY");
   const [employeeNo, setEmployeeNo] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [leaveTypeFilter, setLeaveTypeFilter] = useState("ALL");
   const [rows, setRows] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [columnFilters, setColumnFilters] = useState({});
@@ -683,15 +689,12 @@ export default function LeaveMonitoring() {
           );
         }
 
-        const endpoint =
-          text(API_ENDPOINTS?.getLeaveInquiry) || "/api/getLVInquiry";
-
         const employeeTargets = shouldLoadAllEmployees
           ? Array.from(new Set(employeeDirectory.map((employee) => text(employee.empNo)).filter(Boolean)))
           : [targetEmployeeNo];
         const responses = await Promise.all(
           employeeTargets.map((employee) => axios.post(
-            endpoint,
+            leaveInquiryEndpoint,
             {
               EMP_NO: employee,
               START_DATE: startDate,
@@ -735,7 +738,15 @@ export default function LeaveMonitoring() {
         }
       }
     },
-    [startDate, endDate, targetEmployeeNo, scope, shouldLoadAllEmployees, employeeDirectory],
+    [
+      startDate,
+      endDate,
+      targetEmployeeNo,
+      scope,
+      shouldLoadAllEmployees,
+      employeeDirectory,
+      leaveInquiryEndpoint,
+    ],
   );
 
   useEffect(() => {
@@ -785,6 +796,26 @@ export default function LeaveMonitoring() {
     );
   }, [rows, employeeDirectory, currentEmpNo, currentEmpName]);
 
+  const leaveTypeOptions = useMemo(() => {
+    const types = new Map();
+
+    rows.forEach((row) => {
+      const code = text(row.leaveCode);
+      if (!code || types.has(code)) return;
+      types.set(code, {
+        code,
+        description: text(row.leaveDesc),
+      });
+    });
+
+    return Array.from(types.values()).sort((left, right) =>
+      left.code.localeCompare(right.code, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
+  }, [rows]);
+
   const statusCounts = useMemo(() => {
     const counts = {
       Pending: 0,
@@ -827,6 +858,10 @@ export default function LeaveMonitoring() {
         return false;
       }
 
+      if (leaveTypeFilter !== "ALL" && text(row.leaveCode) !== leaveTypeFilter) {
+        return false;
+      }
+
       if (keyword) {
         const searchable = columns
           .map((column) => getDisplayValue(row, column.key))
@@ -840,7 +875,7 @@ export default function LeaveMonitoring() {
         lower(getDisplayValue(row, key)).includes(lower(value)),
       );
     });
-  }, [rows, statusFilter, searchText, columnFilters]);
+  }, [rows, statusFilter, leaveTypeFilter, searchText, columnFilters]);
 
   const sortedRows = useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction) return filteredRows;
@@ -886,7 +921,7 @@ export default function LeaveMonitoring() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter, searchText, columnFilters, groupBy, rowsPerPage]);
+  }, [statusFilter, leaveTypeFilter, searchText, columnFilters, groupBy, rowsPerPage]);
 
   useEffect(() => {
     if (currentPage > totalPages) setCurrentPage(totalPages);
@@ -907,6 +942,7 @@ export default function LeaveMonitoring() {
     setScope("MY");
     setEmployeeNo(currentEmpNo);
     setStatusFilter("ALL");
+    setLeaveTypeFilter("ALL");
     setSearchText("");
     setColumnFilters({});
     setShowColumnFilters(true);
@@ -922,6 +958,7 @@ export default function LeaveMonitoring() {
 
   const clearAllFilters = () => {
     setStatusFilter("ALL");
+    setLeaveTypeFilter("ALL");
     setSearchText("");
     setColumnFilters({});
     setCurrentPage(1);
@@ -929,6 +966,7 @@ export default function LeaveMonitoring() {
 
   const hasActiveFilters =
     statusFilter !== "ALL" ||
+    leaveTypeFilter !== "ALL" ||
     Boolean(searchText.trim()) ||
     Object.values(columnFilters).some((value) => text(value));
 
@@ -1230,7 +1268,7 @@ export default function LeaveMonitoring() {
         {sortedRows.length > 0 && (
           <tfoot className="sticky bottom-0 z-10 bg-blue-50">
             <tr>
-              <td colSpan={8} className="px-2 py-2 text-right text-[11px] font-semibold text-blue-900">
+              <td colSpan={10} className="px-2 py-2 text-right text-[11px] font-semibold text-blue-900">
                 Total:
               </td>
               <td className="px-3 py-2 text-right text-[11px] font-bold text-blue-900">
@@ -1245,7 +1283,7 @@ export default function LeaveMonitoring() {
               <td className="px-3 py-2 text-right text-[11px] font-bold text-emerald-800">
                 {formatNumber(totals.approvedHours)}
               </td>
-              <td colSpan={6} />
+              <td colSpan={7} />
             </tr>
           </tfoot>
         )}
@@ -1593,7 +1631,7 @@ export default function LeaveMonitoring() {
           </div>
 
           <div className={`${showFilters ? "block" : "hidden"} sm:block`}>
-          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[10rem_10rem_12rem_minmax(18rem,1fr)_11rem]">
+          <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[8rem_8rem_9rem_minmax(18rem,1fr)_7rem_15rem]">
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-gray-600">Start Date</label>
               <DateInput value={startDate} onChange={(event) => setStartDate(event.target.value)} />
@@ -1618,7 +1656,7 @@ export default function LeaveMonitoring() {
                 className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-gray-100"
               >
                 <option value="MY">My Leave</option>
-                <option value="ALL">All Employees</option>
+                {/* <option value="ALL">All Employees</option> */}
                 <option value="EMPLOYEE">Employee Leave</option>
               </select>
             </div>
@@ -1650,6 +1688,21 @@ export default function LeaveMonitoring() {
                 <option value="Approved">Approved</option>
                 <option value="Disapproved">Disapproved</option>
                 <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold text-gray-600">Leave Type</label>
+              <select
+                value={leaveTypeFilter}
+                onChange={(event) => setLeaveTypeFilter(event.target.value)}
+                className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+              >
+                <option value="ALL">All Leave Types</option>
+                {leaveTypeOptions.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.description ? `${option.code} - ${option.description}` : option.code}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
