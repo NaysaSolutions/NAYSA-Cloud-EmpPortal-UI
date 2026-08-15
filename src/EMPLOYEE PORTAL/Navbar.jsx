@@ -43,6 +43,9 @@ const Navbar = () => {
     ...(isApprover
       ? [{ path: "/timekeepingAdjApproval", label: "Timekeeping for Approval" }]
       : []),
+    ...(isApprover
+      ? [{ path: "/dtrApproval", label: "DTR Confirmation" }]
+      : []),
     { path: "/dtrMonitoring", label: "DTR Monitoring" },
   ];
   const leaveChildren = [

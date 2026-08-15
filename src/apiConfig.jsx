@@ -80,6 +80,8 @@ const API_ENDPOINTS = {
     cancelDTR:            `${API_BASE_URL}/cancelDTR`,
     confirmDTR:           `${API_BASE_URL}/dtr/confirm`,
 
+    dtrApproval:          `${API_BASE_URL}/dtr/approval`,
+
     // FACEIO
     faceioCheck:   `${API_BASE_URL}/faceio/check`,
     faceioEnroll:  `${API_BASE_URL}/faceio/enroll`,
