@@ -343,6 +343,10 @@ const normalizeRow = (row, index) => {
     department: text(
       row.department || row.Department || row.DEPARTMENT || row.deptName,
     ),
+    payGroup: text(row.payGroup || row.pay_group || row.PAY_GROUP || row.PAYGROUP),
+    empStat: text(
+      row.empStat || row.emp_stat || row.EMP_STAT || row.EMPSTAT || row.employeeStatus || row.EMPLOYEE_STATUS,
+    ),
     leaveStart,
     leaveEnd,
     leaveDay: text(row.leaveDay || row.leaveday || row.LEAVE_DAY),
@@ -437,6 +441,78 @@ const MetricCard = ({
   return <div className={className}>{content}</div>;
 };
 
+const MultiSelectFilter = ({ label, allLabel, options, selected, onChange }) => {
+  const selectedValues = selected.filter((value) => options.includes(value));
+  const isAllSelected = options.length > 0 && selectedValues.length === options.length;
+  const toggleOption = (option) =>
+    onChange(
+      selectedValues.includes(option)
+        ? selectedValues.filter((value) => value !== option)
+        : [...selectedValues, option],
+    );
+
+  return (
+    <div>
+      <label className="mb-1 block text-[11px] font-semibold text-gray-600">{label}</label>
+      <details className="group relative">
+        <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-700 [&::-webkit-details-marker]:hidden">
+          <span className="truncate">
+            {selectedValues.length === 0 || isAllSelected ? allLabel : `${selectedValues.length} selected`}
+          </span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
+        </summary>
+        <div className="absolute z-50 mt-1 w-full min-w-[15rem] rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+          <div className="mb-2 flex items-center justify-between border-b border-gray-100 pb-2">
+            <button type="button" onClick={() => onChange([...options])} className="text-[11px] font-semibold text-blue-800 hover:underline">Select All</button>
+            <button type="button" onClick={() => onChange([])} className="text-[11px] font-semibold text-gray-600 hover:underline">Clear</button>
+          </div>
+          <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+            {options.map((option) => (
+              <label key={option} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-gray-700 hover:bg-blue-50">
+                <input type="checkbox" checked={selectedValues.includes(option)} onChange={() => toggleOption(option)} className="h-3.5 w-3.5 rounded border-gray-300 text-blue-700 focus:ring-blue-500" />
+                <span className="break-words">{option}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </details>
+    </div>
+  );
+};
+
+const ColumnChooser = ({ columns, visibleKeys, onChange }) => {
+  const visibleSet = new Set(visibleKeys);
+  const toggleColumn = (key) => {
+    if (visibleSet.has(key)) {
+      if (visibleKeys.length > 1) onChange(visibleKeys.filter((value) => value !== key));
+      return;
+    }
+    onChange([...visibleKeys, key]);
+  };
+
+  return (
+    <details className="group relative mt-auto">
+      <summary className="inline-flex h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 hover:bg-gray-50 [&::-webkit-details-marker]:hidden">
+        <LayoutGrid className="h-4 w-4" /> Columns <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" />
+      </summary>
+      <div className="absolute right-0 z-50 mt-1 w-64 rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+        <div className="mb-2 flex items-center justify-between border-b border-gray-100 pb-2">
+          <button type="button" onClick={() => onChange(columns.map((column) => column.key))} className="text-[11px] font-semibold text-blue-800 hover:underline">Show All</button>
+          <span className="text-[11px] text-gray-500">{visibleKeys.length}/{columns.length}</span>
+        </div>
+        <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
+          {columns.map((column) => (
+            <label key={column.key} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-gray-700 hover:bg-blue-50">
+              <input type="checkbox" checked={visibleSet.has(column.key)} onChange={() => toggleColumn(column.key)} className="h-3.5 w-3.5 rounded border-gray-300 text-blue-700 focus:ring-blue-500" />
+              <span>{column.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </details>
+  );
+};
+
 const DateInput = ({ value, onChange, min }) => (
   <div className="relative">
     <input
@@ -455,6 +531,8 @@ const columns = [
   { key: "empName", label: "Employee Name", minWidth: 220 },
   { key: "branchName", label: "Branch", minWidth: 150 },
   { key: "department", label: "Department", minWidth: 150 },
+  { key: "payGroup", label: "Payroll Group", minWidth: 130 },
+  { key: "empStat", label: "Employee Status", minWidth: 130 },
   { key: "fileDate", label: "Filed Date", minWidth: 120 },
   { key: "leaveStart", label: "Start Date", minWidth: 105 },
   { key: "leaveEnd", label: "End Date", minWidth: 105 },
@@ -509,6 +587,9 @@ const groupOptions = [
   { value: "none", label: "No Grouping" },
   { value: "empName", label: "Employee" },
   { value: "branchName", label: "Branch" },
+  { value: "department", label: "Department" },
+  { value: "payGroup", label: "Payroll Group" },
+  { value: "empStat", label: "Employee Status" },
   { value: "leaveCode", label: "Leave Type" },
   { value: "leaveStatus", label: "Status" },
   { value: "leaveMonth", label: "Leave Month" },
@@ -522,6 +603,12 @@ const getGroupValue = (row, groupBy) => {
       return `${row.leaveCode || "No Code"} - ${row.leaveDesc || "No Description"}`;
     case "branchName":
       return row.branchName || "No Branch";
+    case "department":
+      return row.department || "No Department";
+    case "payGroup":
+      return row.payGroup || "No Payroll Group";
+    case "empStat":
+      return row.empStat || "No Employee Status";
     case "leaveStatus":
       return normalizeStatus(row.leaveStatus);
     case "leaveMonth":
@@ -538,7 +625,7 @@ export default function LeaveMonitoring() {
   const isSidebarOpen = useSidebarStore((state) => state.isOpen);
   const currentEmpNo = getUserEmpNo(user);
   const currentEmpName = getUserName(user) || currentEmpNo;
-  const isHrUser = getUserHrFlag(user) === "Y";
+  const isHrUser = ["Y", "YES", "1", "TRUE"].includes(getUserHrFlag(user));
   const isApproverUser = getUserApprover(user) === "1";
   const canViewEmployeeLeave = isApproverUser || isHrUser;
   const leaveInquiryEndpoint =
@@ -552,6 +639,10 @@ export default function LeaveMonitoring() {
   const [employeeNo, setEmployeeNo] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [leaveTypeFilter, setLeaveTypeFilter] = useState("ALL");
+  const [branchFilters, setBranchFilters] = useState([]);
+  const [departmentFilters, setDepartmentFilters] = useState([]);
+  const [payGroupFilters, setPayGroupFilters] = useState([]);
+  const [empStatFilters, setEmpStatFilters] = useState([]);
   const [rows, setRows] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [columnFilters, setColumnFilters] = useState({});
@@ -566,6 +657,9 @@ export default function LeaveMonitoring() {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState(() =>
+    columns.map((column) => column.key),
+  );
   const [layoutMode, setLayoutMode] = useState("auto");
   const [viewportWidth, setViewportWidth] = useState(
     typeof window === "undefined"
@@ -579,6 +673,11 @@ export default function LeaveMonitoring() {
 
   const requestIdRef = useRef(0);
   const recordsSignatureRef = useRef("");
+
+  const visibleColumns = useMemo(
+    () => columns.filter((column) => visibleColumnKeys.includes(column.key)),
+    [visibleColumnKeys],
+  );
 
   useEffect(() => {
     if (!canViewEmployeeLeave) {
@@ -679,7 +778,7 @@ export default function LeaveMonitoring() {
         if (dayjs(startDate).isAfter(dayjs(endDate), "day")) {
           throw new Error("Start Date must not be greater than End Date.");
         }
-        if (!targetEmployeeNo || (shouldLoadAllEmployees && !employeeDirectory.length)) {
+        if (!targetEmployeeNo || (shouldLoadAllEmployees && !employeeDirectory.length && !currentEmpNo)) {
           throw new Error(
             scope === "MY"
               ? "Employee No. is missing from the logged-in user."
@@ -690,7 +789,10 @@ export default function LeaveMonitoring() {
         }
 
         const employeeTargets = shouldLoadAllEmployees
-          ? Array.from(new Set(employeeDirectory.map((employee) => text(employee.empNo)).filter(Boolean)))
+          ? Array.from(new Set([
+            currentEmpNo,
+            ...employeeDirectory.map((employee) => text(employee.empNo)),
+          ].filter(Boolean)))
           : [targetEmployeeNo];
         const responses = await Promise.all(
           employeeTargets.map((employee) => axios.post(
@@ -746,6 +848,7 @@ export default function LeaveMonitoring() {
       shouldLoadAllEmployees,
       employeeDirectory,
       leaveInquiryEndpoint,
+      currentEmpNo,
     ],
   );
 
@@ -816,6 +919,22 @@ export default function LeaveMonitoring() {
     );
   }, [rows]);
 
+  const getFilterOptions = useCallback(
+    (field) =>
+      Array.from(new Set(
+        rows.map((row) => text(row[field])).filter(Boolean),
+      )).sort((left, right) => left.localeCompare(right, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      })),
+    [rows],
+  );
+
+  const branchOptions = useMemo(() => getFilterOptions("branchName"), [getFilterOptions]);
+  const departmentOptions = useMemo(() => getFilterOptions("department"), [getFilterOptions]);
+  const payGroupOptions = useMemo(() => getFilterOptions("payGroup"), [getFilterOptions]);
+  const empStatOptions = useMemo(() => getFilterOptions("empStat"), [getFilterOptions]);
+
   const statusCounts = useMemo(() => {
     const counts = {
       Pending: 0,
@@ -862,6 +981,11 @@ export default function LeaveMonitoring() {
         return false;
       }
 
+      if (branchFilters.length && !branchFilters.some((value) => lower(row.branchName) === lower(value))) return false;
+      if (departmentFilters.length && !departmentFilters.some((value) => lower(row.department) === lower(value))) return false;
+      if (payGroupFilters.length && !payGroupFilters.some((value) => lower(row.payGroup) === lower(value))) return false;
+      if (empStatFilters.length && !empStatFilters.some((value) => lower(row.empStat) === lower(value))) return false;
+
       if (keyword) {
         const searchable = columns
           .map((column) => getDisplayValue(row, column.key))
@@ -875,7 +999,17 @@ export default function LeaveMonitoring() {
         lower(getDisplayValue(row, key)).includes(lower(value)),
       );
     });
-  }, [rows, statusFilter, leaveTypeFilter, searchText, columnFilters]);
+  }, [
+    rows,
+    statusFilter,
+    leaveTypeFilter,
+    branchFilters,
+    departmentFilters,
+    payGroupFilters,
+    empStatFilters,
+    searchText,
+    columnFilters,
+  ]);
 
   const sortedRows = useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction) return filteredRows;
@@ -943,6 +1077,10 @@ export default function LeaveMonitoring() {
     setEmployeeNo(currentEmpNo);
     setStatusFilter("ALL");
     setLeaveTypeFilter("ALL");
+    setBranchFilters([]);
+    setDepartmentFilters([]);
+    setPayGroupFilters([]);
+    setEmpStatFilters([]);
     setSearchText("");
     setColumnFilters({});
     setShowColumnFilters(true);
@@ -959,6 +1097,10 @@ export default function LeaveMonitoring() {
   const clearAllFilters = () => {
     setStatusFilter("ALL");
     setLeaveTypeFilter("ALL");
+    setBranchFilters([]);
+    setDepartmentFilters([]);
+    setPayGroupFilters([]);
+    setEmpStatFilters([]);
     setSearchText("");
     setColumnFilters({});
     setCurrentPage(1);
@@ -967,6 +1109,10 @@ export default function LeaveMonitoring() {
   const hasActiveFilters =
     statusFilter !== "ALL" ||
     leaveTypeFilter !== "ALL" ||
+    branchFilters.length > 0 ||
+    departmentFilters.length > 0 ||
+    payGroupFilters.length > 0 ||
+    empStatFilters.length > 0 ||
     Boolean(searchText.trim()) ||
     Object.values(columnFilters).some((value) => text(value));
 
@@ -1119,19 +1265,52 @@ export default function LeaveMonitoring() {
     return getDisplayValue(row, column.key);
   };
 
+  const renderSummaryCells = (label, values, styles) => {
+    const firstNumericColumnIndex = visibleColumns.findIndex((column) =>
+      numericKeys.has(column.key),
+    );
+
+    if (firstNumericColumnIndex === -1) {
+      return <td colSpan={visibleColumns.length} className={styles.label}>{label}</td>;
+    }
+
+    return (
+      <>
+        {firstNumericColumnIndex > 0 && (
+          <td colSpan={firstNumericColumnIndex} className={styles.label}>{label}</td>
+        )}
+        {visibleColumns.slice(firstNumericColumnIndex).map((column) => {
+          if (column.key === "leaveDays") {
+            return <td key={column.key} className={styles.requested}>{formatNumber(values.requestedDays)}</td>;
+          }
+          if (column.key === "leaveHrs") {
+            return <td key={column.key} className={styles.requested}>{formatNumber(values.requestedHours)}</td>;
+          }
+          if (column.key === "appDays") {
+            return <td key={column.key} className={styles.approved}>{formatNumber(values.approvedDays)}</td>;
+          }
+          if (column.key === "appHrs") {
+            return <td key={column.key} className={styles.approved}>{formatNumber(values.approvedHours)}</td>;
+          }
+          return <td key={column.key} className={styles.empty} />;
+        })}
+      </>
+    );
+  };
+
   const renderTableRecordRow = (row, rowIndex = 0) => (
     <tr
       key={row.id}
       className="group bg-white transition hover:bg-blue-50/70"
     >
-      {columns.map((column) => (
+      {visibleColumns.map((column) => (
         <td
           key={column.key}
           className={`whitespace-nowrap border-b border-gray-100 px-3 py-2.5 align-middle text-[11px] text-gray-700 ${
             column.numeric ? "text-right" : "text-left"
           } ${
             column.key === "empName"
-              ? "sticky left-0 z-[1] max-w-[220px] overflow-hidden bg-white text-ellipsis shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)] transition-colors group-hover:bg-blue-50/70"
+              ? "sticky left-0 z-10 w-[320px] min-w-[320px] max-w-[320px] overflow-hidden bg-white text-ellipsis shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)] transition-colors group-hover:bg-blue-50"
               : ""
           }`}
           style={{ minWidth: column.minWidth }}
@@ -1145,17 +1324,17 @@ export default function LeaveMonitoring() {
 
   const renderTableView = () => (
     <div className="max-h-[500px] w-full max-w-full overflow-auto rounded-xl border border-gray-200">
-      <table className="w-full min-w-[2200px] border-collapse text-left">
-        <thead className="sticky top-0 z-20 bg-blue-800 shadow-sm">
+      <table className="w-full min-w-[2200px] border-separate border-spacing-0 text-left">
+        <thead className="sticky top-0 z-30 bg-blue-800 shadow-sm">
           <tr>
-            {columns.map((column) => (
+            {visibleColumns.map((column) => (
               <th
                 key={column.key}
                 className={`whitespace-nowrap border-b border-blue-900 bg-blue-800 px-2 py-2 text-[11px] font-semibold text-white ${
                   column.numeric ? "text-right" : "text-left"
                 } ${
                   column.key === "empName"
-                    ? "sticky left-0 z-30 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]"
+                    ? "sticky left-0 z-40 w-[320px] min-w-[320px] max-w-[320px] shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]"
                     : ""
                 }`}
                 style={{ minWidth: column.minWidth }}
@@ -1176,12 +1355,12 @@ export default function LeaveMonitoring() {
 
           {showColumnFilters && (
             <tr className="bg-blue-50">
-              {columns.map((column) => (
+              {visibleColumns.map((column) => (
                 <th
                   key={`filter-${column.key}`}
                   className={`whitespace-nowrap border-b border-blue-100 bg-blue-50 px-2 py-2 ${
                     column.key === "empName"
-                      ? "sticky left-0 z-30 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]"
+                      ? "sticky left-0 z-40 w-[320px] min-w-[320px] max-w-[320px] shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]"
                       : ""
                   }`}
                   style={{ minWidth: column.minWidth }}
@@ -1208,7 +1387,7 @@ export default function LeaveMonitoring() {
           {loading ? (
             <tr>
               <td
-                colSpan={columns.length}
+                colSpan={visibleColumns.length}
                 className="px-4 py-12 text-center text-xs font-medium text-gray-500"
               >
                 Loading leave records...
@@ -1217,7 +1396,7 @@ export default function LeaveMonitoring() {
           ) : pageItems.length === 0 ? (
             <tr>
               <td
-                colSpan={columns.length}
+                colSpan={visibleColumns.length}
                 className="px-4 py-12 text-center text-xs font-medium text-gray-500"
               >
                 No leave records found.
@@ -1231,10 +1410,7 @@ export default function LeaveMonitoring() {
               return (
                 <Fragment key={group.id}>
                   <tr className="bg-blue-50">
-                    <td
-                      colSpan={columns.length}
-                      className="border-b border-blue-100 px-3 py-2.5"
-                    >
+                    <td className="sticky left-0 z-10 w-[320px] min-w-[320px] max-w-[320px] border-b border-blue-100 bg-blue-50 px-3 py-2.5 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]">
                       <button
                         type="button"
                         onClick={() => toggleGroup(group.id)}
@@ -1245,20 +1421,33 @@ export default function LeaveMonitoring() {
                         ) : (
                           <ChevronRight className="h-4 w-4 text-blue-800" />
                         )}
-                        <span className="font-semibold text-blue-900">
+                        <span className="min-w-0 flex-1 break-words font-semibold text-blue-900">
                           {group.label}
                         </span>
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
+                        <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
                           {group.rows.length} records
                         </span>
-                        <span className="ml-auto text-xs font-bold text-blue-900">
+                        <span className="hidden">
                           {formatNumber(group.requestedDays)} requested ·{" "}
                           {formatNumber(group.approvedDays)} approved days
                         </span>
                       </button>
                     </td>
+                    {visibleColumns.length > 1 && (
+                      <td colSpan={visibleColumns.length - 1} className="border-b border-blue-100 bg-blue-50 px-3 py-2.5 text-right text-xs font-bold text-blue-900">
+                        {formatNumber(group.requestedDays)} requested · {formatNumber(group.approvedDays)} approved days
+                      </td>
+                    )}
                   </tr>
                   {expanded && group.rows.map(renderTableRecordRow)}
+                  <tr className="bg-blue-50/50">
+                    {renderSummaryCells("Subtotal:", group, {
+                      label: "border-b border-blue-100 px-3 py-2 text-right text-[11px] font-semibold text-gray-700",
+                      requested: "border-b border-blue-100 px-3 py-2 text-right text-xs font-bold text-blue-900",
+                      approved: "border-b border-blue-100 px-3 py-2 text-right text-xs font-bold text-emerald-800",
+                      empty: "border-b border-blue-100",
+                    })}
+                  </tr>
                 </Fragment>
               );
             })
@@ -1268,22 +1457,12 @@ export default function LeaveMonitoring() {
         {sortedRows.length > 0 && (
           <tfoot className="sticky bottom-0 z-10 bg-blue-50">
             <tr>
-              <td colSpan={10} className="px-2 py-2 text-right text-[11px] font-semibold text-blue-900">
-                Total:
-              </td>
-              <td className="px-3 py-2 text-right text-[11px] font-bold text-blue-900">
-                {formatNumber(totals.requestedDays)}
-              </td>
-              <td className="px-3 py-2 text-right text-[11px] font-bold text-blue-900">
-                {formatNumber(totals.requestedHours)}
-              </td>
-              <td className="px-3 py-2 text-right text-[11px] font-bold text-emerald-800">
-                {formatNumber(totals.approvedDays)}
-              </td>
-              <td className="px-3 py-2 text-right text-[11px] font-bold text-emerald-800">
-                {formatNumber(totals.approvedHours)}
-              </td>
-              <td colSpan={7} />
+              {renderSummaryCells("Total:", totals, {
+                label: "px-2 py-2 text-right text-[11px] font-semibold text-blue-900",
+                requested: "px-3 py-2 text-right text-[11px] font-bold text-blue-900",
+                approved: "px-3 py-2 text-right text-[11px] font-bold text-emerald-800",
+                empty: "px-2 py-2",
+              })}
             </tr>
           </tfoot>
         )}
@@ -1707,6 +1886,17 @@ export default function LeaveMonitoring() {
             </div>
           </div>
 
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "Branch", allLabel: "All Branches", options: branchOptions, selected: branchFilters, onChange: setBranchFilters },
+              { label: "Department", allLabel: "All Departments", options: departmentOptions, selected: departmentFilters, onChange: setDepartmentFilters },
+              { label: "Payroll Group", allLabel: "All Payroll Groups", options: payGroupOptions, selected: payGroupFilters, onChange: setPayGroupFilters },
+              { label: "Employee Status", allLabel: "All Employee Statuses", options: empStatOptions, selected: empStatFilters, onChange: setEmpStatFilters },
+            ].map((filter) => (
+              <MultiSelectFilter key={filter.label} {...filter} />
+            ))}
+          </div>
+
           <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-end">
             <div className="min-w-0 flex-1">
               <label className="mb-1 block text-[11px] font-semibold text-gray-600">Search</label>
@@ -1776,6 +1966,12 @@ export default function LeaveMonitoring() {
                 Column Filters
               </button>
 
+              <ColumnChooser
+                columns={columns}
+                visibleKeys={visibleColumnKeys}
+                onChange={setVisibleColumnKeys}
+              />
+
               <button
                 type="button"
                 onClick={clearAllFilters}
@@ -1806,7 +2002,7 @@ export default function LeaveMonitoring() {
                 )}
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {columns.map((column) => (
+                {visibleColumns.map((column) => (
                   <div key={`responsive-filter-${column.key}`}>
                     <label className="mb-1 block text-[11px] font-semibold text-gray-600">{column.label}</label>
                     <input

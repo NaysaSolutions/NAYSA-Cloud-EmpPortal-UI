@@ -44,22 +44,34 @@ const formatDateInput = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-const firstDayOfMonth = () => {
-  const today = getToday();
-  return formatDateInput(new Date(today.getFullYear(), today.getMonth(), 1));
-};
-
-const lastDayOfMonth = () => {
-  const today = getToday();
-  return formatDateInput(
-    new Date(today.getFullYear(), today.getMonth() + 1, 0),
-  );
+const getIsoDatePart = (value) => {
+  const match = String(value ?? "").match(/^\d{4}-\d{2}-\d{2}/);
+  return match ? match[0] : "";
 };
 
 const normalizeText = (value) => String(value ?? "").trim();
 const normalizeFlag = (value) => normalizeText(value).toUpperCase();
 const safeLower = (value) => normalizeText(value).toLowerCase();
 const normalizeEndpoint = (endpoint) => String(endpoint || "").trim();
+
+const getDtrRecordsSignature = (rows) =>
+  rows
+    .map((row) =>
+      [
+        row?.empno,
+        row?.date,
+        row?.source,
+        row?.time_in,
+        row?.time_out,
+        row?.worked_hrs,
+        row?.leave_days,
+        row?.remarks,
+        row?.stat,
+      ]
+        .map(normalizeText)
+        .join("~"),
+    )
+    .join("|");
 
 const resolveApiEndpoint = (configuredEndpoint, fallbackPath) => {
   const configured = normalizeEndpoint(configuredEndpoint);
@@ -349,8 +361,8 @@ const buildExportTableHtml = (
           h1 { font-size: 18px; margin: 0 0 4px; }
           p { font-size: 11px; margin: 0 0 20px; color: #475569; font-weight: 700; }
           table { width: 100%; border-collapse: collapse; font-size: ${fontSize}px; }
-          th { border: 1px solid #cbd5e1; background: #e2e8f0; padding: 4px; text-align: left; font-weight: 700; }
-          td { border: 1px solid #e2e8f0; padding: 4px; vertical-align: top; }
+          th { background: #e2e8f0; padding: 4px; text-align: left; font-weight: 700; }
+          td { padding: 4px; vertical-align: top; }
         </style>
       </head>
       <body>
@@ -1091,6 +1103,12 @@ const normalizeDtrRow = (
   const department = normalizeText(
     getValue(row, ["Department", "department", "DEPARTMENT", "deptName", "DEPT_NAME"]),
   );
+  const payGroup = normalizeText(
+    getValue(row, ["payGroup", "PAY_GROUP", "pay_group", "PAYGROUP"]),
+  );
+  const empStat = normalizeText(
+    getValue(row, ["empStat", "EMP_STAT", "emp_stat", "EMPSTAT", "employeeStatus", "EMPLOYEE_STATUS"]),
+  );
   const branchCode = normalizeText(
     getValue(row, [
       "branchcode",
@@ -1319,6 +1337,8 @@ const normalizeDtrRow = (
     empName,
     branchName,
     department,
+    payGroup,
+    empStat,
     date,
     day,
     timeIn,
@@ -1443,12 +1463,121 @@ const MetricCard = ({ label, value, icon: Icon, accent = "slate" }) => (
   </div>
 );
 
+const MultiSelectFilter = ({ label, allLabel, options, selected, onChange }) => {
+  const selectedValues = selected.filter((value) => options.includes(value));
+  const isAllSelected = options.length > 0 && selectedValues.length === options.length;
+  const toggleOption = (option) => {
+    onChange(
+      selectedValues.includes(option)
+        ? selectedValues.filter((value) => value !== option)
+        : [...selectedValues, option],
+    );
+  };
+
+  const summary =
+    selectedValues.length === 0 || isAllSelected
+      ? allLabel
+      : `${selectedValues.length} selected`;
+
+  return (
+    <div>
+      <label className="mb-1 block text-[11px] font-semibold text-gray-600">{label}</label>
+      <details className="group relative">
+        <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-xl border border-gray-200 bg-white px-3 text-xs text-gray-700 outline-none transition hover:border-blue-300 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-100 [&::-webkit-details-marker]:hidden">
+          <span className="truncate">{summary}</span>
+          <ChevronDown className="h-4 w-4 shrink-0 text-gray-400 transition group-open:rotate-180" />
+        </summary>
+        <div className="absolute z-10 mt-1 w-full min-w-[15rem] rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+          <div className="mb-2 flex items-center justify-between gap-2 border-b border-gray-100 pb-2">
+            <button
+              type="button"
+              onClick={() => onChange([...options])}
+              className="text-[11px] font-semibold text-blue-800 hover:underline"
+            >
+              Select All
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="text-[11px] font-semibold text-gray-600 hover:underline"
+            >
+              Clear
+            </button>
+          </div>
+          <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+            {options.length === 0 ? (
+              <p className="px-2 py-1 text-[11px] text-gray-500">No options available.</p>
+            ) : (
+              options.map((option) => (
+                <label key={option} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-gray-700 hover:bg-blue-50">
+                  <input
+                    type="checkbox"
+                    checked={selectedValues.includes(option)}
+                    onChange={() => toggleOption(option)}
+                    className="h-3.5 w-3.5 rounded border-gray-300 text-blue-700 focus:ring-blue-500"
+                  />
+                  <span className="break-words">{option}</span>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+      </details>
+    </div>
+  );
+};
+
+const ColumnChooser = ({ columns, visibleKeys, onChange }) => {
+  const visibleSet = new Set(visibleKeys);
+  const toggleColumn = (key) => {
+    if (visibleSet.has(key)) {
+      if (visibleKeys.length === 1) return;
+      onChange(visibleKeys.filter((visibleKey) => visibleKey !== key));
+      return;
+    }
+
+    onChange([...visibleKeys, key]);
+  };
+
+  return (
+    <details className="group relative mt-auto">
+      <summary className="inline-flex h-10 cursor-pointer list-none items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-3 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 [&::-webkit-details-marker]:hidden">
+        <LayoutGrid className="h-4 w-4" />
+        Columns
+        <ChevronDown className="h-3.5 w-3.5 transition group-open:rotate-180" />
+      </summary>
+      <div className="absolute right-0 z-50 mt-1 w-64 rounded-xl border border-gray-200 bg-white p-2 shadow-lg">
+        <div className="mb-2 flex items-center justify-between gap-2 border-b border-gray-100 pb-2">
+          <button type="button" onClick={() => onChange(columns.map((column) => column.key))} className="text-[11px] font-semibold text-blue-800 hover:underline">
+            Show All
+          </button>
+          <span className="text-[11px] text-gray-500">{visibleKeys.length}/{columns.length}</span>
+        </div>
+        <div className="max-h-72 space-y-1 overflow-y-auto pr-1">
+          {columns.map((column) => (
+            <label key={column.key} className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-gray-700 hover:bg-blue-50">
+              <input
+                type="checkbox"
+                checked={visibleSet.has(column.key)}
+                onChange={() => toggleColumn(column.key)}
+                className="h-3.5 w-3.5 rounded border-gray-300 text-blue-700 focus:ring-blue-500"
+              />
+              <span>{column.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </details>
+  );
+};
+
 const columns = [
   { key: "source", label: "Type", minWidth: 130 },
   { key: "empNo", label: "Employee No", minWidth: 110 },
   { key: "empName", label: "Employee Name", minWidth: 220 },
   { key: "branchName", label: "Branch", minWidth: 150 },
   { key: "department", label: "Department", minWidth: 150 },
+  { key: "payGroup", label: "Payroll Group", minWidth: 130 },
   { key: "date", label: "Date", minWidth: 80 },
   { key: "day", label: "Day", minWidth: 80 },
   { key: "timeIn", label: "Time In", minWidth: 140, filterable: false },
@@ -1513,6 +1642,8 @@ const groupOptions = [
   { value: "empName", label: "Employee" },
   { value: "branchName", label: "Branch" },
   { value: "department", label: "Department" },
+  { value: "payGroup", label: "Payroll Group" },
+  { value: "empStat", label: "Employee Status" },
   { value: "date", label: "Date" },
   { value: "day", label: "Day" },
   { value: "source", label: "Type" },
@@ -1526,6 +1657,10 @@ const getGroupValue = (row, groupBy) => {
       return row.department || "No Department";
     case "branchName":
       return row.branchName || "No Branch";
+    case "payGroup":
+      return row.payGroup || "No Payroll Group";
+    case "empStat":
+      return row.empStat || "No Employee Status";
     case "date":
       return formatDateDisplay(row.date);
     case "day":
@@ -1559,14 +1694,20 @@ export default function DTRMonitoring() {
   const currentHrFlag = normalizeFlag(getUserHrFlag(resolvedUser));
   const currentApprover = normalizeText(getUserApprover(resolvedUser));
   const isApprover = currentApprover === "1";
-  const isHrUser = currentHrFlag === "Y";
+  const isHrUser = ["Y", "YES", "1", "TRUE"].includes(currentHrFlag);
   const canUseEmployeeDtr = isApprover || isHrUser;
 
-  const [startDate, setStartDate] = useState(firstDayOfMonth());
-  const [endDate, setEndDate] = useState(lastDayOfMonth());
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [serverToday, setServerToday] = useState("");
+  const [isServerDateReady, setIsServerDateReady] = useState(false);
   const [records, setRecords] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [sourceFilter, setSourceFilter] = useState("ALL");
+  const [branchFilters, setBranchFilters] = useState([]);
+  const [departmentFilters, setDepartmentFilters] = useState([]);
+  const [payGroupFilters, setPayGroupFilters] = useState([]);
+  const [empStatFilters, setEmpStatFilters] = useState([]);
   const [employeeScope, setEmployeeScope] = useState("MY");
   const [selectedEmployeeNo, setSelectedEmployeeNo] = useState("");
   const [columnFilters, setColumnFilters] = useState({});
@@ -1578,6 +1719,9 @@ export default function DTRMonitoring() {
   const [sortConfig, setSortConfig] = useState({ key: "date", direction: "asc" });
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [visibleColumnKeys, setVisibleColumnKeys] = useState(() =>
+    columns.map((column) => column.key),
+  );
   const [layoutMode, setLayoutMode] = useState("auto");
   const [viewportWidth, setViewportWidth] = useState(
     typeof window === "undefined"
@@ -1594,8 +1738,49 @@ export default function DTRMonitoring() {
   const isFetchingRef = useRef(false);
   const fetchRequestIdRef = useRef(0);
   const recordsSignatureRef = useRef("");
-  const hasEmployeeScopeMountedRef = useRef(false);
+  const hasDateInputChangedRef = useRef(false);
+  const lastLoadedRangeRef = useRef(null);
   const assetOrigin = useMemo(() => getApiAssetOrigin(), []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    const loadServerDate = async () => {
+      const fallbackDate = formatDateInput(getToday());
+
+      try {
+        const response = await axios.get(API_ENDPOINTS.serverTime, {
+          headers: { Accept: "application/json", "Cache-Control": "no-cache" },
+        });
+        const serverDate = getIsoDatePart(response.data?.serverTime) || fallbackDate;
+
+        if (isActive) {
+          setServerToday(serverDate);
+          if (!hasDateInputChangedRef.current) {
+            setStartDate(serverDate);
+            setEndDate(serverDate);
+          }
+        }
+      } catch {
+        if (isActive) {
+          setServerToday(fallbackDate);
+          if (!hasDateInputChangedRef.current) {
+            setStartDate(fallbackDate);
+            setEndDate(fallbackDate);
+          }
+        }
+      } finally {
+        if (isActive) setIsServerDateReady(true);
+      }
+    };
+
+    loadServerDate();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   useEffect(() => {
     if (!canUseEmployeeDtr) {
       setEmployeeScope("MY");
@@ -1648,6 +1833,11 @@ export default function DTRMonitoring() {
     [records, assetOrigin, currentEmpNo, currentBranchCode],
   );
 
+  const visibleColumns = useMemo(
+    () => columns.filter((column) => visibleColumnKeys.includes(column.key)),
+    [visibleColumnKeys],
+  );
+
   const employeeOptions = useMemo(() => {
     const employees = new Map();
 
@@ -1679,12 +1869,30 @@ export default function DTRMonitoring() {
   }, [normalizedRows, currentEmpNo, currentEmpName]);
 
   const sourceOptions = useMemo(() => {
-    const values = new Set();
+    const values = new Set(["Official Business"]);
     normalizedRows.forEach((row) => {
       if (row.source) values.add(row.source);
     });
     return ["ALL", ...Array.from(values).sort((a, b) => a.localeCompare(b))];
   }, [normalizedRows]);
+
+  const getFilterOptions = useCallback(
+    (field) =>
+      Array.from(new Set(
+        normalizedRows
+          .map((row) => normalizeText(row[field]))
+          .filter(Boolean),
+      )).sort((left, right) => left.localeCompare(right, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      })),
+    [normalizedRows],
+  );
+
+  const branchOptions = useMemo(() => getFilterOptions("branchName"), [getFilterOptions]);
+  const departmentOptions = useMemo(() => getFilterOptions("department"), [getFilterOptions]);
+  const payGroupOptions = useMemo(() => getFilterOptions("payGroup"), [getFilterOptions]);
+  const empStatOptions = useMemo(() => getFilterOptions("empStat"), [getFilterOptions]);
 
   const scopeFilteredRows = useMemo(() => {
     if (employeeScope === "MY") {
@@ -1717,6 +1925,11 @@ export default function DTRMonitoring() {
         return false;
       }
 
+      if (branchFilters.length && !branchFilters.some((value) => safeLower(row.branchName) === safeLower(value))) return false;
+      if (departmentFilters.length && !departmentFilters.some((value) => safeLower(row.department) === safeLower(value))) return false;
+      if (payGroupFilters.length && !payGroupFilters.some((value) => safeLower(row.payGroup) === safeLower(value))) return false;
+      if (empStatFilters.length && !empStatFilters.some((value) => safeLower(row.empStat) === safeLower(value))) return false;
+
       if (keyword) {
         const searchable = [
           row.source,
@@ -1743,7 +1956,16 @@ export default function DTRMonitoring() {
         safeLower(getDisplayValue(row, key)).includes(safeLower(value)),
       );
     });
-  }, [scopeFilteredRows, sourceFilter, searchText, columnFilters]);
+  }, [
+    scopeFilteredRows,
+    sourceFilter,
+    branchFilters,
+    departmentFilters,
+    payGroupFilters,
+    empStatFilters,
+    searchText,
+    columnFilters,
+  ]);
 
   const sortedRows = useMemo(() => {
     if (!sortConfig.key || !sortConfig.direction) return filteredRows;
@@ -1788,6 +2010,14 @@ export default function DTRMonitoring() {
     [filteredRows],
   );
 
+  const totalObHours = useMemo(
+    () =>
+      filteredRows
+        .filter((row) => safeLower(row.source).includes("official business"))
+        .reduce((total, row) => total + row.workedHours, 0),
+    [filteredRows],
+  );
+
   const withDtrCount = useMemo(
     () =>
       filteredRows.filter((row) => {
@@ -1812,6 +2042,10 @@ export default function DTRMonitoring() {
     employeeScope,
     selectedEmployeeNo,
     sourceFilter,
+    branchFilters,
+    departmentFilters,
+    payGroupFilters,
+    empStatFilters,
     searchText,
     columnFilters,
     groupBy,
@@ -1823,7 +2057,16 @@ export default function DTRMonitoring() {
   }, [currentPage, totalPages]);
 
   const fetchAllDTR = useCallback(
-    async ({ silent = false } = {}) => {
+    async ({ silent = false, range } = {}) => {
+      if (isFetchingRef.current) return;
+
+      const activeRange = range || (silent ? lastLoadedRangeRef.current : null) || {
+        startDate,
+        endDate,
+      };
+      const requestStartDate = activeRange.startDate;
+      const requestEndDate = activeRange.endDate;
+
       const requestId = fetchRequestIdRef.current + 1;
       fetchRequestIdRef.current = requestId;
       isFetchingRef.current = true;
@@ -1835,17 +2078,21 @@ export default function DTRMonitoring() {
           setError("");
         }
 
-        if (!startDate || !endDate) {
+        if (!requestStartDate || !requestEndDate) {
           throw new Error("Please select Start Date and End Date.");
         }
 
-        if (new Date(startDate) > new Date(endDate)) {
+        if (new Date(requestStartDate) > new Date(requestEndDate)) {
           throw new Error("Start Date must not be greater than End Date.");
         }
 
+        const loadEmployeeDtr =
+          canUseEmployeeDtr && employeeScope === "EMPLOYEE";
         const selectedEndpoint = resolveApiEndpoint(
-          API_ENDPOINTS?.getAllDTRHR,
-          "/getAllDTRHR",
+          loadEmployeeDtr
+            ? API_ENDPOINTS?.getAllDTRHR
+            : API_ENDPOINTS?.getAllDTR,
+          loadEmployeeDtr ? "/getAllDTRHR" : "/getAllDTR",
         );
 
         if (!selectedEndpoint) {
@@ -1861,16 +2108,23 @@ export default function DTRMonitoring() {
         }
 
         const params = {
-          startDate,
-          endDate,
-          START_DATE: startDate,
-          END_DATE: endDate,
+          startDate: requestStartDate,
+          endDate: requestEndDate,
+          START_DATE: requestStartDate,
+          END_DATE: requestEndDate,
           // The selected employee dropdown is applied to the returned rows locally.
           empno: currentEmpNo,
           EMPNO: currentEmpNo,
           empNo: currentEmpNo,
           EMP_NO: currentEmpNo,
         };
+
+        if (!silent) {
+          lastLoadedRangeRef.current = {
+            startDate: requestStartDate,
+            endDate: requestEndDate,
+          };
+        }
 
         const response = await axios.get(selectedEndpoint, {
           params,
@@ -1879,24 +2133,8 @@ export default function DTRMonitoring() {
 
         let payload = normalizeDtrApiPayload(response.data, selectedEndpoint);
 
-console.log("DTR PRODUCTION RESPONSE:", {
-  url: response?.request?.responseURL || selectedEndpoint,
-  status: response.status,
-  contentType: response.headers?.["content-type"],
-  dataType: typeof payload,
-  isArray: Array.isArray(payload),
-  data: payload,
-});
-
-let nextRows = parseDtrPayloadRows(payload, selectedEndpoint);
-
-if (nextRows.length === 0) {
-  console.warn("DTR API returned 0 parsed rows:", payload);
-}
-
-console.log("DTR records loaded:", nextRows.length);
-
-const nextSignature = JSON.stringify(nextRows);
+        const nextRows = parseDtrPayloadRows(payload, selectedEndpoint);
+        const nextSignature = getDtrRecordsSignature(nextRows);
 
 if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatureRef.current) {
   recordsSignatureRef.current = nextSignature;
@@ -1927,40 +2165,34 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         }
       }
     },
-    [startDate, endDate, currentEmpNo],
+    [startDate, endDate, currentEmpNo, canUseEmployeeDtr, employeeScope],
   );
 
   useEffect(() => {
-    fetchAllDTR();
-    // Initial load only. Date changes are applied when Load is clicked.
+    if (currentEmpNo && isServerDateReady) fetchAllDTR();
+    // Date changes are applied when Load is clicked.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    if (!hasEmployeeScopeMountedRef.current) {
-      hasEmployeeScopeMountedRef.current = true;
-      return;
-    }
-
-    fetchAllDTR();
-    // Refetch only when DTR View changes. Date changes are applied when Load is clicked.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employeeScope]);
+  }, [currentEmpNo, canUseEmployeeDtr, employeeScope, isServerDateReady]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      if (document.hidden) return;
+      if (document.hidden || !isServerDateReady) return;
       fetchAllDTR({ silent: true });
     }, 30000);
 
     return () => window.clearInterval(intervalId);
-  }, [fetchAllDTR]);
+  }, [fetchAllDTR, isServerDateReady]);
 
   const handleReset = () => {
-    setStartDate(firstDayOfMonth());
-    setEndDate(lastDayOfMonth());
+    const today = serverToday || formatDateInput(getToday());
+    setStartDate(today);
+    setEndDate(today);
     setSearchText("");
     setSourceFilter("ALL");
+    setBranchFilters([]);
+    setDepartmentFilters([]);
+    setPayGroupFilters([]);
+    setEmpStatFilters([]);
     setEmployeeScope("MY");
     setSelectedEmployeeNo(currentEmpNo);
     setColumnFilters({});
@@ -1990,6 +2222,10 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   const clearAllFilters = () => {
     setSearchText("");
     setSourceFilter("ALL");
+    setBranchFilters([]);
+    setDepartmentFilters([]);
+    setPayGroupFilters([]);
+    setEmpStatFilters([]);
     setSelectedEmployeeNo(employeeScope === "MY" ? currentEmpNo : "");
     setColumnFilters({});
     setCurrentPage(1);
@@ -1998,6 +2234,10 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   const hasActiveFilters =
     Boolean(searchText.trim()) ||
     sourceFilter !== "ALL" ||
+    branchFilters.length > 0 ||
+    departmentFilters.length > 0 ||
+    payGroupFilters.length > 0 ||
+    empStatFilters.length > 0 ||
     (employeeScope === "EMPLOYEE" && Boolean(selectedEmployeeNo)) ||
     Object.values(columnFilters).some((value) => normalizeText(value) !== "");
 
@@ -2034,7 +2274,9 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         "Employee No": formatEmployeeNoExport(row.empNo),
         "Employee Name": row.empName,
         Branch: row.branchName,
+        PayGroup: row.payGroup,
         Department: row.department,
+        Status: row.empStat,
         Date: formatDateDisplay(row.date),
         Day: row.day,
         "Time In": formatDtrActualDateTimeExport(row, "timeIn"),
@@ -2187,12 +2429,44 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
     }
   };
 
+  const renderSummaryCells = (
+    label,
+    workedHours,
+    leaveDays,
+    { labelClass, workedHoursClass, leaveDaysClass, emptyClass },
+  ) => {
+    const firstNumericColumnIndex = visibleColumns.findIndex((column) =>
+      ["workedHours", "leaveDays"].includes(column.key),
+    );
+
+    if (firstNumericColumnIndex === -1) {
+      return <td colSpan={visibleColumns.length} className={labelClass}>{label}</td>;
+    }
+
+    return (
+      <>
+        {firstNumericColumnIndex > 0 && (
+          <td colSpan={firstNumericColumnIndex} className={labelClass}>{label}</td>
+        )}
+        {visibleColumns.slice(firstNumericColumnIndex).map((column) => {
+          if (column.key === "workedHours") {
+            return <td key={column.key} className={workedHoursClass}>{formatHours(workedHours)}</td>;
+          }
+          if (column.key === "leaveDays") {
+            return <td key={column.key} className={leaveDaysClass}>{formatHours(leaveDays)}</td>;
+          }
+          return <td key={column.key} className={emptyClass} />;
+        })}
+      </>
+    );
+  };
+
   const renderTableRecordRow = (row, rowIndex = 0) => (
     <tr
       key={row.__id}
       className="group bg-white transition hover:bg-blue-50/70"
     >
-      {columns.map((column) => (
+      {visibleColumns.map((column) => (
         <td
           key={column.key}
           className={`border-b border-gray-100 px-3 py-2.5 align-middle text-[11px] text-gray-700 ${
@@ -2201,7 +2475,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
             isLocationColumn(column.key) ? "whitespace-normal break-words" : "whitespace-nowrap"
           } ${
             column.key === "empName"
-              ? "sticky left-0 z-[1] max-w-[220px] overflow-hidden bg-white text-ellipsis shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)] transition-colors group-hover:bg-blue-50/70"
+              ? "sticky left-0 z-10 w-[320px] min-w-[320px] max-w-[320px] overflow-hidden bg-white text-ellipsis shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)] transition-colors group-hover:bg-blue-50"
               : ""
           }`}
           style={{ minWidth: column.minWidth, maxWidth: column.maxWidth }}
@@ -2214,10 +2488,10 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
 
   const renderTableView = () => (
     <div className="min-w-0 w-full max-w-full overflow-x-auto max-h-[460px] rounded-xl border border-gray-200">
-      <table className="w-full min-w-[1280px]  border-collapse text-left">
-        <thead className="sticky top-0 z-10 bg-blue-800 shadow-sm">
+      <table className="w-full min-w-[1280px] border-separate border-spacing-0 text-left">
+        <thead className="sticky top-0 z-30 bg-blue-800 shadow-sm">
           <tr>
-            {columns.map((column) => (
+            {visibleColumns.map((column) => (
               <th
                 key={column.key}
                 className={`border-b border-blue-900 bg-blue-800 px-2 py-2 text-[11px] font-semibold text-white ${
@@ -2226,7 +2500,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                   isLocationColumn(column.key) ? "whitespace-normal break-words" : "whitespace-nowrap"
                 } ${
                   column.key === "empName"
-                    ? "sticky left-0 z-30 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]"
+                    ? "sticky left-0 z-40 w-[320px] min-w-[320px] max-w-[320px] shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]"
                     : ""
                 }`}
                 style={{ minWidth: column.minWidth, maxWidth: column.maxWidth }}
@@ -2248,13 +2522,15 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
 
           {showColumnFilters && (
             <tr className="bg-blue-50">
-              {columns.map((column) => (
+              {visibleColumns.map((column) => (
                 <th
                   key={`filter-${column.key}`}
                   className={`border-b border-blue-100 bg-blue-50 px-2 py-2 ${
                     isLocationColumn(column.key) ? "whitespace-normal break-words" : "whitespace-nowrap"
                   } ${
-                    column.key === "empName" ? "sticky left-0 z-30 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]" : ""
+                    column.key === "empName"
+                      ? "sticky left-0 z-40 w-[320px] min-w-[320px] max-w-[320px] shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]"
+                      : ""
                   }`}
                   style={{ minWidth: column.minWidth, maxWidth: column.maxWidth }}
                 >
@@ -2283,13 +2559,13 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-12 text-center text-xs font-medium text-slate-500">
+              <td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-xs font-medium text-slate-500">
                 Loading DTR records...
               </td>
             </tr>
           ) : pageItems.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-12 text-center text-xs font-medium text-slate-500">
+              <td colSpan={visibleColumns.length} className="px-4 py-12 text-center text-xs font-medium text-slate-500">
                 No DTR records found.
               </td>
             </tr>
@@ -2301,7 +2577,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
               return (
                 <Fragment key={group.id}>
                   <tr className="bg-blue-50">
-                    <td colSpan={columns.length} className="border-b border-blue-100 px-3 py-2.5">
+                    <td className="sticky left-0 z-10 w-[320px] min-w-[320px] max-w-[320px] border-b border-blue-100 bg-blue-50 px-3 py-2.5 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.12)]">
                       <button
                         type="button"
                         onClick={() => toggleGroup(group.id)}
@@ -2312,28 +2588,29 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                         ) : (
                           <ChevronRight className="h-4 w-4 text-blue-800" />
                         )}
-                        <span className="font-semibold text-blue-900">{group.label}</span>
-                        <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
+                        <span className="min-w-0 flex-1 break-words font-semibold text-blue-900">{group.label}</span>
+                        <span className="shrink-0 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-blue-800">
                           {group.rows.length} records
                         </span>
-                        <span className="ml-auto text-xs font-bold text-blue-900">
+                        <span className="hidden">
                           {formatHours(group.workedHours)} hrs · {formatHours(group.leaveDays)} leave days
                         </span>
                       </button>
                     </td>
+                    {visibleColumns.length > 1 && (
+                      <td colSpan={visibleColumns.length - 1} className="border-b border-blue-100 bg-blue-50 px-3 py-2.5 text-right text-xs font-bold text-blue-900">
+                      {formatHours(group.workedHours)} hrs · {formatHours(group.leaveDays)} leave days
+                      </td>
+                    )}
                   </tr>
                   {expanded && group.rows.map(renderTableRecordRow)}
                   <tr className="bg-blue-50/50">
-                    <td colSpan={11} className="border-b border-blue-100 px-3 py-2 text-right text-[11px] font-semibold text-gray-700">
-                      Subtotal :
-                    </td>
-                    <td className="border-b border-blue-100 px-3 py-2 text-right text-xs font-bold text-blue-900">
-                      {formatHours(group.workedHours)}
-                    </td>
-                    <td className="border-b border-blue-100 px-3 py-2 text-right text-xs font-bold text-violet-900">
-                      {formatHours(group.leaveDays)}
-                    </td>
-                    <td className="border-b border-blue-100" />
+                    {renderSummaryCells("Subtotal :", group.workedHours, group.leaveDays, {
+                      labelClass: "border-b border-blue-100 px-3 py-2 text-right text-[11px] font-semibold text-gray-700",
+                      workedHoursClass: "border-b border-blue-100 px-3 py-2 text-right text-xs font-bold text-blue-900",
+                      leaveDaysClass: "border-b border-blue-100 px-3 py-2 text-right text-xs font-bold text-violet-900",
+                      emptyClass: "border-b border-blue-100",
+                    })}
                   </tr>
                 </Fragment>
               );
@@ -2344,16 +2621,12 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
         {sortedRows.length > 0 && (
           <tfoot className="sticky bottom-0 z-10 bg-blue-50">
             <tr>
-              <td colSpan={13} className="px-1 py-1 text-right text-[11px] font-semibold text-blue-900">
-                Total  :
-              </td>
-              <td className="px-2 py-2 text-right text-[11px] font-bold text-blue-900">
-                {formatHours(totalWorkedHours)}
-              </td>
-              <td className="px-2 py-2 text-right text-[11px] font-bold text-violet-900">
-                {formatHours(totalLeaveDays)}
-              </td>
-              <td className="px-1 py-1" />
+              {renderSummaryCells("Total :", totalWorkedHours, totalLeaveDays, {
+                labelClass: "px-1 py-1 text-right text-[11px] font-semibold text-blue-900",
+                workedHoursClass: "px-2 py-2 text-right text-[11px] font-bold text-blue-900",
+                leaveDaysClass: "px-2 py-2 text-right text-[11px] font-bold text-violet-900",
+                emptyClass: "px-1 py-1",
+              })}
             </tr>
           </tfoot>
         )}
@@ -2693,14 +2966,23 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-[10rem_10rem_12rem_minmax(18rem,1fr)_10rem]">
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-gray-600">Start Date</label>
-              <DateInput value={startDate} onChange={(event) => setStartDate(event.target.value)} />
+              <DateInput
+                value={startDate}
+                onChange={(event) => {
+                  hasDateInputChangedRef.current = true;
+                  setStartDate(event.target.value);
+                }}
+              />
             </div>
             <div>
               <label className="mb-1 block text-[11px] font-semibold text-gray-600">End Date</label>
               <DateInput
                 value={endDate}
                 min={startDate}
-                onChange={(event) => setEndDate(event.target.value)}
+                onChange={(event) => {
+                  hasDateInputChangedRef.current = true;
+                  setEndDate(event.target.value);
+                }}
               />
             </div>
             <div>
@@ -2750,6 +3032,17 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { label: "Branch", allLabel: "All Branches", selected: branchFilters, onChange: setBranchFilters, options: branchOptions },
+              { label: "Department", allLabel: "All Departments", selected: departmentFilters, onChange: setDepartmentFilters, options: departmentOptions },
+              { label: "Payroll Group", allLabel: "All Payroll Groups", selected: payGroupFilters, onChange: setPayGroupFilters, options: payGroupOptions },
+              { label: "Employee Status", allLabel: "All Employee Statuses", selected: empStatFilters, onChange: setEmpStatFilters, options: empStatOptions },
+            ].map((filter) => (
+              <MultiSelectFilter key={filter.label} {...filter} />
+            ))}
           </div>
 
           <div className="mt-3 flex flex-col gap-3 xl:flex-row xl:items-end">
@@ -2821,6 +3114,12 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 Column Filters
               </button>
 
+              <ColumnChooser
+                columns={columns}
+                visibleKeys={visibleColumnKeys}
+                onChange={setVisibleColumnKeys}
+              />
+
               <button
                 type="button"
                 onClick={clearAllFilters}
@@ -2851,7 +3150,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
                 )}
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                {columns
+                {visibleColumns
                   .filter((column) => column.filterable !== false)
                   .map((column) => (
                     <div key={`responsive-filter-${column.key}`}>
@@ -2877,12 +3176,13 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
           )}
           </div>
 
-          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-6">
+          <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-7">
             <MetricCard label="Loaded Records" value={records.length} icon={Table2} accent="slate" />
             <MetricCard label="Displayed Records" value={filteredRows.length} icon={Users} accent="sky" />
             <MetricCard label="With DTR" value={withDtrCount} icon={User} accent="emerald" />
             <MetricCard label="No DTR" value={noDtrCount} icon={FilterX} accent="rose" />
             <MetricCard label="Total Worked Hours" value={formatHours(totalWorkedHours)} icon={Table2} accent="amber" />
+            <MetricCard label="Total OB Hours" value={formatHours(totalObHours)} icon={CalendarDays} accent="sky" />
             <MetricCard label="Total Leave Days" value={formatHours(totalLeaveDays)} icon={CalendarDays} accent="violet" />
           </div>
         </section>
