@@ -93,7 +93,7 @@ const API_ENDPOINTS = {
     payslipLN:               `${API_BASE_URL}/reports/payslipLN`,
     payslipCutoff:           `${API_BASE_URL}/reports/payslipCutoff`,
     payslipYTD:              `${API_BASE_URL}/reports/payslipYTD`,
-    
+    payslipRange:            `${API_BASE_URL}/reports/payslipRange`,
 
     upsertOffset:            `${API_BASE_URL}/upsertOffset`,
     cancelOffset:            `${API_BASE_URL}/cancelOffset`,

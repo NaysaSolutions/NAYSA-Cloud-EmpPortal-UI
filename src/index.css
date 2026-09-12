@@ -269,6 +269,336 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   }
 }
 
+/* =========================================================
+   PAYSLIP PDF MODE
+   ========================================================= */
+
+.pdf-export-mode {
+    width: 730px !important;
+    max-width: 730px !important;
+    min-width: 730px !important;
+
+    margin: 0 auto !important;
+    padding: 0 !important;
+
+    background: #ffffff !important;
+
+    font-size: 8px !important;
+}
+
+
+/* =========================================================
+   ONE PAYSLIP PER PAGE
+   ========================================================= */
+
+.pdf-export-mode .payslip-page {
+    width: 730px !important;
+    max-width: 730px !important;
+    min-width: 730px !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    box-shadow: none !important;
+    border-radius: 4px !important;
+
+    overflow: visible !important;
+
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+}
+
+/* Important: no inherited vertical offset on later payslips */
+.pdf-export-mode .payslip-page + .payslip-page {
+    margin-top: 0 !important;
+}
+
+
+.pdf-export-mode .payslip-employee-info {
+    display: grid !important;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        minmax(0, 1fr) !important;
+
+    column-gap: 48px !important;
+    row-gap: 3px !important;
+
+    width: 100% !important;
+    margin-bottom: 7px !important;
+}
+
+
+.pdf-export-mode .payslip-earnings-deductions {
+    display: grid !important;
+
+    grid-template-columns:
+        minmax(0, 1fr)
+        minmax(0, 1fr) !important;
+
+    gap: 8px !important;
+
+    width: 100% !important;
+
+    margin-top: 0 !important;
+    margin-bottom: 7px !important;
+
+    align-items: stretch !important;
+}
+
+/* =========================================================
+   COMPACT PDF TYPOGRAPHY
+   ========================================================= */
+
+.pdf-export-mode {
+    font-size: 8px !important;
+}
+
+.pdf-export-mode h1 {
+    font-size: 15px !important;
+    line-height: 17px !important;
+    margin: 0 !important;
+}
+
+.pdf-export-mode h3 {
+    font-size: 9px !important;
+    line-height: 11px !important;
+}
+
+.pdf-export-mode p {
+    font-size: 8px !important;
+    line-height: 10px !important;
+}
+
+.pdf-export-mode span {
+    font-size: 8px !important;
+    line-height: 10px !important;
+}
+
+
+/* =========================================================
+   REDUCE PADDING
+   ========================================================= */
+
+.pdf-export-mode .p-4,
+.pdf-export-mode .sm\:p-4 {
+    padding: 8px !important;
+}
+
+.pdf-export-mode .p-3,
+.pdf-export-mode .sm\:p-3 {
+    padding: 6px !important;
+}
+
+.pdf-export-mode .py-1 {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+}
+
+.pdf-export-mode .py-1\.5 {
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
+}
+
+.pdf-export-mode .mb-4 {
+    margin-bottom: 7px !important;
+}
+
+.pdf-export-mode .mb-2 {
+    margin-bottom: 4px !important;
+}
+
+.pdf-export-mode .gap-4 {
+    gap: 7px !important;
+}
+
+.pdf-export-mode .gap-3 {
+    gap: 5px !important;
+}
+
+.pdf-export-mode .space-y-2 > :not([hidden]) ~ :not([hidden]) {
+    margin-top: 3px !important;
+}
+
+
+/* =========================================================
+   EMPLOYEE INFORMATION
+   ========================================================= */
+
+/* .pdf-export-mode .payslip-page .w-5 {
+    width: 12px !important;
+}
+
+.pdf-export-mode .payslip-page .h-5 {
+    height: 12px !important;
+} */
+
+.pdf-export-mode .payslip-page > div:first-child {
+    padding-top: 8px !important;
+    padding-bottom: 6px !important;
+}
+
+.pdf-export-mode .payslip-page > div:first-child h1 {
+    margin: 0 !important;
+
+    font-size: 14px !important;
+    line-height: 16px !important;
+}
+
+.pdf-export-mode .payslip-page > div:first-child p {
+    margin-top: 1px !important;
+    margin-bottom: 1px !important;
+
+    line-height: 9px !important;
+}
+.pdf-export-mode .payslip-body {
+    padding-top: 6px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    padding-bottom: 8px !important;
+}
+
+/* =========================================================
+   EARNINGS / DEDUCTIONS
+   ========================================================= */
+
+.pdf-export-mode .truncate {
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+}
+
+.pdf-export-mode .break-words {
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+}
+
+
+/* =========================================================
+   SUMMARY
+   ========================================================= */
+
+.pdf-export-mode .payslip-summary {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+}
+
+.pdf-export-mode .payslip-summary p {
+    margin: 0 !important;
+}
+
+/* =========================================================
+   TABLES - PDF FIX
+   ========================================================= */
+
+.pdf-export-mode .overflow-x-auto {
+    overflow: visible !important;
+}
+
+.pdf-export-mode table {
+    width: 100% !important;
+    max-width: 100% !important;
+
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+}
+
+
+/* =========================================================
+   TABLE HEADERS
+   ========================================================= */
+
+.pdf-export-mode thead {
+    display: table-header-group !important;
+}
+
+.pdf-export-mode thead tr {
+    height: 22px !important;
+    min-height: 22px !important;
+}
+
+.pdf-export-mode th {
+    font-size: 7.5px !important;
+
+    line-height: 22px !important;
+
+    height: 22px !important;
+    min-height: 22px !important;
+
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    padding-left: 5px !important;
+    padding-right: 5px !important;
+
+    vertical-align: middle !important;
+
+    white-space: normal !important;
+
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+
+/* =========================================================
+   TABLE BODY
+   ========================================================= */
+
+.pdf-export-mode td {
+    font-size: 7.5px !important;
+    line-height: 1.35 !important;
+
+    padding: 5px !important;
+
+    white-space: normal !important;
+    vertical-align: middle !important;
+
+    overflow: visible !important;
+    text-overflow: clip !important;
+
+    word-break: normal !important;
+    overflow-wrap: break-word !important;
+
+    height: auto !important;
+    min-height: 18px !important;
+}
+
+.pdf-export-mode tbody tr {
+    height: auto !important;
+    min-height: 20px !important;
+
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+}
+
+
+/* =========================================================
+   TABLE WRAPPERS
+   ========================================================= */
+
+.pdf-export-mode .payslip-table,
+.pdf-export-mode .payslip-ytd {
+    margin-bottom: 8px !important;
+    overflow: visible !important;
+}
+
+.pdf-export-mode .payslip-table-wrapper {
+    overflow: visible !important;
+
+    height: auto !important;
+    max-height: none !important;
+}
+
+.pdf-export-mode .payslip-table-wrapper.rounded-xl {
+    border-radius: 4px !important;
+}
+
+/* =========================================================
+   COLORS / ROUNDED BOXES
+   ========================================================= */
+
+.pdf-export-mode .rounded-xl {
+    border-radius: 5px !important;
+}
 
 /* In your global CSS or App.css */
 /* 
