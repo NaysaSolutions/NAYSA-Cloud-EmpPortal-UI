@@ -37,6 +37,7 @@ const Navbar = () => {
 
   const isActive = (path) => location.pathname === path;
   const isApprover = String(user?.approver) === "1";
+  const isHr = ["1", "y", "yes", "true"].includes(String(user?.hrFlag ?? user?.hrflag ?? "").toLowerCase());
   const timekeepingChildren = [
     { path: "/timekeeping", label: "Timekeeping (In and Out)" },
     { path: "/timekeepingAdj", label: "Timekeeping (Adjustment)" },
@@ -78,6 +79,13 @@ const Navbar = () => {
     {
       label: "Leave",
       children: leaveChildren
+    },
+    {
+      label: "Employee Shift",
+      children: [
+        { path: "/employee-shift", label: isHr || isApprover ? "Employee Shift Setup" : "My Shift Schedule" },
+        ...(isApprover ? [{ path: "/employee-shift-approval", label: "Shift Change for Approval" }] : []),
+      ]
     },
     ...(user.approver !== "1"
       ? [{ path: "/official-business", label: "Official Business" }]

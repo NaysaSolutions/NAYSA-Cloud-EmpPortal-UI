@@ -28,6 +28,8 @@ import OvertimeReview from "./EMPLOYEE PORTAL/OvertimeReview";
 import OfficialBusiness from "./EMPLOYEE PORTAL/OfficialBusiness";
 import OfficialBusinessApproval from "./EMPLOYEE PORTAL/OfficialBusinessApproval";
 import OfficialBusinessReview from "./EMPLOYEE PORTAL/OBReview";
+import EmployeeShift from "./EMPLOYEE PORTAL/EmployeeShift";
+import EmployeeShiftApproval from "./EMPLOYEE PORTAL/EmployeeShiftApproval";
 import Register from "./NAYSA Cloud/Register";
 import ForgotPassword from "./Authentication/ForgotPassword";
 import ScrollToTop from "./components/ScrollToTop";
@@ -119,6 +121,8 @@ const App = () => {
             <Route path="/official-business" element={<ProtectedRoute><Layout><OfficialBusiness /></Layout></ProtectedRoute>} />
             <Route path="/OfficialBusinessApproval" element={<ProtectedRoute><Layout><OfficialBusinessApproval /></Layout></ProtectedRoute>} />
             <Route path="/OfficialBusinessReview" element={<ProtectedRoute><Layout><OfficialBusinessReview /></Layout></ProtectedRoute>} />
+            <Route path="/employee-shift" element={<ProtectedRoute><Layout><EmployeeShift /></Layout></ProtectedRoute>} />
+            <Route path="/employee-shift-approval" element={<ProtectedRoute><Layout><EmployeeShiftApproval /></Layout></ProtectedRoute>} />
 
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
