@@ -42,7 +42,7 @@ const OfficialBusiness = () => {
   const applicationsRequestRef = useRef(0);
 
   // Sorting
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [sortConfig, setSortConfig] = useState({ key: "fileDate", direction: "desc" });
 
   // View Mode
   const [viewMode, setViewMode] = useState("card"); // 'card' | 'accordion' | 'table'
@@ -92,35 +92,36 @@ const OfficialBusiness = () => {
 
   const getObStamp = (r) => r?.obStamp || r?.OB_STAMP || r?.ob_stamp || r?.stamp || r?.guid || null;
 
-  const sortData = (uiKey) => {
-    const key = FIELD_MAP[uiKey] || uiKey;
-    let direction = "asc";
-    if (sortConfig.key === key && sortConfig.direction === "asc") direction = "desc";
-    setSortConfig({ key, direction });
+  const sortRows = (rows, key = sortConfig.key, direction = sortConfig.direction) => {
+    if (!key) return rows;
 
-    const sorted = [...filteredApplications].sort((a, b) => {
+    return [...rows].sort((a, b) => {
       const av = a[key];
       const bv = b[key];
 
-      // datetime compare
-      if (key === "obDate" || key === "obStart" || key === "obEnd") {
+      if (["obDate", "obStart", "obEnd", "fileDate"].includes(key)) {
         const ad = dayjs(av).valueOf();
         const bd = dayjs(bv).valueOf();
-        return direction === "asc" ? ad - bd : bd - ad;
+        const safeAd = Number.isNaN(ad) ? 0 : ad;
+        const safeBd = Number.isNaN(bd) ? 0 : bd;
+        return direction === "asc" ? safeAd - safeBd : safeBd - safeAd;
       }
-      // numeric
       if (key === "obHrs") {
         const an = parseFloat(av ?? 0);
         const bn = parseFloat(bv ?? 0);
         return direction === "asc" ? an - bn : bn - an;
       }
-      // string
       return direction === "asc"
         ? String(av ?? "").localeCompare(String(bv ?? ""))
         : String(bv ?? "").localeCompare(String(av ?? ""));
     });
+  };
 
-    setFilteredApplications(sorted);
+  const sortData = (uiKey) => {
+    const key = FIELD_MAP[uiKey] || uiKey;
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") direction = "desc";
+    setSortConfig({ key, direction });
   };
 
   const handleSearchChange = (e, key) => {
@@ -252,9 +253,9 @@ const OfficialBusiness = () => {
       filtered = filtered.filter((row) => (row.obStatus || "") === searchFields.obStatus);
     }
 
-    setFilteredApplications(filtered);
+    setFilteredApplications(sortRows(filtered));
     setCurrentPage(1);
-  }, [searchFields, obApplications]);
+  }, [searchFields, obApplications, sortConfig]);
 
   // Status options from data
   const statusOptions = useMemo(() => {
@@ -380,6 +381,44 @@ const handleShiftDateChange = (value) => {
   if (hoursNum <= 0) {
     await Swal.fire({ icon: "warning", title: "Invalid Hours", text: "Total hours must be greater than 0." });
     return;
+  }
+
+  // An employee may have both a morning and afternoon OB on one date.  Check
+  // for an existing filing only to make the employee consciously confirm it.
+  try {
+    const duplicateResponse = await fetch(API_ENDPOINTS.fetchOfficialBusinessApplicationsHistory, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        EMP_NO: user.empNo,
+        START_DATE: applicationDate,
+        END_DATE: applicationDate,
+      }),
+    });
+    const duplicateResult = await duplicateResponse.json();
+    const rawRows = duplicateResult?.data?.[0]?.result;
+    const duplicateRows = rawRows
+      ? (Array.isArray(rawRows) ? rawRows : JSON.parse(rawRows || "[]"))
+      : [];
+    const sameDateFilings = duplicateRows.filter((row) =>
+      dayjs(normalize(row).obDate).format("YYYY-MM-DD") === applicationDate
+    );
+
+    if (sameDateFilings.length) {
+      const continueDuplicate = await Swal.fire({
+        icon: "warning",
+        title: "Existing Official Business Filing",
+        html: `You already have <b>${sameDateFilings.length}</b> Official Business filing(s) on <b>${dayjs(applicationDate).format("MM/DD/YYYY")}</b>.<br><br>Do you want to proceed with this additional filing?`,
+        showCancelButton: true,
+        confirmButtonText: "Proceed",
+        cancelButtonText: "Cancel",
+        confirmButtonColor: "#2563eb",
+      });
+      if (!continueDuplicate.isConfirmed) return;
+    }
+  } catch (duplicateError) {
+    // Do not block a valid filing when the advisory duplicate check is unavailable.
+    console.warn("Unable to check duplicate Official Business filings:", duplicateError);
   }
 
   // --- Display helpers ---

@@ -25,7 +25,7 @@ const Leave = () => {
   const [remarks, setRemarks] = useState("");
 
   // --- Sorting ---
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [sortConfig, setSortConfig] = useState({ key: "fileDate", direction: "desc" });
 
   // --- View Mode ---
   // 'card' | 'accordion' | 'table'
@@ -197,6 +197,35 @@ useEffect(() => {
     return Array.from(set).sort();
   }, [leaveApplications]);
 
+  const getFilingDate = (row) => {
+    const value = [
+      row?.fileDate,
+      row?.file_date,
+      row?.FILE_DATE,
+      row?.lvStamp,
+      row?.LV_STAMP,
+      row?.leaveStart,
+    ].find((item) => item != null && String(item).trim() !== "");
+    const parsed = dayjs(value);
+    return parsed.isValid() ? parsed.valueOf() : 0;
+  };
+
+  const sortLeaveRows = (rows, key, direction) => {
+    if (!key) return rows;
+    const multiplier = direction === "asc" ? 1 : -1;
+
+    return [...rows].sort((a, b) => {
+      if (key === "fileDate") return (getFilingDate(a) - getFilingDate(b)) * multiplier;
+      if (key === "leaveStart" || key === "leaveEnd") {
+        return (dayjs(a[key]).valueOf() - dayjs(b[key]).valueOf()) * multiplier;
+      }
+      if (key === "leaveDays") {
+        return (parseFloat(a.leaveDays ?? 0) - parseFloat(b.leaveDays ?? 0)) * multiplier;
+      }
+      return String(a[key] ?? "").localeCompare(String(b[key] ?? "")) * multiplier;
+    });
+  };
+
   // --- Filter application list whenever filters or data change ---
   useEffect(() => {
     let filtered = [...leaveApplications];
@@ -232,9 +261,9 @@ useEffect(() => {
       filtered = filtered.filter((r) => String(r.appRemarks ?? "").toLowerCase().includes(searchFields.appRemarks.toLowerCase()));
     }
 
-    setFilteredApplications(filtered);
+    setFilteredApplications(sortLeaveRows(filtered, sortConfig.key, sortConfig.direction));
     setCurrentPage(1);
-  }, [searchFields, leaveApplications]);
+  }, [searchFields, leaveApplications, sortConfig]);
 
   // --- Sorting ---
   const FIELD_MAP = {
@@ -252,24 +281,6 @@ useEffect(() => {
     let direction = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") direction = "desc";
     setSortConfig({ key, direction });
-
-    const sorted = [...filteredApplications].sort((a, b) => {
-      if (key === "leaveStart" || key === "leaveEnd") {
-        const av = dayjs(a[key]).valueOf();
-        const bv = dayjs(b[key]).valueOf();
-        return direction === "asc" ? av - bv : bv - av;
-      }
-      if (key === "leaveDays") {
-        const av = parseFloat(a.leaveDays ?? 0);
-        const bv = parseFloat(b.leaveDays ?? 0);
-        return direction === "asc" ? av - bv : bv - av;
-      }
-      const av = String(a[key] ?? "");
-      const bv = String(b[key] ?? "");
-      return direction === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-    });
-
-    setFilteredApplications(sorted);
   };
 
   const getSortIndicator = (uiKey) => {
@@ -446,6 +457,21 @@ const clampRequestToBalance = (days, hours) => {
     return;
   }
 
+  const selectedLeaveType = leaveTypes.find((type) => type.lvtype === leaveType);
+  const availableDays = Number(selectedLeaveType?.balance ?? leaveBalDays) || 0;
+  const availableHours = Number(
+    selectedLeaveType?.balancehrs ?? leaveBalHours,
+  ) || 0;
+
+  if (availableDays <= 0 && availableHours <= 0) {
+    await Swal.fire({
+      icon: "warning",
+      title: "No Leave Balance Available",
+      text: "You cannot file this leave because the available balance is 0.",
+    });
+    return;
+  }
+
   // --- Date validation ---
   const FMT = "YYYY-MM-DD";
   const start = dayjs(selectedStartDate, FMT, true);
@@ -458,6 +484,60 @@ const clampRequestToBalance = (days, hours) => {
       text: "End date cannot be earlier than start date."
     });
     return;
+  }
+
+  let duplicateLeaves = [];
+  try {
+    const duplicateResponse = await fetch(API_ENDPOINTS.fetchLeaveApplications, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        EMP_NO: user.empNo,
+        START_DATE: selectedStartDate,
+        END_DATE: selectedEndDate,
+      }),
+    });
+    const duplicatePayload = await duplicateResponse.json();
+    const rawRows =
+      duplicatePayload?.success && duplicatePayload.data?.length
+        ? duplicatePayload.data[0]?.result
+        : [];
+    const candidateRows = Array.isArray(rawRows)
+      ? rawRows
+      : JSON.parse(rawRows || "[]");
+
+    duplicateLeaves = candidateRows.filter((row) => {
+      const status = String(row?.leaveStatus ?? row?.leavestatus ?? "").trim().toLowerCase();
+      if (status === "cancelled") return false;
+
+      const existingStart = dayjs(row?.leaveStart ?? row?.leavestart ?? row?.LEAVE_START);
+      const existingEnd = dayjs(row?.leaveEnd ?? row?.leaveend ?? row?.LEAVE_END ?? existingStart);
+      return existingStart.isValid() && existingEnd.isValid() &&
+        !existingEnd.isBefore(start, "day") && !existingStart.isAfter(end, "day");
+    });
+  } catch (duplicateError) {
+    console.warn("Unable to check existing leave filings.", duplicateError);
+    duplicateLeaves = leaveApplications.filter((row) => {
+      const existingStart = dayjs(row?.leaveStart);
+      const existingEnd = dayjs(row?.leaveEnd || row?.leaveStart);
+      return existingStart.isValid() && existingEnd.isValid() &&
+        !existingEnd.isBefore(start, "day") && !existingStart.isAfter(end, "day");
+    });
+  }
+
+  if (duplicateLeaves.length) {
+    const proceedWithDuplicate = await Swal.fire({
+      icon: "warning",
+      title: "Existing Leave Filing Found",
+      html: `You already have <b>${duplicateLeaves.length}</b> leave filing(s) overlapping the selected date(s).<br><br>Do you want to proceed?`,
+      showCancelButton: true,
+      confirmButtonText: "Proceed",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#2563eb",
+      cancelButtonColor: "#6b7280",
+    });
+
+    if (!proceedWithDuplicate.isConfirmed) return;
   }
 
   // --- Build payload ---

@@ -52,12 +52,31 @@ const OvertimeApplication = () => {
     appRemarks: "",
     otStatus: "",
   });
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
+  const [sortConfig, setSortConfig] = useState({ key: "fileDate", direction: "desc" });
   const FIELD_MAP = { date: "otDate", durationHours: "otHrs", type: "otType", remark: "otRemarks", appRemarks: "appRemarks", status: "otStatus" };
 
   // helpers
   const getOvertimeTypeLabel = (type) => overtimeTypeMap[type] || type;
   const hasId = (r) => r?.otId ?? r?.id ?? r?.requestId ?? null;
+  const getRecordDate = (record, keys) => {
+    const value = keys.map((key) => record?.[key]).find((item) => item != null && String(item).trim() !== "");
+    const parsed = dayjs(value);
+    return parsed.isValid() ? parsed.format("YYYY-MM-DD") : "";
+  };
+  const getFilingDate = (record) =>
+    getRecordDate(record, [
+      "fileDate", "file_date", "FILE_DATE", "otFileDate", "OT_FILE_DATE", "otStampDate", "OT_STAMP_DATE",
+    ]) || getRecordDate(record, ["otDate", "OT_DATE"]);
+  const hasDuplicateOtDate = (records, date) =>
+    records.some((record) => {
+      const status = String(record?.otStatus ?? record?.OT_STATUS ?? "").trim().toLowerCase();
+      if (["cancelled", "disapproved", "rejected"].includes(status)) return false;
+
+      return [
+        getRecordDate(record, ["shiftDate", "shift_date", "SHIFT_DATE", "shiftdate", "SHIFTDATE"]),
+        getRecordDate(record, ["otDate", "OT_DATE", "ot_date", "OTDATE"]),
+      ].includes(date);
+    });
 
   const isoToUS = (iso) => {
     if (!iso) return "";
@@ -183,6 +202,7 @@ const OvertimeApplication = () => {
       const dir = sortConfig.direction === "asc" ? 1 : -1;
       rows.sort((a, b) => {
         if (key === "otDate") return (dayjs(a.otDate).valueOf() - dayjs(b.otDate).valueOf()) * dir;
+        if (key === "fileDate") return (dayjs(getFilingDate(a)).valueOf() - dayjs(getFilingDate(b)).valueOf()) * dir;
         if (key === "otHrs") return ((+a.otHrs || 0) - (+b.otHrs || 0)) * dir;
         return String(a[key] ?? "").localeCompare(String(b[key] ?? "")) * dir;
       });
@@ -233,6 +253,40 @@ const handleSubmit = async () => {
   const d = dayjs(otDate, FMT, true);
   if (!d.isValid()) {
     await Swal.fire({ icon: "warning", title: "Invalid Date", text: "Please enter a valid OT date (YYYY-MM-DD)." });
+    return;
+  }
+
+  try {
+    const duplicateResponse = await fetch(API_ENDPOINTS.fetchOvertimeApplications, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        EMP_NO: user.empNo,
+        START_DATE: otDate,
+        END_DATE: otDate,
+      }),
+    });
+    const duplicatePayload = await duplicateResponse.json();
+    const duplicateRows =
+      duplicatePayload?.success && duplicatePayload.data?.length
+        ? JSON.parse(duplicatePayload.data[0]?.result || "[]")
+        : overtimeApplications;
+
+    if (hasDuplicateOtDate(duplicateRows, otDate)) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Duplicate Overtime Filing",
+        text: `An active overtime filing already exists for ${d.format("MM/DD/YYYY")}.`,
+      });
+      return;
+    }
+  } catch (duplicateError) {
+    console.error("Unable to validate duplicate overtime filing.", duplicateError);
+    await Swal.fire({
+      icon: "error",
+      title: "Validation Unavailable",
+      text: "Unable to verify existing overtime filings. Please try again.",
+    });
     return;
   }
 
