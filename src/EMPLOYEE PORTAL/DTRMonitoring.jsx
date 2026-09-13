@@ -1172,6 +1172,8 @@ const normalizeDtrRow = (
     "timeOut",
     "TIMEOUT",
   ]);
+  const hasIncompleteDtr = Boolean(normalizeText(timeIn)) !== Boolean(normalizeText(timeOut));
+  const displaySource = hasIncompleteDtr ? "Incomplete DTR" : source;
   const workedHours = parseHours(
     getValue(row, ["worked_hrs", "WORKED_HRS", "workedHrs", "WORKED_HOURS"], 0),
   );
@@ -1331,8 +1333,8 @@ const normalizeDtrRow = (
   );
 
   return {
-    __id: `${empNo || "employee"}-${date || "date"}-${source || "source"}-${index}`,
-    source,
+    __id: `${empNo || "employee"}-${date || "date"}-${displaySource || "source"}-${index}`,
+    source: displaySource,
     empNo,
     empName,
     branchName,
@@ -1361,6 +1363,7 @@ const normalizeDtrRow = (
 const getSourceBadgeClass = (source) => {
   const value = safeLower(source);
   if (value.includes("no dtr")) return "bg-red-50 text-red-700 ring-red-200";
+  if (value.includes("incomplete dtr")) return "bg-amber-50 text-amber-700 ring-amber-200";
   if (value.includes("official")) return "bg-blue-50 text-blue-700 ring-blue-200";
   if (value.includes("leave")) return "bg-violet-50 text-violet-700 ring-violet-200";
   return "bg-emerald-50 text-emerald-700 ring-emerald-200";
@@ -1869,7 +1872,7 @@ export default function DTRMonitoring() {
   }, [normalizedRows, currentEmpNo, currentEmpName]);
 
   const sourceOptions = useMemo(() => {
-    const values = new Set(["Official Business"]);
+    const values = new Set(["Official Business", "Incomplete DTR"]);
     normalizedRows.forEach((row) => {
       if (row.source) values.add(row.source);
     });
@@ -2487,7 +2490,7 @@ if (requestId === fetchRequestIdRef.current && nextSignature !== recordsSignatur
   );
 
   const renderTableView = () => (
-    <div className="min-w-0 w-full max-w-full overflow-x-auto max-h-[460px] rounded-xl border border-gray-200">
+    <div className="min-w-0 w-full max-w-full overflow-x-auto max-h-[480px] rounded-xl border border-gray-200">
       <table className="w-full min-w-[1280px] border-separate border-spacing-0 text-left">
         <thead className="sticky top-0 z-30 bg-blue-800 shadow-sm">
           <tr>

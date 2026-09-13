@@ -956,49 +956,49 @@ const Dashboard = () => {
     {
       code: "TK",
       label: "Timekeeping",
-      description: "View attendance and rendered hours",
+      description: "View attendance",
       route: "/timekeeping",
       enabled: portalAccess.timekeeping,
     },
     {
       code: "LV",
       label: "File Leave",
-      description: "Create a leave application",
+      description: "Request Leave Application",
       route: "/leave",
       enabled: portalAccess.leave,
     },
     {
       code: "OT",
       label: "File Overtime",
-      description: "Submit an overtime request",
+      description: "Request OT Application",
       route: "/overtime",
       enabled: portalAccess.overtime,
     },
     {
       code: "OB",
       label: "Official Business",
-      description: "Submit an OB application",
+      description: "Request OB Application",
       route: "/official-business",
       enabled: portalAccess.officialBusiness,
     },
     {
       code: "DTR",
       label: "DTR Adjustment",
-      description: "Request a DTR correction",
+      description: "Request DTR correction",
       route: "/timekeepingAdj",
       enabled: portalAccess.dtr,
     },
     {
       code: "SCH",
       label: "Change Schedule",
-      description: "Request a shift or schedule change",
+      description: "Request change shift",
       route: "/employee-shift",
       enabled: true,
     },
     {
       code: "OFF",
       label: "Offset",
-      description: "File an offset application",
+      description: "Request an offset application",
       route: "/offsetApplication",
       enabled: portalAccess.offset,
     },
@@ -1008,7 +1008,7 @@ const Dashboard = () => {
     const hour = currentDate?.hour();
     if (!Number.isFinite(hour)) return "Welcome back ! ";
     if (hour < 12) return "Good morning! ";
-    if (hour < 18) return "Good afternoon! ";
+    if (hour < 18) return "Good afternoon!";
     return "Good evening! ";
   })();
 
@@ -1175,7 +1175,7 @@ const Dashboard = () => {
                 {formatDashboardNumber(personalDashboardInsights.averageHours, 1)}
                 <span className="ml-1 text-xs font-bold text-slate-400">hrs</span>
               </p>
-              <span className="rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">
+              <span className="rounded-xl bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">
                 Last {personalDashboardInsights.recentRecordCount || 0}
               </span>
             </div>
@@ -1259,7 +1259,7 @@ const Dashboard = () => {
                   className="group rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-blue-800 px-2 text-[10px] font-extrabold text-white shadow-sm">
+                    <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-xl bg-blue-800 px-2 text-[10px] font-extrabold text-white shadow-sm">
                       {action.code}
                     </span>
                     <span className="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-700">
@@ -1307,7 +1307,7 @@ const Dashboard = () => {
                         {card.label.replace(" Applications", "")}
                       </span>
                     </span>
-                    <span className={`inline-flex min-w-8 items-center justify-center rounded-lg px-2 py-1 text-sm font-extrabold tabular-nums ${
+                    <span className={`inline-flex min-w-8 items-center justify-center rounded-xl px-2 py-1 text-sm font-extrabold tabular-nums ${
                       toDashboardNumber(card.count) > 0
                         ? "bg-amber-100 text-amber-800"
                         : "bg-slate-100 text-slate-500"
@@ -1348,13 +1348,13 @@ const Dashboard = () => {
                 />
               </div>
               <div className="mt-2 grid grid-cols-3 gap-2 text-center text-[10px] font-semibold">
-                <span className="rounded-lg bg-emerald-50 px-2 py-1 text-emerald-700">
+                <span className="rounded-xl bg-emerald-50 px-2 py-1 text-emerald-700">
                   {unifiedRequestStats.approved} Approved
                 </span>
-                <span className="rounded-lg bg-amber-50 px-2 py-1 text-amber-700">
+                <span className="rounded-xl bg-amber-50 px-2 py-1 text-amber-700">
                   {unifiedRequestStats.pending} Pending
                 </span>
-                <span className="rounded-lg bg-rose-50 px-2 py-1 text-rose-700">
+                <span className="rounded-xl bg-rose-50 px-2 py-1 text-rose-700">
                   {unifiedRequestStats.rejected} Rejected
                 </span>
               </div>
@@ -1501,23 +1501,23 @@ const Dashboard = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="grid auto-rows-fr grid-cols-1 items-stretch gap-2 sm:grid-cols-2">
                   {approvalSummaryCards.map((card) => (
                     <button
                       key={card.code}
                       type="button"
                       onClick={() => navigate(card.route)}
-                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-left transition hover:border-blue-300 hover:shadow-sm"
+                      className="flex h-full min-h-16 w-full items-center justify-between gap-3 rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-left transition hover:border-blue-300 hover:shadow-sm"
                     >
                       <span className="flex min-w-0 items-center gap-2">
-                        <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-blue-800 px-1.5 text-[9px] font-extrabold text-white">
+                        <span className="inline-flex h-9 min-w-9 items-center justify-center rounded-xl bg-blue-800 px-1.5 text-[9px] font-extrabold text-white">
                           {card.code}
                         </span>
                         <span className="truncate text-[11px] font-bold text-slate-700" title={card.label}>
                           {card.label.replace(" for Approval", "")}
                         </span>
                       </span>
-                      <span className={`inline-flex min-w-8 items-center justify-center rounded-lg px-2 py-1 text-sm font-extrabold tabular-nums ${
+                      <span className={`inline-flex min-w-8 items-center justify-center rounded-xl px-2 py-1 text-sm font-extrabold tabular-nums ${
                         toDashboardNumber(card.count) > 0
                           ? "bg-amber-100 text-amber-800"
                           : "bg-slate-100 text-slate-500"
@@ -1744,7 +1744,7 @@ const Dashboard = () => {
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-blue-800"
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-blue-800"
               aria-label="Previous month"
             >
               ◀
@@ -1755,7 +1755,7 @@ const Dashboard = () => {
             <button
               type="button"
               onClick={handleNextMonth}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-blue-800"
+              className="flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-blue-800"
               aria-label="Next month"
             >
               ▶
