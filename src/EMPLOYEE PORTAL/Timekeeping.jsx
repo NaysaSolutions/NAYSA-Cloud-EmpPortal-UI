@@ -2013,7 +2013,7 @@ let reverseGeocodePromise = null;
         } else {
           showErrorToast(
             "Location Error",
-            "Unable to get an accurate location. Please enable location services and try again."
+            "Unable to verify your location. Please ensure that location services are enabled and that you have a stable internet connection, then try again."
           );
           return;
         }
@@ -2066,7 +2066,7 @@ let reverseGeocodePromise = null;
                 {Math.round(locationCheck.accuracy ?? 0)} meters
               </p>
               <p>
-                <span className="font-semibold">Phone GPS:</span>{" "}
+                <span className="font-semibold">Device GPS:</span>{" "}
                 {userCoords?.latitude}, {userCoords?.longitude}
               </p>
               <p>
