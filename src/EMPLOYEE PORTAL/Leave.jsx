@@ -928,7 +928,7 @@ const getLeaveStamp = (row) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
           
           <div className="flex flex-col">
-            <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance (days)</span>
+            <span className="block mb-1 text-red-600 font-semibold">Available Balance (days)</span>
             <input
               type="number"
               className="w-full p-2 border rounded-xl text-red-600 font-semibold"
@@ -940,7 +940,7 @@ const getLeaveStamp = (row) => {
             />
           </div>
           <div className="flex flex-col">
-            <span className="block font-semibold mb-1 text-red-600 font-semibold">Available Balance (hrs)</span>
+            <span className="block mb-1 text-red-600 font-semibold">Available Balance (hrs)</span>
             <input
               type="number"
               className="w-full p-2 border rounded-xl text-red-600 font-semibold"

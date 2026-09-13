@@ -12,6 +12,41 @@ const resultRows = (result) => {
   if (Array.isArray(raw)) return raw;
   try { return JSON.parse(raw); } catch { return []; }
 };
+
+const isValidDateValue = (value) => {
+  if (!value) return false;
+
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+         dayjs(value).isValid();
+};
+
+const readJsonResponse = async (response, endpointName) => {
+  const body = await response.text();
+
+  let result = null;
+
+  try {
+    result = body ? JSON.parse(body) : null;
+  } catch {
+    result = null;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      result?.message ||
+      `${endpointName} failed (${response.status}).`
+    );
+  }
+
+  if (!result) {
+    throw new Error(
+      `${endpointName} returned invalid JSON.`
+    );
+  }
+
+  return result;
+};
+
 const isEnabled = (value) => ["1", "y", "yes", "true"].includes(String(value ?? "").trim().toLowerCase());
 const hasHrAccess = (user) => isEnabled(user?.hrFlag ?? user?.hrflag);
 const hasApproverAccess = (user) => isEnabled(user?.approver);
@@ -81,33 +116,145 @@ export default function EmployeeShift() {
   const [collapsedGroups, setCollapsedGroups] = useState([]);
   const [scheduleFilters, setScheduleFilters] = useState({ restDay: "all", shiftType: "all", shiftCode: "all", branch: "all", department: "all", payrollGroup: "all", employeeStatus: "all" });
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+
+  const handleFromChange = (event) => {
+    const nextFrom = event.target.value;
+
+    setFrom(nextFrom);
+
+    /*
+    * If input is temporarily blank while being edited,
+    * don't modify To date.
+    */
+    if (!nextFrom) {
+      return;
+    }
+
+    if (
+      to &&
+      dayjs(to).isValid() &&
+      dayjs(to).isBefore(dayjs(nextFrom), "day")
+    ) {
+      setTo(nextFrom);
+    }
+  };
  
   const load = async () => {
+    /*
+    * Do NOT call API while the user is still editing
+    * either date input.
+    */
     if (!user?.empNo) return;
+
+    if (!isValidDateValue(from) || !isValidDateValue(to)) {
+      return;
+    }
+
+    if (dayjs(to).isBefore(dayjs(from), "day")) {
+      return;
+    }
+
     setLoading(true);
+
     try {
+      const payload = {
+        EMP_NO: String(user.empNo).trim(),
+        START_DATE: from,
+        END_DATE: to,
+        VIEW: scheduleView,
+        HR_FLAG: hrAccess ? "Y" : "N",
+        APPROVER: approverAccess ? "Y" : "N",
+      };
+
+      console.log("Employee Shift Request:", payload);
+
       const [scheduleResponse, shiftResponse] = await Promise.all([
         fetch(API_ENDPOINTS.employeeShifts, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            EMP_NO: user.empNo,
-            START_DATE: from,
-            END_DATE: to,
-            VIEW: scheduleView,
-            HR_FLAG: hrAccess ? "Y" : "N",
-            APPROVER: approverAccess ? "Y" : "N"
-          })
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify(payload),
         }),
-        fetch(API_ENDPOINTS.shiftCodes, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }),
+
+        fetch(API_ENDPOINTS.shiftCodes, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: "{}",
+        }),
       ]);
-      const [scheduleResult, shiftResult] = await Promise.all([scheduleResponse.json(), shiftResponse.json()]);
-      setRows(resultRows(scheduleResult)); setShifts(resultRows(shiftResult));
-    } catch (error) { console.error(error); Swal.fire("Unable to load shifts", "Please try again.", "error"); }
-    finally { setLoading(false); }
+
+      const [scheduleResult, shiftResult] = await Promise.all([
+        readJsonResponse(
+          scheduleResponse,
+          "Employee shifts"
+        ),
+
+        readJsonResponse(
+          shiftResponse,
+          "Shift codes"
+        ),
+      ]);
+
+      console.log(
+        "Employee Shift Response:",
+        scheduleResult
+      );
+
+      setRows(
+        Array.isArray(scheduleResult?.data)
+          ? scheduleResult.data
+          : []
+      );
+
+      setShifts(
+        Array.isArray(shiftResult?.data)
+          ? shiftResult.data
+          : []
+      );
+
+    } catch (error) {
+      console.error(
+        "Unable to load employee shifts:",
+        error
+      );
+
+      Swal.fire(
+        "Unable to load shifts",
+        error.message || "Please try again.",
+        "error"
+      );
+
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(() => { load(); }, [user?.empNo, from, to, scheduleView]); // eslint-disable-line react-hooks/exhaustive-deps
- 
+
+
+  useEffect(() => {
+    if (!user?.empNo) return;
+
+    if (!isValidDateValue(from)) return;
+    if (!isValidDateValue(to)) return;
+
+    if (dayjs(to).isBefore(dayjs(from), "day")) {
+      return;
+    }
+
+    load();
+
+  }, [
+    user?.empNo,
+    scheduleView,
+    hrAccess,
+    approverAccess,
+  ]); // eslint-disable-line react-hooks/exhaustive-deps
+
+
   const setPreset = (preset) => {
     const base = dayjs();
     const target = preset === "prev" ? base.subtract(1, "month") : preset === "next" ? base.add(1, "month") : base;
@@ -440,7 +587,7 @@ export default function EmployeeShift() {
         <div className="flex w-full flex-wrap items-end gap-3 xl:w-auto xl:gap-4">
           <label className="w-[calc(50%-0.375rem)] text-sm text-gray-600 xl:w-40">
             <span className="mb-1 block text-xs text-gray-500">From</span>
-            <DateInput value={from} onChange={(e) => setFrom(e.target.value)} />
+            <DateInput value={from} onChange={handleFromChange} />
           </label>
           <label className="w-[calc(50%-0.375rem)] text-sm text-gray-600 xl:w-40">
             <span className="mb-1 block text-xs text-gray-500">To</span>
@@ -455,8 +602,23 @@ export default function EmployeeShift() {
             ))}
           </div>
         </div>
-          <button className="flex h-10 w-[calc(100%-0.5rem)] items-center justify-center gap-1.5 rounded-xl bg-blue-800 px-3 text-sm font-medium text-white hover:bg-blue-900 xl:w-auto xl:px-4" onClick={load} disabled={loading}>
-            <Icon.Refresh className={`h-4 w-5 ${loading ? "animate-spin" : ""}`} />
+          <button
+            type="button"
+            className="flex h-10 w-[calc(100%-0.5rem)] items-center justify-center gap-1.5 rounded-xl bg-blue-800 px-3 text-sm font-medium text-white hover:bg-blue-900 disabled:cursor-not-allowed disabled:opacity-50 xl:w-auto xl:px-4"
+            onClick={load}
+            disabled={
+              loading ||
+              !isValidDateValue(from) ||
+              !isValidDateValue(to) ||
+              dayjs(to).isBefore(dayjs(from), "day")
+            }
+          >
+            <Icon.Refresh
+              className={`h-4 w-5 ${
+                loading ? "animate-spin" : ""
+              }`}
+            />
+
             {loading ? "Loading" : "Refresh"}
           </button>
  

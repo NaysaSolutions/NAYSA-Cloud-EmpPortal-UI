@@ -1,0 +1,16 @@
+{
+  "name": "NAYSA Employee Portal",
+  "short_name": "Employee Portal",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2445b8",
+  "theme_color": "#1e40af",
+  "icons": [
+    {
+      "src": "/icons/naysa-portal-icon.png",
+      "type": "image/png",
+      "sizes": "1254x1254",
+      "purpose": "any maskable"
+    }
+  ]
+}
