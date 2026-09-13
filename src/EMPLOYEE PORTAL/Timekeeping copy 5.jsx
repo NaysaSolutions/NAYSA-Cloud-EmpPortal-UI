@@ -49,8 +49,7 @@ const LOCATION_CACHE_MAX_AGE_MS = 120000;
 const LOCATION_QUICK_TIMEOUT_MS = 3500;
 const LOCATION_WATCH_TIMEOUT_MS = 8000;
 const SERVER_TIME_SYNC_INTERVAL_MS = 300000;
-const EARLY_TIME_IN_WINDOW_MINUTES = 180;
-const MINIMUM_NEXT_SHIFT_GAP_HOURS = 12;
+const EARLY_TIME_IN_WINDOW_MINUTES = 120;
 
 const parseServerDateTime = (value) => {
   if (value == null || value === "") return null;
@@ -519,7 +518,6 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   const [records, setRecords] = useState([]);
   const [todayRecord, setTodayRecord] = useState(null);
   const [timeOutTargetPrompt, setTimeOutTargetPrompt] = useState(null);
-  const [timeInRecoveryPrompt, setTimeInRecoveryPrompt] = useState(null);
 
   const [capturing, setCapturing] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -1307,25 +1305,6 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
       : null;
   }, []);
 
-  const getRecordAttendanceId = useCallback((record) => {
-    const value = getFirstNonBlankValue(record, [
-      "attendance_id",
-      "attendanceId",
-      "ATTENDANCE_ID",
-      "dtr_id",
-      "dtrId",
-      "DTR_ID",
-    ]);
-
-    return value || null;
-  }, []);
-
-  const getRecordSessionKey = useCallback(
-    (record) =>
-      getRecordAttendanceId(record) || getNormalizedRecordDate(record) || "unknown",
-    [getNormalizedRecordDate, getRecordAttendanceId]
-  );
-
   const isValueBlank = useCallback((value) => {
     return value == null || String(value).trim() === "";
   }, []);
@@ -1740,6 +1719,15 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
             isValueBlank(getDtrActualDateTimeValue(record, "timeOut"))
           );
         })
+        .filter((record) => {
+          const recordDate = getNormalizedRecordDate(record);
+          const shiftTimeIn =
+            getRecordShiftTimeInDateTime(record) ||
+            getShiftTimeInDateTime(recordDate, getEmployeeShiftTimeIn());
+          const nextShiftTimeIn = shiftTimeIn?.add(1, "day");
+
+          return !nextShiftTimeIn || now.isBefore(nextShiftTimeIn);
+        })
         .sort((a, b) => {
           const dateA = getNormalizedRecordDate(a) || "";
           const dateB = getNormalizedRecordDate(b) || "";
@@ -1762,100 +1750,6 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
     () => getOpenPreviousTimekeepingRecord(records, todayRecord),
     [getOpenPreviousTimekeepingRecord, records, todayRecord]
   );
-
-  // The calendar-day record is used only when starting a new shift. The
-  // active record may still be yesterday's record for an overnight shift.
-  const currentCalendarDate = getTrustedPhilippineNow()?.format("YYYY-MM-DD");
-  const currentCalendarRecord = useMemo(
-    () =>
-      records.find(
-        (record) => getNormalizedRecordDate(record) === currentCalendarDate
-      ) || null,
-    [currentCalendarDate, getNormalizedRecordDate, records]
-  );
-
-  // A previous shift can remain open on the same calendar date (for example,
-  // an 8:00 AM shift that was not timed out before an 8:00 PM shift). Treat
-  // that stale open record as recoverable instead of locking the next Time In.
-  const staleCurrentOpenRecord = useMemo(() => {
-    if (!currentCalendarRecord) return null;
-
-    const hasTimeIn = !isValueBlank(
-      getDtrActualDateTimeValue(currentCalendarRecord, "timeIn")
-    );
-    const hasTimeOut = !isValueBlank(
-      getDtrActualDateTimeValue(currentCalendarRecord, "timeOut")
-    );
-
-    if (!hasTimeIn || hasTimeOut) return null;
-
-    const now = getTrustedPhilippineNow();
-    const recordDate = getNormalizedRecordDate(currentCalendarRecord);
-    const shiftStart =
-      getRecordShiftTimeInDateTime(currentCalendarRecord) ||
-      getShiftTimeInDateTime(recordDate, getEmployeeShiftTimeIn());
-
-    return now && shiftStart && now.diff(shiftStart, "hour", true) >= MINIMUM_NEXT_SHIFT_GAP_HOURS
-      ? currentCalendarRecord
-      : null;
-  }, [
-    currentCalendarRecord,
-    getDtrActualDateTimeValue,
-    getEmployeeShiftTimeIn,
-    getNormalizedRecordDate,
-    getRecordShiftTimeInDateTime,
-    getShiftTimeInDateTime,
-    getTrustedPhilippineNow,
-    isValueBlank,
-  ]);
-
-  const unresolvedPreviousShift = previousOpenRecord || staleCurrentOpenRecord;
-
-  const canStartNewScheduledShift = useMemo(() => {
-    if (!currentCalendarRecord || !currentCalendarDate) return false;
-
-    const currentTimeIn = getDtrActualDateTimeValue(
-      currentCalendarRecord,
-      "timeIn"
-    );
-    if (isValueBlank(currentTimeIn)) return false;
-
-    const shiftStart =
-      getShiftTimeInDateTime(
-        currentCalendarDate,
-        getRecordShiftTimeIn(currentCalendarRecord) || getEmployeeShiftTimeIn()
-      );
-    const now = getTrustedPhilippineNow();
-
-    if (!shiftStart || !now) return false;
-
-    const earlyClockInStart = shiftStart.subtract(
-      EARLY_TIME_IN_WINDOW_MINUTES,
-      "minute"
-    );
-    if (now.isBefore(earlyClockInStart)) return false;
-
-    const timeInDate =
-      getDtrActualDateValue(currentCalendarRecord, "timeIn") ||
-      currentCalendarDate;
-    const parsedTimeIn = parseDtrDateTime(timeInDate, currentTimeIn);
-
-    // The existing record belongs to an earlier shift if its Time In was
-    // before the current shift's early-clock-in window. This permits a second
-    // shift on the same calendar date without treating it as a duplicate.
-    return !parsedTimeIn || parsedTimeIn.isBefore(earlyClockInStart);
-  }, [
-    currentCalendarDate,
-    currentCalendarRecord,
-    getDtrActualDateTimeValue,
-    getDtrActualDateValue,
-    getEmployeeShiftTimeIn,
-    getRecordShiftTimeIn,
-    getShiftTimeInDateTime,
-    getTrustedPhilippineNow,
-    isValueBlank,
-    parseDtrDateTime,
-  ]);
 
   const applyPendingTimekeepingImages = useCallback(
     (nextRecords) => {
@@ -1883,21 +1777,20 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
 
       return nextRecords.map((record) => {
         const recordDate = getNormalizedRecordDate(record);
-        const recordSessionKey = getRecordSessionKey(record);
 
         if (!recordDate) return record;
 
         const timeInImage = pendingTimekeepingImagesRef.current.get(
-          `${recordSessionKey}:TIME IN`
+          `${recordDate}:TIME IN`
         );
         const breakInImage = pendingTimekeepingImagesRef.current.get(
-          `${recordSessionKey}:BREAK IN`
+          `${recordDate}:BREAK IN`
         );
         const breakOutImage = pendingTimekeepingImagesRef.current.get(
-          `${recordSessionKey}:BREAK OUT`
+          `${recordDate}:BREAK OUT`
         );
         const timeOutImage = pendingTimekeepingImagesRef.current.get(
-          `${recordSessionKey}:TIME OUT`
+          `${recordDate}:TIME OUT`
         );
 
         if (!timeInImage && !breakInImage && !breakOutImage && !timeOutImage) {
@@ -1913,18 +1806,15 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
         };
       });
     },
-    [getNormalizedRecordDate, getRecordSessionKey]
+    [getNormalizedRecordDate]
   );
 
   const fetchDTRRecords = useCallback(async () => {
     if (!user?.empNo || !startDate || !endDate) return;
 
     try {
-      // Include a small look-back window so a night shift that started on the
-      // last day of the previous month remains available after midnight.
-      const queryStartDate = dayjs(startDate).subtract(2, "day").format("YYYY-MM-DD");
       const response = await axios.get(
-        `${API_ENDPOINTS.getDTRRecords}/${user.empNo}/${queryStartDate}/${endDate}`
+        `${API_ENDPOINTS.getDTRRecords}/${user.empNo}/${startDate}/${endDate}`
       );
 
       const payload =
@@ -2021,29 +1911,6 @@ const showConfirmToast = ({
   });
 };
 
-  const handleTimeInClick = () => {
-    const currentTimeInExists =
-      currentCalendarRecord &&
-      !isValueBlank(getDtrActualDateTimeValue(currentCalendarRecord, "timeIn"));
-
-    if (
-      currentTimeInExists &&
-      !staleCurrentOpenRecord &&
-      !canStartNewScheduledShift
-    ) {
-      return;
-    }
-
-    if (unresolvedPreviousShift) {
-      setTimeInRecoveryPrompt({ previousRecord: unresolvedPreviousShift });
-      return;
-    }
-
-    handleTimeEvent("TIME IN", null, {
-      startNewSession: Boolean(canStartNewScheduledShift),
-    });
-  };
-
   const handleTimeOutClick = () => {
     const hasCurrentTimeIn =
       todayRecord &&
@@ -2063,11 +1930,7 @@ const showConfirmToast = ({
     handleTimeEvent("TIME OUT", hasCurrentTimeIn ? todayRecord : previousOpenRecord);
   };
 
-  const handleTimeEvent = async (
-    type,
-    targetRecord = null,
-    { startNewSession = false } = {}
-  ) => {
+  const handleTimeEvent = async (type, targetRecord = null) => {
   if (isProcessingTimeEventRef.current) {
     console.warn("Duplicate time event ignored:", type);
     return;
@@ -2100,41 +1963,9 @@ const showConfirmToast = ({
 
   try {
     const eventRecord =
-      startNewSession
-        ? null
-        : targetRecord ||
-          (type === "TIME IN"
-            ? currentCalendarRecord
-            : todayRecord || previousOpenRecord);
-
-    if (type === "TIME IN" && eventRecord &&
-      !isValueBlank(getDtrActualDateTimeValue(eventRecord, "timeIn"))) {
-      showWarningToast("Already Timed In", "This shift already has a Time In record.");
-      return;
-    }
-
-    if ((type === "BREAK IN" || type === "BREAK OUT") &&
-      (!eventRecord || isValueBlank(getDtrActualDateTimeValue(eventRecord, "timeIn")))) {
-      showWarningToast("Break Unavailable", "Time In must be recorded before starting a break.");
-      return;
-    }
-
-    if (type === "BREAK IN" && !isValueBlank(getFirstNonBlankValue(eventRecord, ["break_in", "breakIn"]))) {
-      showWarningToast("Break Already Recorded", "Break In has already been recorded for this shift.");
-      return;
-    }
-
-    if (type === "BREAK OUT" && !isValueBlank(getFirstNonBlankValue(eventRecord, ["break_in", "breakIn"]))) {
-      // Continue only when Break In exists; the button remains usable after midnight.
-    } else if (type === "BREAK OUT") {
-      showWarningToast("Break Out Unavailable", "Break In must be recorded first.");
-      return;
-    }
-
-    if (type === "BREAK OUT" && !isValueBlank(getFirstNonBlankValue(eventRecord, ["break_out", "breakOut"]))) {
-      showWarningToast("Break Already Recorded", "Break Out has already been recorded for this shift.");
-      return;
-    }
+      type === "TIME OUT"
+        ? targetRecord || todayRecord || previousOpenRecord
+        : todayRecord;
 
     if (
       type === "TIME OUT" &&
@@ -2310,18 +2141,10 @@ capturedImageInfo = await captureImageProcess(type);
 
     const currentTime = syncedNow.format("HH:mm:ss");
     const currentDateStr = syncedNow.format("YYYY-MM-DD");
-    // Every event belongs to the selected shift date. This is what keeps
-    // overnight Break In/Out and Time Out attached to Aug 31 when recorded
-    // after midnight on Sep 1 (or across any month/year boundary).
     const eventDateStr =
-      getNormalizedRecordDate(eventRecord) || currentDateStr;
-    const attendanceId = startNewSession
-      ? null
-      : getRecordAttendanceId(eventRecord);
-    const clientRequestId =
-      typeof crypto !== "undefined" && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `${user.empNo}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      type === "TIME OUT"
+        ? getNormalizedRecordDate(eventRecord) || currentDateStr
+        : currentDateStr;
     const displayTime = syncedNow.format("hh:mm:ss A");
 
     let timeInImageIdToSend = null;
@@ -2363,15 +2186,10 @@ capturedImageInfo = await captureImageProcess(type);
 
     const eventData = [
       {
+        empNo: user.empNo,
+        detail: {
           empNo: user.empNo,
-          detail: {
-            empNo: user.empNo,
-            eventType: type,
-            date: eventDateStr,
-            shiftDate: eventDateStr,
-            attendanceId,
-            startNewSession,
-            clientRequestId,
+          date: eventDateStr,
 
           timeIn: type === "TIME IN" ? currentTime : null,
           timeOut: type === "TIME OUT" ? currentTime : null,
@@ -2415,12 +2233,8 @@ capturedImageInfo = await captureImageProcess(type);
     const response = await axios.post(API_ENDPOINTS.upsertTimeIn, eventData);
 
     if (response.data.status === "success") {
-      const savedAttendanceId =
-        response.data.attendanceId || response.data.attendance_id || attendanceId;
-      const imageSessionKey = savedAttendanceId || eventDateStr;
-
       if (capturedImageInfo) {
-        pendingTimekeepingImagesRef.current.set(`${imageSessionKey}:${type}`, {
+        pendingTimekeepingImagesRef.current.set(`${eventDateStr}:${type}`, {
           id: capturedImageInfo.id,
           path: capturedImageInfo.path,
           previewUrl: capturedImageInfo.previewUrl,
@@ -2430,12 +2244,7 @@ capturedImageInfo = await captureImageProcess(type);
       const applySavedEventToRecord = (record) => {
         const recordDate = getNormalizedRecordDate(record);
 
-        const recordAttendanceId = getRecordAttendanceId(record);
-        const matchesAttendance = attendanceId && recordAttendanceId
-          ? String(recordAttendanceId) === String(attendanceId)
-          : recordDate === eventDateStr;
-
-        if (!matchesAttendance) return record;
+        if (recordDate !== eventDateStr) return record;
 
         const nextRecord = { ...record };
 
@@ -2511,27 +2320,13 @@ capturedImageInfo = await captureImageProcess(type);
           empNo: user.empNo,
           empName: user.empName || user.empname || user.name || "",
           date: eventDateStr,
-          shift_date: eventDateStr,
-          attendance_id: savedAttendanceId,
-          session_no: response.data.sessionNo || response.data.session_no || null,
           branchcode: branchLocation?.branchcode ?? null,
           branchname: branchLocation?.branchname ?? null,
         });
 
       setRecords((previousRecords) => {
-        if (startNewSession && type === "TIME IN") {
-          const nextRecords = [createSavedEventRecord(), ...previousRecords];
-          setTodayRecord(getActiveTimekeepingRecord(nextRecords));
-          return nextRecords;
-        }
-
         const hasMatchingRecord = previousRecords.some(
-          (record) => {
-            const recordAttendanceId = getRecordAttendanceId(record);
-            return attendanceId && recordAttendanceId
-              ? String(recordAttendanceId) === String(attendanceId)
-              : getNormalizedRecordDate(record) === eventDateStr;
-          }
+          (record) => getNormalizedRecordDate(record) === eventDateStr
         );
 
         if (!hasMatchingRecord) {
@@ -3236,13 +3031,12 @@ if (!confirm) return;
             timeOutImageId,
             record
           );
-          const recordSessionKey = getRecordSessionKey(record);
-          const timeInImageKey = `${recordSessionKey}-${timeInImageId || ""}-${timeInImagePath || ""}`;
-          const timeOutImageKey = `${recordSessionKey}-${timeOutImageId || ""}-${timeOutImagePath || ""}`;
+          const timeInImageKey = `${timeInImageId || ""}-${timeInImagePath || ""}`;
+          const timeOutImageKey = `${timeOutImageId || ""}-${timeOutImagePath || ""}`;
 
           return (
             <div
-              key={recordSessionKey}
+              key={index}
               className="overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-blue-200 hover:shadow-md lg:p-5"
             >
               <div className="mb-4 flex items-start justify-between gap-3">
@@ -3938,15 +3732,6 @@ if (!confirm) return;
   const hasPreviousTimeOut =
     previousOpenRecord &&
     !isValueBlank(getDtrActualDateTimeValue(previousOpenRecord, "timeOut"));
-  const hasCurrentCalendarTimeIn =
-    currentCalendarRecord &&
-    !isValueBlank(getDtrActualDateTimeValue(currentCalendarRecord, "timeIn")) &&
-    !staleCurrentOpenRecord &&
-    !canStartNewScheduledShift;
-  const activeShiftRecord = todayRecord || previousOpenRecord;
-  const hasActiveTimeIn =
-    activeShiftRecord &&
-    !isValueBlank(getDtrActualDateTimeValue(activeShiftRecord, "timeIn"));
   const availableTimeOutRecord = hasCurrentTimeIn
     ? todayRecord
     : hasPreviousTimeIn && !hasPreviousTimeOut
@@ -4054,15 +3839,15 @@ if (!confirm) return;
           <div className="grid w-full grid-cols-2 gap-3 sm:gap-4">
             <button
               className="rounded-xl bg-blue-800 px-4 py-4 text-sm font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:py-5"
-              onClick={handleTimeInClick}
+              onClick={() => handleTimeEvent("TIME IN")}
               disabled={
                 !isClockSynced ||
                 (isImageCaptureRequired
                   ? capturing ||
                     !faceDetectionModelLoaded ||
                     !currentUserFaceDescriptor ||
-                    hasCurrentCalendarTimeIn
-                  : hasCurrentCalendarTimeIn)
+                    hasCurrentTimeIn
+                  : hasCurrentTimeIn)
               }
             >
               Time In
@@ -4077,9 +3862,9 @@ if (!confirm) return;
                   ? capturing ||
                     !faceDetectionModelLoaded ||
                     !currentUserFaceDescriptor ||
-                    !!activeShiftRecord?.break_in ||
-                    !hasActiveTimeIn
-                  : !!activeShiftRecord?.break_in || !hasActiveTimeIn)
+                    !!todayRecord?.break_in ||
+                    !todayRecord?.time_in
+                  : !!todayRecord?.break_in || !todayRecord?.time_in)
               }
             >
               Break In
@@ -4094,9 +3879,9 @@ if (!confirm) return;
                   ? capturing ||
                     !faceDetectionModelLoaded ||
                     !currentUserFaceDescriptor ||
-                    !!activeShiftRecord?.break_out ||
-                    !activeShiftRecord?.break_in
-                  : !!activeShiftRecord?.break_out || !activeShiftRecord?.break_in)
+                    !!todayRecord?.break_out ||
+                    !todayRecord?.break_in
+                  : !!todayRecord?.break_out || !todayRecord?.break_in)
               }
             >
               Break Out
@@ -4378,53 +4163,6 @@ if (!confirm) return;
           </div>
         </div>
       </div>
-
-      {timeInRecoveryPrompt && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
-            <h2 className="text-lg font-bold text-gray-900">Previous Shift Needs Time Out</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              The shift dated {getNormalizedRecordDate(timeInRecoveryPrompt.previousRecord) || "the previous day"}
-              has a Time In but no Time Out. You may resolve it first or start a new shift.
-            </p>
-
-            <div className="mt-4 space-y-3">
-              <button
-                type="button"
-                onClick={() => {
-                  const targetRecord = timeInRecoveryPrompt.previousRecord;
-                  setTimeInRecoveryPrompt(null);
-                  handleTimeEvent("TIME OUT", targetRecord);
-                }}
-                className="w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900 hover:bg-amber-100"
-              >
-                <span className="block font-bold">Record Time Out for Previous Shift</span>
-                <span className="block text-xs">This keeps the previous shift open for completion.</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setTimeInRecoveryPrompt(null);
-                  handleTimeEvent("TIME IN", null, { startNewSession: true });
-                }}
-                className="w-full rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-left text-sm text-blue-900 hover:bg-blue-100"
-              >
-                <span className="block font-bold">Start New Shift</span>
-                <span className="block text-xs">The previous shift will remain incomplete for review.</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTimeInRecoveryPrompt(null)}
-                className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {timeOutTargetPrompt && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
