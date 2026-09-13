@@ -58,14 +58,15 @@ const API_ENDPOINTS = {
      approvedOfficialBusinessHistory:           `${API_BASE_URL}/getOBApprHistory`,
      officialBusinessApproval:                  `${API_BASE_URL}/approvalOB`,
 
-     // Employee Shift / Shift Change
-     employeeShifts:                 `${API_BASE_URL}/employeeShifts`,
-     shiftCodes:                     `${API_BASE_URL}/shiftCodes`,
-     uploadEmployeeShifts:           `${API_BASE_URL}/uploadEmployeeShifts`,
-     upsertShiftChange:              `${API_BASE_URL}/upsertShiftChange`,
-     shiftChangeApprovalInquiry:     `${API_BASE_URL}/getShiftChangeApprInq`,
-     shiftChangeApprovalHistory:     `${API_BASE_URL}/getShiftChangeApprHistory`,
-     approvalShiftChange:            `${API_BASE_URL}/approvalShiftChange`,
+    // Employee Shift / Shift Change
+    employeeShifts:                 `${API_BASE_URL}/employeeShifts`,
+    shiftCodes:                     `${API_BASE_URL}/shiftCodes`,
+    employeeShiftTemplateData:      `${API_BASE_URL}/employeeShiftTemplateData`,
+    uploadEmployeeShifts:           `${API_BASE_URL}/uploadEmployeeShifts`,
+    upsertShiftChange:              `${API_BASE_URL}/upsertShiftChange`,
+    shiftChangeApprovalInquiry:     `${API_BASE_URL}/getShiftChangeApprInq`,
+    shiftChangeApprovalHistory:     `${API_BASE_URL}/getShiftChangeApprHistory`,
+    approvalShiftChange:            `${API_BASE_URL}/approvalShiftChange`,
 
      
     // DTR

@@ -62,6 +62,13 @@ const Navbar = () => {
   const navItems = user ? [
     { path: "/dashboard", label: "Inquiry" },
     {
+      label: "Employee Shift",
+      children: [
+        { path: "/employee-shift", label: isHr || isApprover ? "Employee Shift Setup" : "My Shift Schedule" },
+        ...(isApprover ? [{ path: "/employee-shift-approval", label: "Shift Change for Approval" }] : []),
+      ]
+    },
+    {
       label: "Timekeeping",
       children: timekeepingChildren
     },
@@ -80,13 +87,7 @@ const Navbar = () => {
       label: "Leave",
       children: leaveChildren
     },
-    {
-      label: "Employee Shift",
-      children: [
-        { path: "/employee-shift", label: isHr || isApprover ? "Employee Shift Setup" : "My Shift Schedule" },
-        ...(isApprover ? [{ path: "/employee-shift-approval", label: "Shift Change for Approval" }] : []),
-      ]
-    },
+
     ...(user.approver !== "1"
       ? [{ path: "/official-business", label: "Official Business" }]
       : [{

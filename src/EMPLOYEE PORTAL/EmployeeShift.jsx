@@ -12,7 +12,10 @@ const resultRows = (result) => {
   if (Array.isArray(raw)) return raw;
   try { return JSON.parse(raw); } catch { return []; }
 };
-const canManage = (user) => ["1", "y", "yes", "true"].includes(String(user?.hrFlag ?? user?.hrflag ?? user?.approver ?? "").toLowerCase());
+const isEnabled = (value) => ["1", "y", "yes", "true"].includes(String(value ?? "").trim().toLowerCase());
+const hasHrAccess = (user) => isEnabled(user?.hrFlag ?? user?.hrflag);
+const hasApproverAccess = (user) => isEnabled(user?.approver);
+const canManage = (user) => hasHrAccess(user) || hasApproverAccess(user);
 const fmt = (value, withTime = false) => value && dayjs(value).isValid() ? dayjs(value).format(withTime ? "MM/DD/YYYY hh:mm A" : "MM/DD/YYYY") : "-";
 const shiftTypeLabel = (value) => ({ DS: "Day Shift", MS: "Mid Shift", NS: "Night Shift" }[String(value ?? "").trim().toUpperCase()] || value || "-");
 const isRestDay = (row) => String(row?.rd ?? row?.RD ?? "").trim().toUpperCase() === "Y";
@@ -22,6 +25,8 @@ const DateInput = ({ value, onChange, min, required = false }) => (
     <CalendarDays className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-700" aria-hidden="true" />
   </div>
 );
+const TEMPLATE_SHEETS = ["Sheet1", "Payroll Period", "Employee Masterdata", "Shift Code"];
+const TEMPLATE_HEADERS = ["Employee No", "Employee Name", "Payroll Period", "Date", "RD Flag", "Shift Code", "Working Hours"];
 const isToday = (value) => value && dayjs(value).isValid() && dayjs(value).isSame(dayjs(), "day");
 const shiftTypeStyle = (value) => ({
   DS: "bg-blue-50 text-blue-800 ring-blue-200",
@@ -58,6 +63,8 @@ const Icon = {
  
 export default function EmployeeShift() {
   const { user } = useAuth();
+  const hrAccess = hasHrAccess(user);
+  const approverAccess = hasApproverAccess(user);
   const manager = canManage(user);
   const [from, setFrom] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
   const [to, setTo] = useState(dayjs().endOf("month").format("YYYY-MM-DD"));
@@ -68,7 +75,11 @@ export default function EmployeeShift() {
   const [remarks, setRemarks] = useState("");
   const [uploadRows, setUploadRows] = useState([]);
   const [fileName, setFileName] = useState("");
-  const [scheduleFilters, setScheduleFilters] = useState({ restDay: "all", shiftType: "all", shiftCode: "all" });
+  const [scheduleView, setScheduleView] = useState("MY");
+  const [selectedEmployeeNo, setSelectedEmployeeNo] = useState("");
+  const [groupBy, setGroupBy] = useState("none");
+  const [collapsedGroups, setCollapsedGroups] = useState([]);
+  const [scheduleFilters, setScheduleFilters] = useState({ restDay: "all", shiftType: "all", shiftCode: "all", branch: "all", department: "all", payrollGroup: "all", employeeStatus: "all" });
   const [showMobileFilters, setShowMobileFilters] = useState(false);
  
   const load = async () => {
@@ -76,7 +87,18 @@ export default function EmployeeShift() {
     setLoading(true);
     try {
       const [scheduleResponse, shiftResponse] = await Promise.all([
-        fetch(API_ENDPOINTS.employeeShifts, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ EMP_NO: user.empNo, START_DATE: from, END_DATE: to, ALL: manager ? "Y" : "N" }) }),
+        fetch(API_ENDPOINTS.employeeShifts, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            EMP_NO: user.empNo,
+            START_DATE: from,
+            END_DATE: to,
+            VIEW: scheduleView,
+            HR_FLAG: hrAccess ? "Y" : "N",
+            APPROVER: approverAccess ? "Y" : "N"
+          })
+        }),
         fetch(API_ENDPOINTS.shiftCodes, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }),
       ]);
       const [scheduleResult, shiftResult] = await Promise.all([scheduleResponse.json(), shiftResponse.json()]);
@@ -84,7 +106,7 @@ export default function EmployeeShift() {
     } catch (error) { console.error(error); Swal.fire("Unable to load shifts", "Please try again.", "error"); }
     finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, [user?.empNo, from, to]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, [user?.empNo, from, to, scheduleView]); // eslint-disable-line react-hooks/exhaustive-deps
  
   const setPreset = (preset) => {
     const base = dayjs();
@@ -100,20 +122,78 @@ export default function EmployeeShift() {
     return "custom";
   }, [from, to]);
  
-  const filterOptions = useMemo(() => ({
-    shiftTypes: [...new Set(rows.map((row) => String(row.shiftType ?? row.shift_type ?? "").trim()).filter(Boolean))].sort(),
-    shiftCodes: [...new Set(rows.map((row) => String(row.shiftCode ?? row.shift_code ?? "").trim()).filter(Boolean))].sort(),
-  }), [rows]);
+  const filterOptions = useMemo(() => {
+    const codeOptions = (valueOf, labelOf) => Array.from(new Map(rows.map((row) => {
+      const value = String(valueOf(row) ?? "").trim();
+      const label = String(labelOf(row) ?? value).trim();
+      return value ? [value, { value, label: label || value }] : null;
+    }).filter(Boolean)).values()).sort((a, b) => a.label.localeCompare(b.label));
+    return {
+      shiftTypes: [...new Set(rows.map((row) => String(row.shiftType ?? row.shift_type ?? "").trim()).filter(Boolean))].sort(),
+      shiftCodes: codeOptions((row) => row.shiftCode ?? row.shift_code, (row) => row.shiftDesc ?? row.shift_desc),
+      branches: codeOptions((row) => row.branchCode ?? row.branchcode ?? row.branch, (row) => row.branchName),
+      departments: codeOptions((row) => row.deptCode ?? row.dept_code ?? row.department, (row) => row.deptName),
+      payrollGroups: codeOptions((row) => row.payGroup ?? row.pay_group ?? row.payrollGroup, (row) => row.payGroupName),
+      employeeStatuses: codeOptions((row) => row.empStat ?? row.emp_stat ?? row.employeeStatus, (row) => row.empStatName),
+    };
+  }, [rows]);
+  const employeeOptions = useMemo(() => Array.from(new Map(rows.map((row) => {
+    const empNo = String(row.empNo ?? row.empno ?? "").trim();
+    return [empNo, { empNo, empName: row.empName ?? row.emp_name ?? "" }];
+  }).filter(([empNo]) => empNo)).values()).sort((a, b) => String(a.empName).localeCompare(String(b.empName))), [rows]);
   const filteredRows = useMemo(() => rows.filter((row) => {
     const restDay = isRestDay(row);
     const rowShiftType = String(row.shiftType ?? row.shift_type ?? "").trim();
     const rowShiftCode = String(row.shiftCode ?? row.shift_code ?? "").trim();
+    const rowEmpNo = String(row.empNo ?? row.empno ?? "").trim();
+    const rowBranch = String(row.branchCode ?? row.branchcode ?? row.branch ?? "").trim();
+    const rowDepartment = String(row.deptCode ?? row.dept_code ?? row.department ?? "").trim();
+    const rowPayrollGroup = String(row.payGroup ?? row.pay_group ?? row.payrollGroup ?? "").trim();
+    const rowEmployeeStatus = String(row.empStat ?? row.emp_stat ?? row.employeeStatus ?? "").trim();
     return (scheduleFilters.restDay === "all" || (scheduleFilters.restDay === "rest" ? restDay : !restDay))
       && (scheduleFilters.shiftType === "all" || rowShiftType === scheduleFilters.shiftType)
-      && (scheduleFilters.shiftCode === "all" || rowShiftCode === scheduleFilters.shiftCode);
-  }), [rows, scheduleFilters]);
+      && (scheduleFilters.shiftCode === "all" || rowShiftCode === scheduleFilters.shiftCode)
+      && (scheduleFilters.branch === "all" || rowBranch === scheduleFilters.branch)
+      && (scheduleFilters.department === "all" || rowDepartment === scheduleFilters.department)
+      && (scheduleFilters.payrollGroup === "all" || rowPayrollGroup === scheduleFilters.payrollGroup)
+      && (scheduleFilters.employeeStatus === "all" || rowEmployeeStatus === scheduleFilters.employeeStatus)
+      && (scheduleView !== "EMPLOYEE" || !selectedEmployeeNo || rowEmpNo === selectedEmployeeNo);
+  }), [rows, scheduleFilters, scheduleView, selectedEmployeeNo]);
   const setScheduleFilter = (key, value) => setScheduleFilters((current) => ({ ...current, [key]: value }));
-  const clearScheduleFilters = () => setScheduleFilters({ restDay: "all", shiftType: "all", shiftCode: "all" });
+  const clearScheduleFilters = () => setScheduleFilters({ restDay: "all", shiftType: "all", shiftCode: "all", branch: "all", department: "all", payrollGroup: "all", employeeStatus: "all" });
+  const handleScheduleViewChange = (value) => { setScheduleView(value); setSelectedEmployeeNo(value === "MY" ? user?.empNo ?? "" : ""); };
+  const groupLabel = (row) => {
+    const branch = row.branchName ?? row.branchCode ?? row.branchcode ?? row.branch ?? "Unassigned";
+    const department = row.deptName ?? row.deptCode ?? row.dept_code ?? row.department ?? "Unassigned";
+    const payrollGroup = row.payGroupName ?? row.payGroup ?? row.pay_group ?? row.payrollGroup ?? "Unassigned";
+    const employeeStatus = row.empStatName ?? row.empStat ?? row.emp_stat ?? row.employeeStatus ?? "Unassigned";
+    if (groupBy === "employee") return `${row.empNo ?? row.empno ?? ""} - ${row.empName ?? row.emp_name ?? ""}`.trim();
+    if (groupBy === "branch") return branch;
+    if (groupBy === "department") return department;
+    if (groupBy === "payrollGroup") return payrollGroup;
+    if (groupBy === "employeeStatus") return employeeStatus;
+    if (groupBy === "restDay") return isRestDay(row) ? "Rest Day" : "Duty Day";
+    if (groupBy === "shiftType") return shiftTypeLabel(row.shiftType ?? row.shift_type);
+    if (groupBy === "shiftCode") {
+      const code = row.shiftCode ?? row.shift_code ?? ""; const description = row.shiftDesc ?? row.shift_desc ?? "";
+      return code ? `${code}${description ? ` - ${description}` : ""}` : "Rest Day";
+    }
+    return "";
+  };
+  const groupedRows = useMemo(() => {
+    if (groupBy === "none") return filteredRows.map((row) => ({ row }));
+    const groups = new Map();
+    filteredRows.forEach((row) => { const label = groupLabel(row) || "Unassigned"; if (!groups.has(label)) groups.set(label, []); groups.get(label).push(row); });
+    return Array.from(groups.entries()).flatMap(([label, groupRows]) => {
+      const collapsed = collapsedGroups.includes(label);
+      const totalWorkHrs = groupRows.reduce((total, row) => total + (Number(row.workHrs ?? row.work_hrs ?? 0) || 0), 0);
+      return [{ label, count: groupRows.length, totalWorkHrs, collapsed }, ...(collapsed ? [] : groupRows.map((row) => ({ row })) )];
+    });
+  }, [filteredRows, groupBy, collapsedGroups]);
+  const groupLabels = useMemo(() => groupedRows.filter((item) => item.label).map((item) => item.label), [groupedRows]);
+  const toggleGroup = (label) => setCollapsedGroups((groups) => groups.includes(label) ? groups.filter((group) => group !== label) : [...groups, label]);
+  const expandAllGroups = () => setCollapsedGroups([]);
+  const collapseAllGroups = () => setCollapsedGroups(groupLabels);
   const stats = useMemo(() => {
     const restDays = filteredRows.filter(isRestDay).length;
     const totalHrs = filteredRows.reduce((sum, row) => sum + (Number(row.workHrs ?? row.work_hrs ?? 0) || 0), 0);
@@ -201,9 +281,145 @@ export default function EmployeeShift() {
     const reader = new FileReader();
     reader.onload = (loadEvent) => {
       const book = XLSX.read(loadEvent.target.result, { type: "array", cellDates: true });
-      const data = XLSX.utils.sheet_to_json(book.Sheets[book.SheetNames[0]], { defval: "" }).map((row) => ({ empNo: row.EMPNO ?? row.EmpNo ?? row["Employee No"], shiftDate: dayjs(row.DATE ?? row.Date ?? row["Shift Date"]).format("YYYY-MM-DD"), shiftCode: row.SHIFT_CODE ?? row.ShiftCode ?? row["Shift Code"], rd: row.RD ?? "" }));
-      setUploadRows(data.filter((row) => row.empNo && row.shiftDate));
+      const hasTemplateStructure = TEMPLATE_SHEETS.every((sheetName) => book.SheetNames.includes(sheetName));
+      const worksheet = book.Sheets.Sheet1;
+      const headers = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" })[0] || [];
+      if (!hasTemplateStructure || !TEMPLATE_HEADERS.every((header) => headers.includes(header))) {
+        setUploadRows([]); setFileName("");
+        Swal.fire("Invalid upload template", "Please use the Employee Schedule Template downloaded from this page.", "warning");
+        event.target.value = "";
+        return;
+      }
+      const data = XLSX.utils.sheet_to_json(worksheet, { defval: "", raw: true }).map((row) => {
+        const parsedDate = dayjs(row["Date"]);
+        return {
+          // Upload contract: ONLY these six fields are accepted from the workbook.
+          empNo: String(row["Employee No"] ?? "").trim(),
+          cutOff: String(row["Payroll Period"] ?? "").trim(),
+          date: parsedDate.isValid() ? parsedDate.format("YYYY-MM-DD") : "",
+          rd: String(row["RD Flag"] ?? "").trim().toUpperCase(),
+          shiftCode: String(row["Shift Code"] ?? "").trim(),
+          workHrs: Number(row["Working Hours"] ?? 0),
+        };
+      });
+
+      const validRows = data.filter((row) => row.empNo && row.cutOff && row.date);
+      const invalidRows = data.filter((row) => row.empNo || row.cutOff || row.date || row.shiftCode)
+        .filter((row) => !row.empNo || !row.cutOff || !row.date || Number.isNaN(row.workHrs));
+
+      if (invalidRows.length) {
+        setUploadRows([]);
+        setFileName("");
+        Swal.fire(
+          "Invalid template data",
+          `${invalidRows.length} row(s) have an invalid Employee No., Payroll Period, Date, or Working Hours.`,
+          "warning"
+        );
+        event.target.value = "";
+        return;
+      }
+
+      setUploadRows(validRows);
     }; reader.readAsArrayBuffer(file);
+  };
+  const downloadTemplate = async () => {
+    try {
+      const response = await fetch(API_ENDPOINTS.employeeShiftTemplateData, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ EMP_NO: user.empNo })
+      });
+
+      const responseText = await response.text();
+      let result;
+
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        throw new Error(
+          response.ok
+            ? "The template service returned an unexpected response."
+            : `Template service is not available (HTTP ${response.status}).`
+        );
+      }
+
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.message || "Unable to load template reference data.");
+      }
+
+      const data = result.data ?? {};
+      const payrollPeriods = Array.isArray(data.payrollPeriods) ? data.payrollPeriods : [];
+      const employees = Array.isArray(data.employees) ? data.employees : [];
+      const shiftCodes = Array.isArray(data.shiftCodes) ? data.shiftCodes : [];
+
+      const workbook = XLSX.utils.book_new();
+
+      // Keep the same 4-sheet structure as the supplied sample template.
+      const uploadSheet = XLSX.utils.aoa_to_sheet([TEMPLATE_HEADERS]);
+
+      const payrollSheet = XLSX.utils.json_to_sheet(
+        payrollPeriods.map((row) => ({
+          "Year": row.year ?? "",
+          "Cut Off Code": row.cutOff ?? "",
+          "Cut Off Name": row.cutOffName ?? "",
+          "Frequency": row.frequency ?? "",
+          "Start Date": row.startDate ? dayjs(row.startDate).toDate() : "",
+          "End Date": row.endDate ? dayjs(row.endDate).toDate() : ""
+        }))
+      );
+
+      const employeeSheet = XLSX.utils.json_to_sheet(
+        employees.map((row) => ({
+          "Employee No": row.empNo ?? "",
+          "Employee Name": row.empName ?? "",
+          "Payroll Frequency": row.payFreq ?? "",
+          "Employee Status": row.empStat ?? "",
+          "Department": row.department ?? "",
+          "Branch": row.branch ?? "",
+        }))
+      );
+
+      const shiftSheet = XLSX.utils.json_to_sheet(
+        shiftCodes.map((row) => ({
+          "Shift Code": row.shiftCode ?? "",
+          "Shift Name": row.shiftDesc ?? "",
+          "Shift Type": row.shiftType ?? "",
+          "Work Hours": Number(row.workHrs ?? 8)
+        }))
+      );
+
+      // Practical column widths matching the supplied sample.
+      uploadSheet["!cols"] = [
+        { wch: 18 }, { wch: 35 }, { wch: 18 }, { wch: 28 }, { wch: 14 },
+        { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 26 }, { wch: 14 }, { wch: 16 }
+      ];
+      payrollSheet["!cols"] = [
+        { wch: 10 }, { wch: 18 }, { wch: 28 }, { wch: 14 }, { wch: 16 }, { wch: 16 }
+      ];
+      employeeSheet["!cols"] = [
+        { wch: 18 }, { wch: 35 }, { wch: 18 }, { wch: 22 }, { wch: 16 }, { wch: 30 }
+      ];
+      shiftSheet["!cols"] = [
+        { wch: 14 }, { wch: 28 }, { wch: 16 }, { wch: 14 }
+      ];
+
+      XLSX.utils.book_append_sheet(workbook, uploadSheet, "Sheet1");
+      XLSX.utils.book_append_sheet(workbook, payrollSheet, "Payroll Period");
+      XLSX.utils.book_append_sheet(workbook, employeeSheet, "Employee Masterdata");
+      XLSX.utils.book_append_sheet(workbook, shiftSheet, "Shift Code");
+
+      XLSX.writeFile(workbook, "Employee Schedule Template.xlsx", {
+        cellDates: true,
+        bookType: "xlsx"
+      });
+    } catch (templateError) {
+      console.error(templateError);
+      Swal.fire(
+        "Unable to download template",
+        templateError.message || "Please try again.",
+        "error"
+      );
+    }
   };
   const clearUpload = () => { setUploadRows([]); setFileName(""); };
   const upload = async () => {
@@ -253,12 +469,19 @@ export default function EmployeeShift() {
             <h2 className="font-semibold text-slate-900">Filter Employee Shift</h2>
           {/* <p className="text-sm text-slate-500">Narrow the selected schedule by rest day, shift type, or shift code.</p> */}
           </div>
-          <div className="flex gap-2"><button type="button" className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50" onClick={clearScheduleFilters}>Clear Filters</button><button type="button" className="rounded-xl bg-blue-800 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-900 md:hidden" onClick={() => setShowMobileFilters((visible) => !visible)}>{showMobileFilters ? "Hide Filters" : "Filter Options"}</button></div>
+          <div className="flex flex-wrap gap-2"><button type="button" className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50" onClick={clearScheduleFilters}>Clear Filters</button>{groupBy !== "none" && <><button type="button" className="rounded-xl border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-50" onClick={expandAllGroups}>Expand All</button><button type="button" className="rounded-xl border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-50" onClick={collapseAllGroups}>Collapse All</button></>}<button type="button" className="rounded-xl bg-blue-800 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-900 md:hidden" onClick={() => setShowMobileFilters((visible) => !visible)}>{showMobileFilters ? "Hide Filters" : "Filter Options"}</button></div>
         </div>
-        <div className={`${showMobileFilters ? "grid" : "hidden"} gap-3 md:grid md:grid-cols-3`}>
+        <div className={`${showMobileFilters ? "grid" : "hidden"} gap-3 md:grid md:grid-cols-2 xl:grid-cols-4`}>
+          {manager && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Employee Shift View</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleView} onChange={(e) => handleScheduleViewChange(e.target.value)}><option value="MY">My Shift Schedule</option><option value="EMPLOYEE">Employee Shift Schedule</option></select></label>}
+          {manager && scheduleView === "EMPLOYEE" && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Employee</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={selectedEmployeeNo} onChange={(e) => setSelectedEmployeeNo(e.target.value)}><option value="">All Employees</option>{employeeOptions.map((employee) => <option key={employee.empNo} value={employee.empNo}>{employee.empNo} - {employee.empName}</option>)}</select></label>}
+          {manager && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Branch</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.branch} onChange={(e) => setScheduleFilter("branch", e.target.value)}><option value="all">All Branches</option>{filterOptions.branches.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
+          {manager && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Department</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.department} onChange={(e) => setScheduleFilter("department", e.target.value)}><option value="all">All Departments</option>{filterOptions.departments.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
+          {manager && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Payroll Group</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.payrollGroup} onChange={(e) => setScheduleFilter("payrollGroup", e.target.value)}><option value="all">All Payroll Groups</option>{filterOptions.payrollGroups.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
+          {manager && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Employee Status</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.employeeStatus} onChange={(e) => setScheduleFilter("employeeStatus", e.target.value)}><option value="all">All Employee Statuses</option>{filterOptions.employeeStatuses.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
           <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Rest Day</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.restDay} onChange={(e) => setScheduleFilter("restDay", e.target.value)}><option value="all">All Days</option><option value="working">Working Days</option><option value="rest">Rest Days</option></select></label>
           <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Shift Type</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.shiftType} onChange={(e) => setScheduleFilter("shiftType", e.target.value)}><option value="all">All Shift Types</option>{filterOptions.shiftTypes.map((value) => <option key={value} value={value}>{shiftTypeLabel(value)}</option>)}</select></label>
-          <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Shift Code</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.shiftCode} onChange={(e) => setScheduleFilter("shiftCode", e.target.value)}><option value="all">All Shift Codes</option>{filterOptions.shiftCodes.map((value) => <option key={value} value={value}>{value}</option>)}</select></label>
+          <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Shift Code</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.shiftCode} onChange={(e) => setScheduleFilter("shiftCode", e.target.value)}><option value="all">All Shift Codes</option>{filterOptions.shiftCodes.map(({ value, label }) => <option key={value} value={value}>{value}{label && label !== value ? ` - ${label}` : ""}</option>)}</select></label>
+          <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Group By</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={groupBy} onChange={(e) => { setGroupBy(e.target.value); setCollapsedGroups([]); }}><option value="none">No Grouping</option><option value="employee">Employee</option><option value="branch">Branch</option><option value="department">Department</option><option value="payrollGroup">Payroll Group</option><option value="employeeStatus">Employee Status</option><option value="restDay">Rest Day</option><option value="shiftType">Shift Type</option><option value="shiftCode">Shift Code</option></select></label>
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-[10px] sm:text-xs font-semibold uppercase text-slate-500">Total Days</p><p className="mt-1 text-xl sm:text-2xl font-bold text-blue-800">{stats.scheduled}</p></div>
@@ -271,7 +494,9 @@ export default function EmployeeShift() {
         {loading && !rows.length && Array.from({ length: 3 }).map((_, i) => (
           <div key={`mobile-skeleton-${i}`} className="h-40 animate-pulse rounded-xl bg-slate-100" />
         ))}
-        {filteredRows.map((row, index) => {
+        {groupedRows.map((item, index) => {
+          if (item.label) return <div key={`mobile-group-${item.label}`} className="flex items-center justify-between gap-2 rounded-xl bg-blue-800 px-3 py-2 text-sm font-semibold text-white"><span>{item.label} <span className="ml-1 text-xs font-normal text-blue-100">({item.count}) · {item.totalWorkHrs.toFixed(2)} hrs</span></span><button type="button" className="rounded-lg border border-blue-300 px-2 py-1 text-xs" onClick={() => toggleGroup(item.label)}>{item.collapsed ? "Expand" : "Collapse"}</button></div>;
+          const row = item.row;
           const rowDate = row.date ?? row.shiftDate;
           const today = isToday(rowDate);
           const restDay = isRestDay(row);
@@ -279,6 +504,7 @@ export default function EmployeeShift() {
             <div key={`mobile-${row.empNo ?? row.empno}-${rowDate}-${index}`} className={`rounded-xl border p-4 shadow-sm ${today ? "border-blue-200 bg-blue-50/50" : restDay ? "border-red-200 bg-red-50/40" : "border-slate-200 bg-white"}`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
+                  <p className="mb-1 text-xs font-medium text-slate-500">Employee No: {row.empNo ?? row.empno ?? "-"}</p>
                   {manager && <p className="mb-1 text-xs font-medium text-slate-500">{row.empName ?? row.emp_name ?? row.empNo}</p>}
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-slate-900">{fmt(rowDate)}</p>
@@ -333,12 +559,14 @@ export default function EmployeeShift() {
         <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b border-blue-900 bg-blue-800 text-left text-xs font-semibold text-white">
-              {manager && <th className="p-3">Employee</th>}
+              <th className="p-3">Employee No</th>
+              {manager && 
+              <th className="p-3">Employee</th>}
               <th className="p-3">Shift Date</th>
               <th className="p-3">Shift Day</th>
               <th className="p-3 text-center">Status</th>
-              <th className="p-3">Shift Code</th>
               <th className="p-3">Shift Type</th>
+              <th className="p-3">Shift Code</th>
               <th className="p-3">Schedule</th>
               <th className="p-3">Remarks</th>
               <th className="p-3 text-right">Work Hours</th>
@@ -347,12 +575,14 @@ export default function EmployeeShift() {
           <tbody>
             {loading && !rows.length && Array.from({ length: 5 }).map((_, i) => (
               <tr key={`skeleton-${i}`} className="border-b border-slate-100">
-                <td colSpan={manager ? 9 : 8} className="p-3">
+                <td colSpan={manager ? 10 : 9} className="p-3">
                   <div className="h-4 w-full animate-pulse rounded bg-gray-100" />
                 </td>
               </tr>
             ))}
-            {filteredRows.map((row, index) => {
+            {groupedRows.map((item, index) => {
+              if (item.label) return <tr key={`group-${item.label}`} className="bg-blue-50"><td colSpan={manager ? 10 : 9} className="border-y border-blue-100 px-3 py-2 text-sm font-semibold text-blue-900"><div className="flex items-center justify-between gap-3"><span>{item.label} <span className="text-xs font-normal text-blue-700">({item.count}) · Work Hours: {item.totalWorkHrs.toFixed(2)}</span></span><button type="button" className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs font-semibold text-blue-800" onClick={() => toggleGroup(item.label)}>{item.collapsed ? "Expand" : "Collapse"}</button></div></td></tr>;
+              const row = item.row;
               const rowDate = row.date ?? row.shiftDate;
               const today = isToday(rowDate);
               const restDay = isRestDay(row);
@@ -361,39 +591,41 @@ export default function EmployeeShift() {
                   className={`border-b border-slate-100 transition-colors hover:bg-blue-50/40 ${today ? "bg-blue-50" : restDay ? "bg-red-50/40" : ""}`}
                   key={`${row.empNo ?? row.empno}-${row.date}-${index}`}
                 >
-                  {manager && <td className="p-3 text-gray-700">{row.empName ?? row.emp_name ?? row.empNo}</td>}
-                  <td className="p-3">
+                  <td className="text-xs p-2 text-gray-700">{row.empNo ?? row.empno ?? "-"}</td>
+                  {manager && <td className="text-xs p-2 text-gray-700">{row.empName ?? row.emp_name ?? row.empNo}</td>}
+                  <td className="text-xs p-2">
                     <span className={`font-medium ${today ? "text-blue-800" : "text-gray-800"}`}>{fmt(rowDate)}</span>
                     {today && <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">TODAY</span>}
                   </td>
-                  <td className="p-3 text-gray-500">{row.day}</td>
-                  <td className="p-3 text-center">
+                  <td className="text-xs p-2 text-gray-500">{row.day}</td>
+                  <td className="text-xs p-2 text-center">
                     {restDay
                       ? <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-700 ring-1 ring-red-200">Rest Day</span>
                       : <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-1 text-xs font-medium text-green-700 ring-1 ring-green-200">Duty</span>}
                   </td>
-                  <td className="p-3 font-medium text-gray-800">{row.shiftCode ?? row.shift_code ?? "-"}</td>
-                  <td className="p-3">
+                  <td className="text-xs p-2">
                     <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${shiftTypeStyle(row.shiftType ?? row.shift_type)}`}>
                       {shiftTypeLabel(row.shiftType ?? row.shift_type)}
                     </span>
                   </td>
-                  <td className="p-3 text-gray-600">{fmt(row.shiftIn ?? row.shift_in, true)} - {fmt(row.shiftOut ?? row.shift_out, true)}</td>
-                  <td className="p-3">
+                  <td className="text-xs p-2 font-medium text-gray-800">{row.shiftCode ?? row.shift_code ?? "-"}</td>
+
+                  <td className="text-xs p-2 text-gray-600">{fmt(row.shiftIn ?? row.shift_in, true)} - {fmt(row.shiftOut ?? row.shift_out, true)}</td>
+                  <td className="text-xs p-2">
                     {row.changeShiftRemarks
                       ? <div className="max-w-xs">
-                          <p className="text-sm text-slate-700">{row.changeShiftRemarks}</p>
-                          {row.changeShiftType && <p className="mt-1 text-[11px] font-medium text-blue-700">{row.changeShiftType}</p>}
+                          <p className="text-xs text-slate-700">{row.changeShiftRemarks}</p>
+                          {/* {row.changeShiftType && <p className="mt-1 text-xs font-medium text-blue-700">{row.changeShiftType}</p>} */}
                         </div>
                       : <span className="text-slate-300">-</span>}
                   </td>
-                  <td className="p-3 text-right font-medium text-gray-800">{row.workHrs ?? row.work_hrs ?? 0}</td>
+                  <td className="text-xs p-2 text-right font-medium text-gray-800">{row.workHrs ?? row.work_hrs ?? 0}</td>
                 </tr>
               );
             })}
             {!loading && !filteredRows.length && (
               <tr>
-                <td colSpan={manager ? 9 : 8} className="p-10 text-center">
+                <td colSpan={manager ? 10 : 9} className="p-10 text-center">
                   <p className="text-gray-500">No shift records for this range.</p>
                   <p className="text-xs text-gray-400">Try a different date range or check back later.</p>
                 </td>
@@ -469,8 +701,7 @@ export default function EmployeeShift() {
  
       {manager && (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="font-semibold text-blue-900">HR / Approver Shift Upload</h2>
-          <p className="mb-4 text-sm text-gray-500">Upload an .xlsx or .csv file with EMPNO, DATE, SHIFT_CODE, and optional RD columns.</p>
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="font-semibold text-blue-900">HR / Approver Shift Upload</h2><p className="text-sm text-gray-500">Use the downloaded template. Only Employee No, Payroll Period, Date, RD Flag, Shift Code, and Working Hours are uploaded.</p></div><button type="button" onClick={downloadTemplate} className="rounded-xl border border-blue-700 px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50">Download Template</button></div>
  
           <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 px-4 py-8 text-center transition-colors hover:border-blue-400 hover:bg-blue-50/30">
             <Icon.Upload className="h-6 w-6 text-gray-400" />
