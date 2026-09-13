@@ -131,9 +131,39 @@ const DEFAULT_SUM = Object.freeze({
   OBApprovalCount: 0,
   DTRApplicationCount: 0,
   DTRApprovalCount: 0,
+  ShiftChangeApplicationCount: 0,
+  ShiftChangeApprovalCount: 0,
+  OffsetApplicationCount: 0,
+  OffsetApprovalCount: 0,
 });
 
 const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
+const isEnabledFlag = (value) => ["1", "y", "yes", "true"].includes(normalizeStatus(value));
+const getObjectField = (source, fieldName) => {
+  const matchedKey = Object.keys(source || {}).find(
+    (key) => key.toLowerCase() === String(fieldName).toLowerCase()
+  );
+  return matchedKey ? source[matchedKey] : undefined;
+};
+
+const getDashboardCount = (sources, aliases) => {
+  for (const source of sources) {
+    const summary = Array.isArray(source) ? source[0] : source;
+    if (!summary || typeof summary !== "object") continue;
+
+    const values = Object.entries(summary).reduce((result, [key, value]) => {
+      result[String(key).replace(/[^a-z0-9]/gi, "").toLowerCase()] = value;
+      return result;
+    }, {});
+
+    for (const alias of aliases) {
+      const value = values[String(alias).replace(/[^a-z0-9]/gi, "").toLowerCase()];
+      if (value !== undefined && value !== null && value !== "") return toDashboardNumber(value);
+    }
+  }
+
+  return 0;
+};
 
 const Dashboard = () => {
   const trustedClockRef = useRef(null);
@@ -159,6 +189,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("leave");
   const [activeApproverTab, setActiveApproverTab] = useState("leave");
   const [approvalsum, setApprovalsum] = useState(DEFAULT_SUM);
+  const [attendanceSummary, setAttendanceSummary] = useState({});
 
   const { user, setUser, authLoading } = useAuth();
   const navigate = useNavigate();
@@ -270,13 +301,35 @@ const Dashboard = () => {
       const employee =
         dashboardResult.data.find((item) => item.empNo === empNo) ||
         dashboardResult.data[0];
+      const employeePortalDTR = getObjectField(employee, "portalDTR");
+      const employeePortalTK = getObjectField(employee, "portalTK");
+      const employeePortalLV = getObjectField(employee, "portalLV");
+      const employeePortalOB = getObjectField(employee, "portalOB");
+      const employeePortalOT = getObjectField(employee, "portalOT");
+      const employeePortalOffset = getObjectField(employee, "portalOffSet");
 
       setUser((previousUser) => {
-        if (previousUser?.approver === employee.approver) return previousUser;
+        if (
+          previousUser?.approver === employee.approver &&
+          previousUser?.hrFlag === (employee.hrFlag ?? employee.hrflag) &&
+          previousUser?.portalDTR === employeePortalDTR &&
+          previousUser?.portalTK === employeePortalTK &&
+          previousUser?.portalLV === employeePortalLV &&
+          previousUser?.portalOB === employeePortalOB &&
+          previousUser?.portalOT === employeePortalOT &&
+          previousUser?.portalOffSet === employeePortalOffset
+        ) return previousUser;
 
         return {
           ...(previousUser || {}),
           approver: employee.approver,
+          hrFlag: employee.hrFlag ?? employee.hrflag ?? previousUser?.hrFlag,
+          portalDTR: employeePortalDTR ?? previousUser?.portalDTR,
+          portalTK: employeePortalTK ?? previousUser?.portalTK,
+          portalLV: employeePortalLV ?? previousUser?.portalLV,
+          portalOB: employeePortalOB ?? previousUser?.portalOB,
+          portalOT: employeePortalOT ?? previousUser?.portalOT,
+          portalOffSet: employeePortalOffset ?? previousUser?.portalOffSet,
         };
       });
 
@@ -290,6 +343,16 @@ const Dashboard = () => {
       setLeaveApplication(employee.leaveApplication || []);
       setOtApplication(employee.otApplication || []);
       setOfficialBusinessApplication(employee.obApplication || []);
+
+      setAttendanceSummary(
+        employee.attendanceSummary ||
+        employee.attendance_summary ||
+        employee.dtrSummary ||
+        employee.dtr_summary ||
+        employee.employeeAttendanceSummary ||
+        employee.approvalsum ||
+        {}
+      );
 
       const rawSummary = employee.approvalsum;
       const summary = Array.isArray(rawSummary)
@@ -305,6 +368,10 @@ const Dashboard = () => {
         OBApprovalCount: Number(summary.OBApprovalCount ?? 0),
         DTRApplicationCount: Number(summary.DTRApplicationCount ?? 0),
         DTRApprovalCount: Number(summary.DTRApprovalCount ?? 0),
+        ShiftChangeApplicationCount: Number(summary.ShiftChangeApplicationCount ?? summary.ChangeScheduleApplicationCount ?? 0),
+        ShiftChangeApprovalCount: Number(summary.ShiftChangeApprovalCount ?? summary.ChangeScheduleApprovalCount ?? 0),
+        OffsetApplicationCount: Number(summary.OffsetApplicationCount ?? 0),
+        OffsetApprovalCount: Number(summary.OffsetApprovalCount ?? 0),
       });
     } catch (requestError) {
       console.error("Error fetching dashboard data:", requestError);
@@ -607,20 +674,21 @@ const Dashboard = () => {
 
   const dtrTrendData = useMemo(() => {
     return dailyTimeRecord
-      .slice(0, 7)
-      .reverse()
       .map((record) => {
         const hours = toDashboardNumber(record?.reg_hrs);
         const recordDate = parseDashboardDate(record?.trandate);
 
         return {
+          sortDate: recordDate?.isValid() ? recordDate.valueOf() : Number.MAX_SAFE_INTEGER,
           date: recordDate?.isValid() ? recordDate.format("ddd") : "—",
           fullDate: recordDate?.isValid() ? recordDate.format("MMM DD") : "Unknown date",
           hours,
           isUnderTime: hours > 0 && hours < 8,
           heightPct: Math.min(Math.max((hours / 12) * 100, 0), 100),
         };
-      });
+      })
+      .sort((a, b) => a.sortDate - b.sortDate)
+      .slice(-7);
   }, [dailyTimeRecord]);
 
   const unifiedRequestStats = useMemo(() => {
@@ -651,6 +719,32 @@ const Dashboard = () => {
   const employeeDisplayName =
     user?.empName || user?.employeeName || user?.name || user?.userName || user?.empname || "Employee";
 
+  const isManagementUser = isEnabledFlag(user?.hrFlag ?? user?.hrflag) || isEnabledFlag(user?.approver);
+  const portalAccess = {
+    dtr: isEnabledFlag(getObjectField(user, "portalDTR")),
+    timekeeping: isEnabledFlag(getObjectField(user, "portalTK")),
+    leave: isEnabledFlag(getObjectField(user, "portalLV")),
+    officialBusiness: isEnabledFlag(getObjectField(user, "portalOB")),
+    overtime: isEnabledFlag(getObjectField(user, "portalOT")),
+    offset: isEnabledFlag(getObjectField(user, "portalOffSet")),
+  };
+
+  const employeeAttendanceCards = useMemo(() => {
+    const sources = [attendanceSummary, approvalsum];
+    const total = getDashboardCount(sources, ["totalEmployees", "totalNoOfEmployees", "employeeCount", "totalEmployeeCount", "totalEmp"]);
+
+    return {
+      total,
+      items: [
+        { label: "Present", count: getDashboardCount(sources, ["present", "presentCount", "totalPresent", "dtrPresent"]), tone: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+        { label: "No DTR", count: getDashboardCount(sources, ["noDTR", "noDtrCount", "noDTRCount", "withoutDTR", "nodtr"]), tone: "bg-amber-50 text-amber-700 border-amber-100" },
+        { label: "Absent", count: getDashboardCount(sources, ["absent", "absentCount", "totalAbsent"]), tone: "bg-rose-50 text-rose-700 border-rose-100" },
+        { label: "On Leave", count: getDashboardCount(sources, ["onLeave", "onLeaveCount", "leaveCount", "leave"]), tone: "bg-violet-50 text-violet-700 border-violet-100" },
+        { label: "Rest Day", count: getDashboardCount(sources, ["restDay", "restDayCount", "totalRestDay", "rd"]), tone: "bg-sky-50 text-sky-700 border-sky-100" },
+      ],
+    };
+  }, [attendanceSummary, approvalsum]);
+
   const requestSummaryCards = [
     {
       code: "LV",
@@ -676,7 +770,35 @@ const Dashboard = () => {
       count: approvalsum?.DTRApplicationCount ?? 0,
       route: "/timekeepingAdj",
     },
-  ];
+    {
+      code: "SCH",
+      label: "Change of Schedule Applications",
+      count: approvalsum?.ShiftChangeApplicationCount ?? 0,
+      route: "/employee-shift",
+    },
+    {
+      code: "OFF",
+      label: "Offset Applications",
+      count: approvalsum?.OffsetApplicationCount ?? 0,
+      route: "/offsetApplication",
+    },
+  ].filter((card) => {
+    if (card.code === "LV") return portalAccess.leave;
+    if (card.code === "OT") return portalAccess.overtime;
+    if (card.code === "OB") return portalAccess.officialBusiness;
+    if (card.code === "DTR") return portalAccess.dtr;
+    if (card.code === "OFF") return portalAccess.offset;
+    return true;
+  });
+
+  const summaryGridClass = (cardCount) => {
+    if (cardCount === 1) return "grid-cols-1";
+    if (cardCount === 2) return "grid-cols-1 sm:grid-cols-2";
+    if (cardCount === 3) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+    if (cardCount === 4) return "grid-cols-2 sm:grid-cols-2 lg:grid-cols-4";
+    if (cardCount === 5) return "grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5";
+    return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6";
+  };
 
   const approvalSummaryCards = [
     {
@@ -699,11 +821,48 @@ const Dashboard = () => {
     },
     {
       code: "DTR",
-      label: "DTR Adustments for Approval",
+      label: "DTR Adjustments for Approval",
       count: approvalsum?.DTRApprovalCount ?? 0,
       route: "/timekeepingAdjApproval",
     },
-  ];
+    {
+      code: "SCH",
+      label: "Change of Schedule for Approval",
+      count: approvalsum?.ShiftChangeApprovalCount ?? 0,
+      route: "/employee-shift-approval",
+    },
+    {
+      code: "OFF",
+      label: "Offset for Approval",
+      count: approvalsum?.OffsetApprovalCount ?? 0,
+      route: "/offsetApproval",
+    },
+  ].filter((card) => {
+    if (card.code === "LV") return portalAccess.leave;
+    if (card.code === "OT") return portalAccess.overtime;
+    if (card.code === "OB") return portalAccess.officialBusiness;
+    if (card.code === "DTR") return portalAccess.dtr;
+    if (card.code === "OFF") return portalAccess.offset;
+    return true;
+  });
+
+  useEffect(() => {
+    const availableTabs = [
+      portalAccess.leave && "leave",
+      portalAccess.overtime && "ot",
+      portalAccess.officialBusiness && "ob",
+    ].filter(Boolean);
+    if (availableTabs.length && !availableTabs.includes(activeTab)) setActiveTab(availableTabs[0]);
+  }, [activeTab, portalAccess.leave, portalAccess.overtime, portalAccess.officialBusiness]);
+
+  useEffect(() => {
+    const availableTabs = [
+      portalAccess.leave && "leave",
+      portalAccess.overtime && "ot",
+      portalAccess.officialBusiness && "ob",
+    ].filter(Boolean);
+    if (availableTabs.length && !availableTabs.includes(activeApproverTab)) setActiveApproverTab(availableTabs[0]);
+  }, [activeApproverTab, portalAccess.leave, portalAccess.overtime, portalAccess.officialBusiness]);
 
   if (authLoading) {
     return (
@@ -758,14 +917,16 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => navigate("/timekeeping")}
-                className="inline-flex min-h-[72px] items-center justify-center rounded-2xl bg-white px-5 py-3 text-lg font-bold text-blue-900 shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-white/30"
-              >
-                <FontAwesomeIcon icon={faClock} className="mr-2" />
-                Open Timekeeping
-              </button>
+              {portalAccess.timekeeping && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/timekeeping")}
+                  className="inline-flex min-h-[72px] items-center justify-center rounded-2xl bg-white px-5 py-3 text-lg font-bold text-blue-900 shadow-lg transition hover:-translate-y-0.5 hover:bg-blue-50 focus:outline-none focus:ring-4 focus:ring-white/30"
+                >
+                  <FontAwesomeIcon icon={faClock} className="mr-2" />
+                  Open Timekeeping
+                </button>
+              )}
             </div>
           </div>
 
@@ -793,6 +954,30 @@ const Dashboard = () => {
           </div>
         )}
 
+        {isManagementUser && (
+          <section className="rounded-2xl border border-blue-100 bg-white p-3 sm:p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-extrabold text-blue-950 sm:text-lg">Today&apos;s employee attendance</h2>
+                <p className="mt-1 text-xs text-slate-500">Attendance status summary for all employees.</p>
+              </div>
+              <div className="rounded-xl bg-blue-50 px-4 py-2 text-white shadow-sm">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Total No. of Employees</p>
+                <p className="text-2xl font-extrabold tabular-nums  text-blue-700">{employeeAttendanceCards.total}</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+              {employeeAttendanceCards.items.map((item) => (
+                <div key={item.label} className={`rounded-2xl border p-4 ${item.tone}`}>
+                  <p className="text-3xl font-extrabold tabular-nums">{item.count}</p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-wide">{item.label}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {requestSummaryCards.length > 0 && (
         <section className="rounded-2xl border border-blue-100 bg-white p-3 sm:p-4">
           <div className="mb-3 flex items-end justify-between gap-3">
             <div>
@@ -801,7 +986,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className={`grid gap-3 ${summaryGridClass(requestSummaryCards.length)}`}>
             {requestSummaryCards.map((card) => (
               <button
                 type="button"
@@ -817,21 +1002,22 @@ const Dashboard = () => {
                 </div>
                 <p className="mt-4 text-3xl font-extrabold tabular-nums text-slate-950">{card.count}</p>
                 <p className="mt-1 text-wrap text-xs font-semibold text-slate-600 sm:text-sm" title={card.label}>
-                  My {card.label}
+                  {card.label}
                 </p>
               </button>
             ))}
           </div>
         </section>
+        )}
 
-        {user?.approver === "1" && (
+        {isManagementUser && approvalSummaryCards.length > 0 && (
           <section className="rounded-2xl border border-blue-100 bg-white p-3 sm:p-4">
             <div className="mb-3">
               <h2 className="text-base font-extrabold text-blue-950 sm:text-lg mb-1">For my approval</h2>
               <p className="text-xs text-slate-500 sm:text-xs">Pending employee requests assigned to you.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className={`grid gap-3 ${summaryGridClass(approvalSummaryCards.length)}`}>
               {approvalSummaryCards.map((card) => (
                 <button
                   type="button"
@@ -1483,6 +1669,7 @@ const Dashboard = () => {
         </div>
 
         {/* Unified My Applications Tabbed Component */}
+        {(portalAccess.leave || portalAccess.overtime || portalAccess.officialBusiness) && (
         <div className="relative flex w-full flex-grow flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
           
           {/* Status Ring Block */}
@@ -1504,7 +1691,7 @@ const Dashboard = () => {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3">
             {/* Tab Navigation */}
             <div className="flex space-x-2 overflow-x-auto">
-              <button
+              {portalAccess.leave && <button
                 onClick={() => setActiveTab("leave")}
                 className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors ${
                   activeTab === "leave"
@@ -1513,8 +1700,8 @@ const Dashboard = () => {
                 }`}
               >
                 Leave Applications
-              </button>
-              <button
+              </button>}
+              {portalAccess.overtime && <button
                 onClick={() => setActiveTab("ot")}
                 className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors ${
                   activeTab === "ot"
@@ -1523,8 +1710,8 @@ const Dashboard = () => {
                 }`}
               >
                 Overtime Applications
-              </button>
-              <button
+              </button>}
+              {portalAccess.officialBusiness && <button
                 onClick={() => setActiveTab("ob")}
                 className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors ${
                   activeTab === "ob"
@@ -1533,7 +1720,7 @@ const Dashboard = () => {
                 }`}
               >
                 Official Business Applications
-              </button>
+              </button>}
             </div>
 
             {/* Dynamic Action Button */}
@@ -1551,7 +1738,7 @@ const Dashboard = () => {
 
           <div className="mt-4 overflow-x-auto flex-grow">
             {/* LEAVE TABLE */}
-            {activeTab === "leave" && (
+            {portalAccess.leave && activeTab === "leave" && (
               <table className="dashboard-table">
                 <thead className="dashboard-thead">
                   <tr>
@@ -1586,7 +1773,7 @@ const Dashboard = () => {
             )}
 
             {/* OT TABLE */}
-            {activeTab === "ot" && (
+            {portalAccess.overtime && activeTab === "ot" && (
               <table className="dashboard-table">
                 <thead className="dashboard-thead">
                   <tr>
@@ -1621,7 +1808,7 @@ const Dashboard = () => {
             )}
 
             {/* OB TABLE */}
-            {activeTab === "ob" && (
+            {portalAccess.officialBusiness && activeTab === "ob" && (
               <table className="dashboard-table">
                 <thead className="dashboard-thead">
                   <tr>
@@ -1671,9 +1858,10 @@ const Dashboard = () => {
             </button>
           </div>
         </div>
+        )}
 
         {/* Unified Approvals Tabbed Component */}
-        {user?.approver === "1" && (
+        {isManagementUser && (portalAccess.leave || portalAccess.overtime || portalAccess.officialBusiness) && (
           <div className="relative flex w-full flex-grow flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
             
             <div className="mb-4">
@@ -1684,7 +1872,7 @@ const Dashboard = () => {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3">
               {/* Tab Navigation */}
               <div className="flex space-x-2 overflow-x-auto">
-                <button
+                {portalAccess.leave && <button
                   onClick={() => setActiveApproverTab("leave")}
                   className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
                     activeApproverTab === "leave"
@@ -1693,8 +1881,8 @@ const Dashboard = () => {
                   }`}
                 >
                   Leave for Approval
-                </button>
-                <button
+                </button>}
+                {portalAccess.overtime && <button
                   onClick={() => setActiveApproverTab("ot")}
                   className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
                     activeApproverTab === "ot"
@@ -1703,8 +1891,8 @@ const Dashboard = () => {
                   }`}
                 >
                   Overtime for Approval
-                </button>
-                <button
+                </button>}
+                {portalAccess.officialBusiness && <button
                   onClick={() => setActiveApproverTab("ob")}
                   className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
                     activeApproverTab === "ob"
@@ -1713,14 +1901,14 @@ const Dashboard = () => {
                   }`}
                 >
                   Official Business for Approval
-                </button>
+                </button>}
               </div>
             </div>
 
             <div className="mt-4 overflow-x-auto flex-grow">
               
               {/* LEAVE APPROVAL TABLE */}
-              {activeApproverTab === "leave" && (
+              {portalAccess.leave && activeApproverTab === "leave" && (
                 <table className="dashboard-table">
                   <thead className="dashboard-thead">
                     <tr>
@@ -1757,7 +1945,7 @@ const Dashboard = () => {
               )}
 
               {/* OT APPROVAL TABLE */}
-              {activeApproverTab === "ot" && (
+              {portalAccess.overtime && activeApproverTab === "ot" && (
                 <table className="dashboard-table">
                   <thead className="dashboard-thead">
                     <tr>
@@ -1794,7 +1982,7 @@ const Dashboard = () => {
               )}
 
               {/* OB APPROVAL TABLE */}
-              {activeApproverTab === "ob" && (
+              {portalAccess.officialBusiness && activeApproverTab === "ob" && (
                 <table className="dashboard-table">
                   <thead className="dashboard-thead">
                     <tr>

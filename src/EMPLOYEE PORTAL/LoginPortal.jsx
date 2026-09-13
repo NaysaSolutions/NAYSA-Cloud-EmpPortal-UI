@@ -32,111 +32,57 @@ function LoginPortal() {
     };
 
     const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
+      e.preventDefault();
+      setLoading(true);
 
-  const requestData = {
-    empno: formData.empno.trim(),
-    password: formData.password.trim(),
-  };
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-
-  const requestData = {
-    empno: formData.empno.trim(),
-    password: formData.password.trim(),
-  };
-
-  try {
-    const response = await axios.post(API_ENDPOINTS.loginEmp, requestData);
-
-    if (response.data.status === "success") {
-      localStorage.setItem("token", response.data.token);
-
-      const userData = {
-        ...response.data.data,
-        empNo: response.data.data.empno || formData.empno.trim(),
-        empName: response.data.data.emp_name || "",
-      };
-
-      setUser(userData);
-
-      Swal.fire({
-        title: "Login Successful",
-        text: "Welcome back!",
-        icon: "success",
-        confirmButtonText: "OK",
+      const loadingToast = toast.loading("Signing in...", {
+        description: "Please wait while we verify your account.",
       });
 
-      navigate("/dashboard", { replace: true });
-    } else {
-      Swal.fire({
-        title: "Login Failed",
-        text: response.data.message || "Invalid credentials.",
-        icon: "error",
-        confirmButtonText: "OK",
-      });
-    }
-  } catch (error) {
-    console.error("Login request failed:", error);
+      try {
+        const employeeNo = formData.empno.trim();
+        const response = await axios.post(API_ENDPOINTS.loginEmp, {
+          // `userId` is required by AuthController::loginDB; `empno` keeps
+          // compatibility with the existing loginEmp endpoint contract.
+          userId: employeeNo,
+          empno: employeeNo,
+          password: formData.password.trim(),
+        });
 
-    Swal.fire({
-      title: "Error",
-      text: error.response?.data?.message || "Something went wrong.",
-      icon: "error",
-      confirmButtonText: "OK",
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+        if (response.data.status !== "success") {
+          throw new Error(response.data.message || "Invalid credentials.");
+        }
 
-  const loadingToast = toast.loading("Signing in...", {
-    description: "Please wait while we verify your account.",
-  });
+        // The API returns the authenticated employee in `user`. Keep `data`
+        // as a fallback for older deployments during rollout.
+        const apiUser = response.data.user || response.data.data;
+        if (!apiUser) throw new Error("Login response did not include employee access details.");
 
-  try {
-    const response = await axios.post(API_ENDPOINTS.loginEmp, requestData);
+        if (response.data.token) localStorage.setItem("token", response.data.token);
 
-    if (response.data.status === "success") {
-      const userData = {
-        ...response.data.data,
-        empNo: response.data.data.empno || formData.empno.trim(),
-        empName: response.data.data.empname,
-      };
+        setUser({
+          ...apiUser,
+          empNo: apiUser.empNo || apiUser.empno || apiUser.EMP_NO || formData.empno.trim(),
+          empName: apiUser.empName || apiUser.emp_name || apiUser.empname || "",
+        });
 
-      setUser(userData);
-
-      toast.success("Welcome back!", {
-        id: loadingToast,
-        description: "You have successfully signed in.",
-        duration: 2500,
-      });
-
-      navigate("/dashboard", { replace: true });
-    } else {
-      toast.error("Login Failed", {
-        id: loadingToast,
-        description: response.data.message || "Invalid credentials.",
-        duration: 4000,
-      });
-    }
-  } catch (error) {
-    console.error("Login request failed:", error);
-
-    toast.error("Error", {
-      id: loadingToast,
-      description:
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        "Something went wrong.",
-      duration: 4000,
-    });
-  } finally {
-    setLoading(false);
-  }
-};
+        toast.success("Welcome back!", {
+          id: loadingToast,
+          description: "You have successfully signed in.",
+          duration: 2500,
+        });
+        navigate("/dashboard", { replace: true });
+      } catch (error) {
+        console.error("Login request failed:", error);
+        toast.error("Login Failed", {
+          id: loadingToast,
+          description: error.response?.data?.message || error.message || "Something went wrong.",
+          duration: 4000,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
     return (
         <div className="bg-[linear-gradient(to_bottom,#becdda,#84a1ba)] flex items-center justify-center min-h-screen px-4">

@@ -36,22 +36,39 @@ const Navbar = () => {
   }, []);
 
   const isActive = (path) => location.pathname === path;
-  const isApprover = String(user?.approver) === "1";
+  const isEnabled = (value) => ["1", "y", "yes", "true"].includes(String(value ?? "").trim().toLowerCase());
+  const getUserField = (fieldName) => {
+    const matchedKey = Object.keys(user || {}).find(
+      (key) => key.toLowerCase() === fieldName.toLowerCase()
+    );
+    return matchedKey ? user[matchedKey] : undefined;
+  };
+  const isApprover = isEnabled(user?.approver);
   const isHr = ["1", "y", "yes", "true"].includes(String(user?.hrFlag ?? user?.hrflag ?? "").toLowerCase());
+  const isManager = isHr || isApprover;
+  const portalAccess = {
+    dtr: isEnabled(getUserField("portalDTR")),
+    dtrConfirmation: isEnabled(getUserField("portalDTRConfirm") ?? getUserField("portalDTConfirm")),
+    timekeeping: isEnabled(getUserField("portalTK")),
+    leave: isEnabled(getUserField("portalLV")),
+    officialBusiness: isEnabled(getUserField("portalOB")),
+    overtime: isEnabled(getUserField("portalOT")),
+    offset: isEnabled(getUserField("portalOffSet")),
+  };
   const timekeepingChildren = [
-    { path: "/timekeeping", label: "Timekeeping (In and Out)" },
-    { path: "/timekeepingAdj", label: "Timekeeping (Adjustment)" },
-    ...(isApprover
+    ...(portalAccess.timekeeping ? [{ path: "/timekeeping", label: "Timekeeping (In and Out)" }] : []),
+    ...(portalAccess.dtr ? [{ path: "/timekeepingAdj", label: "Timekeeping (Adjustment)" }] : []),
+    ...(portalAccess.dtr && isManager
       ? [{ path: "/timekeepingAdjApproval", label: "Timekeeping for Approval" }]
       : []),
-    ...(isApprover
+    ...(portalAccess.dtrConfirmation && isManager
       ? [{ path: "/dtrApproval", label: "DTR Confirmation" }]
       : []),
-    { path: "/dtrMonitoring", label: "DTR Monitoring" },
+    ...(portalAccess.dtr ? [{ path: "/dtrMonitoring", label: "DTR Monitoring" }] : []),
   ];
   const leaveChildren = [
     { path: "/leave", label: "Leave Application" },
-    ...(isApprover
+    ...(isManager
       ? [{ path: "/leaveapproval", label: "Leave for Approval" }]
       : []),
     { path: "/leaveMonitoring", label: "Leave Monitoring" },
@@ -61,6 +78,7 @@ const Navbar = () => {
   // Build nav items only if user is loaded
   const navItems = user ? [
     { path: "/dashboard", label: "Inquiry" },
+    ...(isHr ? [{ path: "/employee-access-settings", label: "Settings" }] : []),
     {
       label: "Employee Shift",
       children: [
@@ -68,7 +86,54 @@ const Navbar = () => {
         ...(isApprover ? [{ path: "/employee-shift-approval", label: "Shift Change for Approval" }] : []),
       ]
     },
+    ...(timekeepingChildren.length ? [{
+      label: "Timekeeping",
+      children: timekeepingChildren
+    }] : []),
     {
+      path: "/payslipviewer", label: "Payslip"
+    },
+    ...(portalAccess.overtime ? (!isManager
+      ? [{ path: "/overtime", label: "Overtime" }]
+      : [{
+        label: "Overtime",
+        children: [
+          { path: "/overtime", label: "Overtime Application" },
+          { path: "/overtimeapproval", label: "Overtime for Approval" }
+        ]
+      }]) : []),
+    ...(portalAccess.leave ? [{
+      label: "Leave",
+      children: leaveChildren
+    }] : []),
+    ...(portalAccess.officialBusiness ? (!isManager
+      ? [{ path: "/official-business", label: "Official Business" }]
+      : [{
+        label: "Official Business",
+        children: [
+          { path: "/official-business", label: "Official Business Application" },
+          { path: "/OfficialBusinessApproval", label: "Official Business for Approval" }
+        ]
+      }]) : []),
+    ...(portalAccess.offset ? (!isManager
+      ? [{ path: "/offsetApplication", label: "Offset" }]
+      : [{
+        label: "Offset",
+        children: [
+          { path: "/offsetApplication", label: "Offset Application" },
+          { path: "/offsetApproval", label: "Offset for Approval" }
+        ]
+      }]) : []),
+  ] : [];
+
+
+  /*
+   * Portal access is returned by the dashboard endpoint and controls whether a
+   * module is offered in navigation. HR/approver status only exposes the
+   * approval child after the matching primary portal permission is enabled.
+   */
+  /*
+  {
       label: "Timekeeping",
       children: timekeepingChildren
     },
@@ -98,7 +163,7 @@ const Navbar = () => {
         ]
       }]
     ),
-  ] : [];
+  */
 
 
   return (

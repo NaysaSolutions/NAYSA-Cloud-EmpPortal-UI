@@ -162,6 +162,17 @@ const formatEventTypeLabel = (value) =>
 const Timekeeping = ({ onBreakStart }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const getUserField = (fieldName) => {
+    const matchedKey = Object.keys(user || {}).find(
+      (key) => key.toLowerCase() === fieldName.toLowerCase()
+    );
+    return matchedKey ? user[matchedKey] : undefined;
+  };
+  const isEnabledAccess = (value) => ["1", "y", "yes", "true"].includes(String(value ?? "").trim().toLowerCase());
+  const hasDtrAccess = isEnabledAccess(getUserField("portalDTR"));
+  const hasDtrConfirmationAccess = isEnabledAccess(
+    getUserField("portalDTRConfirm") ?? getUserField("portalDTConfirm")
+  );
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -2361,6 +2372,11 @@ capturedImageInfo = await captureImageProcess(type);
   };
 
   const handleDtrConfirmation = async () => {
+    if (!hasDtrConfirmationAccess) {
+      Swal.fire("Access denied", "You do not have access to DTR Confirmation.", "warning");
+      return;
+    }
+
     if (!user?.empNo) {
       Swal.fire("Error", "Employee number not available. Please log in.", "error");
       return;
@@ -3830,19 +3846,23 @@ if (!confirm) return;
                   Offset Application
                 </button> */}
 
-                <button
-                  onClick={() => navigate("/timekeepingAdj")}
-                  className="flex-1 sm:flex-none h-10 px-3 bg-blue-800 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
-                >
-                  DTR Adjustment
-                </button>
+                {hasDtrAccess && (
+                  <button
+                    onClick={() => navigate("/timekeepingAdj")}
+                    className="flex-1 sm:flex-none h-10 px-3 bg-blue-800 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                  >
+                    DTR Adjustment
+                  </button>
+                )}
 
-                <button
-                  onClick={handleDtrConfirmation}
-                  className="flex-1 sm:flex-none h-10 px-3 bg-blue-800 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
-                >
-                  <CircleCheck size={20} className="text-white inline mr-2" />DTR Confirmation
-                </button>
+                {hasDtrConfirmationAccess && (
+                  <button
+                    onClick={handleDtrConfirmation}
+                    className="flex-1 sm:flex-none h-10 px-3 bg-blue-800 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                  >
+                    <CircleCheck size={20} className="text-white inline mr-2" />DTR Confirmation
+                  </button>
+                )}
               </div>
             </div>
 

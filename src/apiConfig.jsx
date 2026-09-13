@@ -28,6 +28,8 @@ const API_ENDPOINTS = {
     loginEmp:   `${API_BASE_URL}/loginEmp`,
     regEmp:     `${API_BASE_URL}/regEmp`,
     dashBoard:  `${API_BASE_URL}/dashBoard`,
+    employeePortalSettings: `${API_BASE_URL}/employeePortalSettings`,
+    updateEmployeePortalSettings: `${API_BASE_URL}/updateEmployeePortalSettings`,
 
     //Overtime
     fetchOvertimeApplications:  `${API_BASE_URL}/getOTAppHistory`,

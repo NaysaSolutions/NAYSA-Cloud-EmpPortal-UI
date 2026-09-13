@@ -30,6 +30,7 @@ import OfficialBusinessApproval from "./EMPLOYEE PORTAL/OfficialBusinessApproval
 import OfficialBusinessReview from "./EMPLOYEE PORTAL/OBReview";
 import EmployeeShift from "./EMPLOYEE PORTAL/EmployeeShift";
 import EmployeeShiftApproval from "./EMPLOYEE PORTAL/EmployeeShiftApproval";
+import EmployeeAccessSettings from "./EMPLOYEE PORTAL/EmployeeAccessSettings";
 import Register from "./NAYSA Cloud/Register";
 import ForgotPassword from "./Authentication/ForgotPassword";
 import ScrollToTop from "./components/ScrollToTop";
@@ -123,6 +124,7 @@ const App = () => {
             <Route path="/OfficialBusinessReview" element={<ProtectedRoute><Layout><OfficialBusinessReview /></Layout></ProtectedRoute>} />
             <Route path="/employee-shift" element={<ProtectedRoute><Layout><EmployeeShift /></Layout></ProtectedRoute>} />
             <Route path="/employee-shift-approval" element={<ProtectedRoute><Layout><EmployeeShiftApproval /></Layout></ProtectedRoute>} />
+            <Route path="/employee-access-settings" element={<ProtectedRoute><Layout><EmployeeAccessSettings /></Layout></ProtectedRoute>} />
 
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
