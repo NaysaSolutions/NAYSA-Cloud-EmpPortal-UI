@@ -20,6 +20,7 @@ dayjs.extend(timezone);
 
 const PH_TIMEZONE = "Asia/Manila";
 const SERVER_TIME_SYNC_INTERVAL_MS = 300000;
+const DEFAULT_DAILY_WORK_HOURS = 8;
 const toDashboardNumber = (value) => {
   const numericValue = Number(String(value ?? "").replace(/[^0-9.-]/g, ""));
   return Number.isFinite(numericValue) ? numericValue : 0;
@@ -676,6 +677,14 @@ const Dashboard = () => {
     return dailyTimeRecord
       .map((record) => {
         const hours = toDashboardNumber(record?.reg_hrs);
+        const rawTargetHours = toDashboardNumber(
+          record?.work_hrs ??
+          record?.workHrs ??
+          record?.WORK_HRS ??
+          record?.shift_work_hrs ??
+          record?.shiftWorkHrs
+        );
+        const targetHours = rawTargetHours > 0 ? rawTargetHours : DEFAULT_DAILY_WORK_HOURS;
         const recordDate = parseDashboardDate(record?.trandate);
 
         return {
@@ -683,7 +692,8 @@ const Dashboard = () => {
           date: recordDate?.isValid() ? recordDate.format("ddd") : "—",
           fullDate: recordDate?.isValid() ? recordDate.format("MMM DD") : "Unknown date",
           hours,
-          isUnderTime: hours > 0 && hours < 8,
+          targetHours,
+          isUnderTime: hours > 0 && hours < targetHours,
           heightPct: Math.min(Math.max((hours / 12) * 100, 0), 100),
         };
       })
@@ -846,6 +856,204 @@ const Dashboard = () => {
     return true;
   });
 
+  const personalDashboardInsights = useMemo(() => {
+    const recentRecords = dailyTimeRecord
+      .map((record) => {
+        const recordDate = parseDashboardDate(record?.trandate);
+        const rawTargetHours = toDashboardNumber(
+          record?.work_hrs ??
+          record?.workHrs ??
+          record?.WORK_HRS ??
+          record?.shift_work_hrs ??
+          record?.shiftWorkHrs
+        );
+
+        return {
+          ...record,
+          recordDate,
+          hours: toDashboardNumber(record?.reg_hrs),
+          targetHours: rawTargetHours > 0 ? rawTargetHours : DEFAULT_DAILY_WORK_HOURS,
+        };
+      })
+      .filter((record) => record.recordDate?.isValid())
+      .sort((left, right) => right.recordDate.valueOf() - left.recordDate.valueOf())
+      .slice(0, 7);
+
+    const renderedRecords = recentRecords.filter((record) => record.hours > 0);
+    const totalHours = renderedRecords.reduce((sum, record) => sum + record.hours, 0);
+    const averageHours =
+      renderedRecords.length > 0 ? totalHours / renderedRecords.length : 0;
+    const targetDays = renderedRecords.filter(
+      (record) => record.hours >= record.targetHours
+    ).length;
+    const undertimeDays = renderedRecords.filter(
+      (record) => record.hours > 0 && record.hours < record.targetHours
+    ).length;
+    const averageTargetHours = renderedRecords.length > 0
+      ? renderedRecords.reduce((sum, record) => sum + record.targetHours, 0) /
+        renderedRecords.length
+      : DEFAULT_DAILY_WORK_HOURS;
+    const incompleteDtrDays = recentRecords.filter(
+      (record) => !record?.time_in || !record?.time_out
+    ).length;
+
+    const pendingRequests = requestSummaryCards.reduce(
+      (sum, card) => sum + toDashboardNumber(card.count),
+      0
+    );
+    const pendingApprovals = approvalSummaryCards.reduce(
+      (sum, card) => sum + toDashboardNumber(card.count),
+      0
+    );
+    const totalLoanBalance = loanBalanceInsights.rows.reduce(
+      (sum, loan) => sum + loan.balance,
+      0
+    );
+
+    return {
+      averageHours,
+      averageTargetHours,
+      targetDays,
+      undertimeDays,
+      incompleteDtrDays,
+      pendingRequests,
+      pendingApprovals,
+      totalLoanBalance,
+      recentRecordCount: recentRecords.length,
+      latestDtrDate: recentRecords[0]?.recordDate || null,
+    };
+  }, [
+    approvalSummaryCards,
+    dailyTimeRecord,
+    loanBalanceInsights.rows,
+    requestSummaryCards,
+  ]);
+
+  const attendanceDistribution = useMemo(() => {
+    const statusTotal = employeeAttendanceCards.items.reduce(
+      (sum, item) => sum + toDashboardNumber(item.count),
+      0
+    );
+    const denominator = employeeAttendanceCards.total > 0
+      ? employeeAttendanceCards.total
+      : statusTotal;
+    const presentCount =
+      employeeAttendanceCards.items.find((item) => item.label === "Present")?.count || 0;
+    const presentRate = denominator > 0 ? (presentCount / denominator) * 100 : 0;
+
+    return {
+      denominator,
+      presentRate,
+      items: employeeAttendanceCards.items.map((item) => ({
+        ...item,
+        percentage:
+          denominator > 0 ? (toDashboardNumber(item.count) / denominator) * 100 : 0,
+      })),
+    };
+  }, [employeeAttendanceCards]);
+
+  const quickActions = [
+    {
+      code: "TK",
+      label: "Timekeeping",
+      description: "View attendance and rendered hours",
+      route: "/timekeeping",
+      enabled: portalAccess.timekeeping,
+    },
+    {
+      code: "LV",
+      label: "File Leave",
+      description: "Create a leave application",
+      route: "/leave",
+      enabled: portalAccess.leave,
+    },
+    {
+      code: "OT",
+      label: "File Overtime",
+      description: "Submit an overtime request",
+      route: "/overtime",
+      enabled: portalAccess.overtime,
+    },
+    {
+      code: "OB",
+      label: "Official Business",
+      description: "Submit an OB application",
+      route: "/official-business",
+      enabled: portalAccess.officialBusiness,
+    },
+    {
+      code: "DTR",
+      label: "DTR Adjustment",
+      description: "Request a DTR correction",
+      route: "/timekeepingAdj",
+      enabled: portalAccess.dtr,
+    },
+    {
+      code: "SCH",
+      label: "Change Schedule",
+      description: "Request a shift or schedule change",
+      route: "/employee-shift",
+      enabled: true,
+    },
+    {
+      code: "OFF",
+      label: "Offset",
+      description: "File an offset application",
+      route: "/offsetApplication",
+      enabled: portalAccess.offset,
+    },
+  ].filter((action) => action.enabled);
+
+  const dashboardGreeting = (() => {
+    const hour = currentDate?.hour();
+    if (!Number.isFinite(hour)) return "Welcome back";
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  })();
+
+  const dashboardAttention = useMemo(() => {
+    const items = [];
+
+    if (personalDashboardInsights.incompleteDtrDays > 0) {
+      items.push({
+        label: `${personalDashboardInsights.incompleteDtrDays} incomplete DTR ${
+          personalDashboardInsights.incompleteDtrDays === 1 ? "record" : "records"
+        } in your latest transactions`,
+        tone: "border-amber-200 bg-amber-50 text-amber-800",
+        route: portalAccess.dtr ? "/timekeepingAdj" : "/timekeeping",
+      });
+    }
+
+    if (personalDashboardInsights.pendingRequests > 0) {
+      items.push({
+        label: `${personalDashboardInsights.pendingRequests} pending ${
+          personalDashboardInsights.pendingRequests === 1 ? "request" : "requests"
+        } to monitor`,
+        tone: "border-blue-200 bg-blue-50 text-blue-800",
+        route: null,
+      });
+    }
+
+    if (leaveCreditInsights.lowBalanceCount > 0) {
+      items.push({
+        label: `${leaveCreditInsights.lowBalanceCount} leave ${
+          leaveCreditInsights.lowBalanceCount === 1 ? "type has" : "types have"
+        } 1 day or less available`,
+        tone: "border-rose-200 bg-rose-50 text-rose-800",
+        route: portalAccess.leave ? "/leave" : null,
+      });
+    }
+
+    return items.slice(0, 3);
+  }, [
+    leaveCreditInsights.lowBalanceCount,
+    personalDashboardInsights.incompleteDtrDays,
+    personalDashboardInsights.pendingRequests,
+    portalAccess.dtr,
+    portalAccess.leave,
+  ]);
+
   useEffect(() => {
     const availableTabs = [
       portalAccess.leave && "leave",
@@ -888,15 +1096,17 @@ const Dashboard = () => {
 
           <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
             <div className="min-w-0">
-              <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-sm font-semibold text-blue-50 backdrop-blur">
-                Welcome to Employee Dashboard  !
+              <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-blue-50 backdrop-blur">
+                Employee Portal
               </div>
-              {/* <p className="text-sm font-medium text-blue-100">Welcome back, {employeeDisplayName}</p> */}
-              <h1 className="ml-1 mt-1 text-2xl font-extrabold tracking-tight sm:text-3xl">
-                {currentDate ? currentDate.format("dddd, MMMM DD, YYYY") : "Verifying Philippine date…"}
+              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+                {dashboardGreeting}, {employeeDisplayName}
               </h1>
+              <p className="mt-1 text-sm font-medium text-blue-100">
+                {currentDate ? currentDate.format("dddd, MMMM DD, YYYY") : "Verifying Philippine date…"}
+              </p>
               {/* <p className="mt-2 max-w-2xl text-sm text-blue-100/90">
-                Review attendance, leave credits, requests, and approvals from one place.
+                Your attendance, requests, leave credits, approvals, and important actions in one place.
               </p> */}
             </div>
 
@@ -954,89 +1164,370 @@ const Dashboard = () => {
           </div>
         )}
 
-        {isManagementUser && (
-          <section className="rounded-2xl border border-blue-100 bg-white p-3 sm:p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        {/* Personal pulse */}
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              Avg. Hours
+            </p>
+            <div className="mt-2 flex items-end justify-between gap-2">
+              <p className="text-2xl font-extrabold tabular-nums text-blue-950">
+                {formatDashboardNumber(personalDashboardInsights.averageHours, 1)}
+                <span className="ml-1 text-xs font-bold text-slate-400">hrs</span>
+              </p>
+              <span className="rounded-lg bg-blue-50 px-2 py-1 text-[10px] font-bold text-blue-700">
+                Last {personalDashboardInsights.recentRecordCount || 0}
+              </span>
+            </div>
+            <p className="mt-2 text-[11px] text-slate-500">Average rendered hours from recent DTR.</p>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              Target Days
+            </p>
+            <p className="mt-2 text-2xl font-extrabold tabular-nums text-emerald-700">
+              {personalDashboardInsights.targetDays}
+            </p>
+            <p className="mt-2 text-[11px] text-slate-500">
+              {personalDashboardInsights.undertimeDays} recent day(s) below scheduled hours.
+            </p>
+          </div>
+
+          <div className={`rounded-2xl border bg-white p-4 shadow-sm ${
+            personalDashboardInsights.incompleteDtrDays > 0
+              ? "border-amber-200"
+              : "border-slate-200"
+          }`}>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              DTR Issues
+            </p>
+            <p className={`mt-2 text-2xl font-extrabold tabular-nums ${
+              personalDashboardInsights.incompleteDtrDays > 0
+                ? "text-amber-700"
+                : "text-slate-700"
+            }`}>
+              {personalDashboardInsights.incompleteDtrDays}
+            </p>
+            <p className="mt-2 text-[11px] text-slate-500">Missing time-in or time-out in recent records.</p>
+          </div>
+
+          <div className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              Available Leave
+            </p>
+            <p className="mt-2 text-2xl font-extrabold tabular-nums text-violet-700">
+              {formatDashboardNumber(leaveCreditInsights.totals.remaining, 1)}
+            </p>
+            <p className="mt-2 text-[11px] text-slate-500">Total available leave credits.</p>
+          </div>
+
+          <div className={`col-span-2 rounded-2xl border bg-white p-4 shadow-sm lg:col-span-1 ${
+            personalDashboardInsights.pendingRequests > 0
+              ? "border-blue-200"
+              : "border-slate-200"
+          }`}>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              Pending Requests
+            </p>
+            <p className="mt-2 text-2xl font-extrabold tabular-nums text-blue-800">
+              {personalDashboardInsights.pendingRequests}
+            </p>
+            <p className="mt-2 text-[11px] text-slate-500">Across your enabled employee services.</p>
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          {/* Quick actions */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-extrabold text-blue-950 sm:text-lg">Today&apos;s employee attendance</h2>
-                <p className="mt-1 text-xs text-slate-500">Attendance status summary for all employees.</p>
+                <h2 className="text-base font-extrabold text-slate-950 sm:text-lg">Quick Actions</h2>
+                <p className="mt-1 text-xs text-slate-500">Go directly to your most-used employee services.</p>
               </div>
-              <div className="rounded-xl bg-blue-50 px-4 py-2 text-white shadow-sm">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-blue-700">Total No. of Employees</p>
-                <p className="text-2xl font-extrabold tabular-nums  text-blue-700">{employeeAttendanceCards.total}</p>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">
+                {quickActions.length} available
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {quickActions.map((action) => (
+                <button
+                  key={action.code}
+                  type="button"
+                  onClick={() => navigate(action.route)}
+                  className="group rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-white px-2 text-[10px] font-extrabold text-blue-800 shadow-sm">
+                      {action.code}
+                    </span>
+                    <span className="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-700">
+                      →
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xs font-extrabold text-slate-800 sm:text-sm">
+                    {action.label}
+                  </p>
+                  <p className="mt-1 hidden text-[10px] leading-4 text-slate-500 sm:block">
+                    {action.description}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Request action center */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-950 sm:text-lg">My Request Center</h2>
+                <p className="mt-1 text-xs text-slate-500">Pending application counts and recent request status.</p>
+              </div>
+              <div className="rounded-xl bg-blue-50 px-3 py-2 text-right">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-blue-600">Total Pending</p>
+                <p className="text-xl font-extrabold tabular-nums text-blue-900">
+                  {personalDashboardInsights.pendingRequests}
+                </p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
-              {employeeAttendanceCards.items.map((item) => (
-                <div key={item.label} className={`rounded-2xl border p-4 ${item.tone}`}>
-                  <p className="text-3xl font-extrabold tabular-nums">{item.count}</p>
-                  <p className="mt-1 text-xs font-bold uppercase tracking-wide">{item.label}</p>
-                </div>
-              ))}
+
+            {requestSummaryCards.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {requestSummaryCards.map((card) => (
+                  <button
+                    type="button"
+                    key={card.code}
+                    onClick={() => navigate(card.route)}
+                    className="flex min-w-0 items-center justify-between gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-left transition hover:border-blue-300 hover:bg-blue-50"
+                  >
+                    <span className="min-w-0">
+                      <span className="block text-[10px] font-extrabold text-blue-800">{card.code}</span>
+                      <span className="block truncate text-[10px] font-semibold text-slate-600" title={card.label}>
+                        {card.label.replace(" Applications", "")}
+                      </span>
+                    </span>
+                    <span className={`inline-flex min-w-8 items-center justify-center rounded-lg px-2 py-1 text-sm font-extrabold tabular-nums ${
+                      toDashboardNumber(card.count) > 0
+                        ? "bg-amber-100 text-amber-800"
+                        : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {card.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-5 text-center text-sm text-slate-500">
+                No employee request modules are enabled.
+              </div>
+            )}
+
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-xs font-bold text-slate-700">Recent request status</p>
+                <p className="text-[10px] font-semibold text-slate-500">
+                  {unifiedRequestStats.total} recent
+                </p>
+              </div>
+              <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className="bg-emerald-500 transition-all duration-500"
+                  style={{ width: `${unifiedRequestStats.approvedPct}%` }}
+                  title={`Approved: ${unifiedRequestStats.approved}`}
+                />
+                <div
+                  className="bg-amber-400 transition-all duration-500"
+                  style={{ width: `${unifiedRequestStats.pendingPct}%` }}
+                  title={`Pending: ${unifiedRequestStats.pending}`}
+                />
+                <div
+                  className="bg-rose-500 transition-all duration-500"
+                  style={{ width: `${unifiedRequestStats.rejectedPct}%` }}
+                  title={`Rejected: ${unifiedRequestStats.rejected}`}
+                />
+              </div>
+              <div className="mt-2 grid grid-cols-3 gap-2 text-center text-[10px] font-semibold">
+                <span className="rounded-lg bg-emerald-50 px-2 py-1 text-emerald-700">
+                  {unifiedRequestStats.approved} Approved
+                </span>
+                <span className="rounded-lg bg-amber-50 px-2 py-1 text-amber-700">
+                  {unifiedRequestStats.pending} Pending
+                </span>
+                <span className="rounded-lg bg-rose-50 px-2 py-1 text-rose-700">
+                  {unifiedRequestStats.rejected} Rejected
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {dashboardAttention.length > 0 && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-extrabold text-slate-900">Needs Your Attention</h2>
+                <p className="mt-0.5 text-[11px] text-slate-500">Items worth checking before payroll cut-off.</p>
+              </div>
+              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-extrabold text-amber-800">
+                {dashboardAttention.length}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+              {dashboardAttention.map((item, index) => {
+                const content = (
+                  <>
+                    <span className="mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full bg-current opacity-70" />
+                    <span className="text-xs font-semibold leading-5">{item.label}</span>
+                    {item.route && <span className="ml-auto shrink-0">→</span>}
+                  </>
+                );
+
+                return item.route ? (
+                  <button
+                    key={`${item.label}-${index}`}
+                    type="button"
+                    onClick={() => navigate(item.route)}
+                    className={`flex items-start gap-2 rounded-xl border p-3 text-left transition hover:-translate-y-0.5 ${item.tone}`}
+                  >
+                    {content}
+                  </button>
+                ) : (
+                  <div
+                    key={`${item.label}-${index}`}
+                    className={`flex items-start gap-2 rounded-xl border p-3 ${item.tone}`}
+                  >
+                    {content}
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
 
-        {requestSummaryCards.length > 0 && (
-        <section className="rounded-2xl border border-blue-100 bg-white p-3 sm:p-4">
-          <div className="mb-3 flex items-end justify-between gap-3">
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900 sm:text-lg mb-1">My pending requests</h2>
-              <p className="text-xs text-slate-500 sm:text-xs">Open applications that may still need action.</p>
-            </div>
-          </div>
-
-          <div className={`grid gap-3 ${summaryGridClass(requestSummaryCards.length)}`}>
-            {requestSummaryCards.map((card) => (
-              <button
-                type="button"
-                key={card.code}
-                onClick={() => navigate(card.route)}
-                className="group min-w-0 rounded-2xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-blue-100 px-2 text-xs font-extrabold text-blue-900">
-                    {card.code}
+        {isManagementUser && (
+          <section className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-extrabold text-blue-950 sm:text-lg">Workforce Snapshot</h2>
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-blue-700">
+                    HR / Approver
                   </span>
-                  <span className="text-lg text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-700">→</span>
                 </div>
-                <p className="mt-4 text-3xl font-extrabold tabular-nums text-slate-950">{card.count}</p>
-                <p className="mt-1 text-wrap text-xs font-semibold text-slate-600 sm:text-sm" title={card.label}>
-                  {card.label}
+                <p className="mt-1 text-xs text-slate-500">
+                  Today&apos;s attendance distribution and approval workload.
                 </p>
-              </button>
-            ))}
-          </div>
-        </section>
-        )}
-
-        {isManagementUser && approvalSummaryCards.length > 0 && (
-          <section className="rounded-2xl border border-blue-100 bg-white p-3 sm:p-4">
-            <div className="mb-3">
-              <h2 className="text-base font-extrabold text-blue-950 sm:text-lg mb-1">For my approval</h2>
-              <p className="text-xs text-slate-500 sm:text-xs">Pending employee requests assigned to you.</p>
+              </div>
+              <div className="rounded-xl bg-blue-50 px-4 py-2">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-blue-700">Employees</p>
+                <p className="text-2xl font-extrabold tabular-nums text-blue-900">
+                  {employeeAttendanceCards.total}
+                </p>
+              </div>
             </div>
 
-            <div className={`grid gap-3 ${summaryGridClass(approvalSummaryCards.length)}`}>
-              {approvalSummaryCards.map((card) => (
-                <button
-                  type="button"
-                  key={card.code}
-                  onClick={() => navigate(card.route)}
-                  className="group rounded-2xl border border-blue-100 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="inline-flex h-10 min-w-10 items-center justify-center rounded-xl bg-blue-800 px-2 text-xs font-extrabold text-white">
-                      {card.code}
-                    </span>
-                    <span className="text-slate-300 transition group-hover:text-blue-700">→</span>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-[170px_1fr] md:items-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <div
+                      className="relative flex h-36 w-36 items-center justify-center rounded-full"
+                      style={{
+                        background: `conic-gradient(#059669 ${Math.min(
+                          Math.max(attendanceDistribution.presentRate, 0),
+                          100
+                        ) * 3.6}deg, #e2e8f0 0deg)`,
+                      }}
+                      title={`Present rate: ${formatDashboardNumber(attendanceDistribution.presentRate, 1)}%`}
+                    >
+                      <div className="flex h-28 w-28 flex-col items-center justify-center rounded-full bg-white shadow-inner">
+                        <p className="text-2xl font-extrabold text-emerald-700">
+                          {formatDashboardNumber(attendanceDistribution.presentRate, 0)}%
+                        </p>
+                        <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Present</p>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-center text-[10px] text-slate-500">
+                      Based on {attendanceDistribution.denominator || 0} categorized employee(s)
+                    </p>
                   </div>
-                  <p className="mt-3 text-3xl font-extrabold tabular-nums text-blue-950">{card.count}</p>
-                  <p className="mt-1 text-wrap text-xs font-semibold text-slate-600 sm:text-sm" title={card.label}>
-                    {card.label}
-                  </p>
-                </button>
-              ))}
+
+                  <div className="space-y-3">
+                    {attendanceDistribution.items.map((item) => (
+                      <div key={item.label}>
+                        <div className="mb-1 flex items-center justify-between gap-3 text-[11px]">
+                          <span className="font-bold text-slate-700">{item.label}</span>
+                          <span className="font-extrabold tabular-nums text-slate-800">
+                            {item.count}
+                            <span className="ml-1 font-semibold text-slate-400">
+                              ({formatDashboardNumber(item.percentage, 0)}%)
+                            </span>
+                          </span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-slate-200">
+                          <div
+                            className={`h-full rounded-full ${
+                              item.label === "Present"
+                                ? "bg-emerald-500"
+                                : item.label === "No DTR"
+                                ? "bg-amber-400"
+                                : item.label === "Absent"
+                                ? "bg-rose-500"
+                                : item.label === "On Leave"
+                                ? "bg-violet-500"
+                                : "bg-sky-500"
+                            }`}
+                            style={{ width: `${Math.min(Math.max(item.percentage, 0), 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-blue-100 bg-blue-50/60 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-extrabold text-blue-950">Approval Queue</p>
+                    <p className="text-[11px] text-slate-500">Requests currently assigned to you.</p>
+                  </div>
+                  <div className="rounded-xl bg-white px-3 py-2 text-center shadow-sm">
+                    <p className="text-[9px] font-bold uppercase text-blue-600">Pending</p>
+                    <p className="text-xl font-extrabold tabular-nums text-blue-900">
+                      {personalDashboardInsights.pendingApprovals}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {approvalSummaryCards.map((card) => (
+                    <button
+                      key={card.code}
+                      type="button"
+                      onClick={() => navigate(card.route)}
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-blue-100 bg-white px-3 py-2.5 text-left transition hover:border-blue-300 hover:shadow-sm"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-blue-800 px-1.5 text-[9px] font-extrabold text-white">
+                          {card.code}
+                        </span>
+                        <span className="truncate text-[11px] font-bold text-slate-700" title={card.label}>
+                          {card.label.replace(" for Approval", "")}
+                        </span>
+                      </span>
+                      <span className={`inline-flex min-w-8 items-center justify-center rounded-lg px-2 py-1 text-sm font-extrabold tabular-nums ${
+                        toDashboardNumber(card.count) > 0
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {card.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
         )}
@@ -1057,13 +1548,15 @@ const Dashboard = () => {
               >
                 View Details
               </button> */}
-              <button
-                type="button"
-                onClick={() => navigate("/leave")}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
-              >
-                File Leave
-              </button>
+              {portalAccess.leave && (
+                <button
+                  type="button"
+                  onClick={() => navigate("/leave")}
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-blue-800 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                >
+                  File Leave
+                </button>
+              )}
             </div>
           </div>
 
@@ -1452,26 +1945,63 @@ const Dashboard = () => {
             </div>
             
             {dtrTrendData.length > 0 ? (
-              <div className="flex h-40 items-end justify-between gap-2 px-2 sm:px-2">
-                {dtrTrendData.map((data, index) => (
-                  <div key={`${data.fullDate}-${index}`} className="group flex h-full w-full max-w-[42px] flex-col items-center gap-2">
-                    <div
-                      className="relative flex h-full w-full items-end justify-center overflow-hidden rounded-t-xl bg-blue-100"
-                      title={`${data.fullDate}: ${formatDashboardNumber(data.hours)} hours`}
-                    >
-                      <div
-                        className={`w-full rounded-t-lg transition-all duration-500 ${
-                          data.isUnderTime ? "bg-yellow-500" : "bg-blue-800"
-                        } group-hover:opacity-80`}
-                        style={{ height: `${Math.max(data.heightPct, data.hours > 0 ? 4 : 0)}%` }}
-                      />
-                      <span className="absolute top-1 hidden rounded bg-white/90 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 shadow-sm group-hover:block">
-                        {formatDashboardNumber(data.hours, 1)}h
-                      </span>
-                    </div>
-                    <p className="text-[10px] font-semibold text-slate-600">{data.date}</p>
+              <div>
+                <div className="relative h-44">
+                  <div
+                    className="pointer-events-none absolute left-0 right-0 z-10 border-t border-dashed border-emerald-400"
+                    style={{
+                      bottom: `${Math.min(
+                        Math.max((personalDashboardInsights.averageTargetHours / 12) * 100, 0),
+                        100
+                      )}%`,
+                    }}
+                  >
+                    <span className="absolute -top-4 right-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-bold text-emerald-700">
+                      {formatDashboardNumber(personalDashboardInsights.averageTargetHours, 1)}h target
+                    </span>
                   </div>
-                ))}
+                  <div className="flex h-full items-end justify-between gap-2 px-2">
+                    {dtrTrendData.map((data, index) => (
+                      <div key={`${data.fullDate}-${index}`} className="group flex h-full w-full max-w-[42px] flex-col items-center gap-2">
+                        <div
+                          className="relative flex h-full w-full items-end justify-center overflow-hidden rounded-t-xl bg-blue-100"
+                          title={`${data.fullDate}: ${formatDashboardNumber(data.hours)} hours`}
+                        >
+                          <div
+                            className={`w-full rounded-t-lg transition-all duration-500 ${
+                              data.isUnderTime ? "bg-amber-400" : "bg-blue-800"
+                            } group-hover:opacity-80`}
+                            style={{ height: `${Math.max(data.heightPct, data.hours > 0 ? 4 : 0)}%` }}
+                          />
+                          <span className="absolute top-1 hidden rounded bg-white/90 px-1.5 py-0.5 text-[9px] font-bold text-slate-700 shadow-sm group-hover:block">
+                            {formatDashboardNumber(data.hours, 1)}h
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-semibold text-slate-600">{data.date}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-200 pt-3 text-center">
+                  <div>
+                    <p className="text-sm font-extrabold text-blue-900">
+                      {formatDashboardNumber(personalDashboardInsights.averageHours, 1)}h
+                    </p>
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Average</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-extrabold text-emerald-700">
+                      {personalDashboardInsights.targetDays}
+                    </p>
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Target Days</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-extrabold text-amber-700">
+                      {personalDashboardInsights.undertimeDays}
+                    </p>
+                    <p className="text-[9px] font-bold uppercase tracking-wide text-slate-500">Below Target</p>
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-slate-200 bg-white text-sm text-slate-500">
@@ -1529,7 +2059,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          {dailyTimeRecord.length > 0 && (
+          {dailyTimeRecord.length > 0 && portalAccess.timekeeping && (
             <div className="relative flex justify-end">
               <button
                 onClick={() => navigate("/timekeeping")}
@@ -1672,22 +2202,6 @@ const Dashboard = () => {
         {(portalAccess.leave || portalAccess.overtime || portalAccess.officialBusiness) && (
         <div className="relative flex w-full flex-grow flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
           
-          {/* Status Ring Block */}
-          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 mb-4">
-            <p className="text-sm font-bold text-blue-900">Recent Requests Overview</p>
-            <div className="mt-3 flex h-3 w-full overflow-hidden rounded-full bg-gray-200">
-              <div className="bg-blue-600 transition-all duration-500" style={{ width: `${unifiedRequestStats.approvedPct}%` }} title={`Approved: ${unifiedRequestStats.approved}`} />
-              <div className="bg-yellow-400 transition-all duration-500" style={{ width: `${unifiedRequestStats.pendingPct}%` }} title={`Pending: ${unifiedRequestStats.pending}`} />
-              <div className="bg-red-500 transition-all duration-500" style={{ width: `${unifiedRequestStats.rejectedPct}%` }} title={`Rejected: ${unifiedRequestStats.rejected}`} />
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-[11px] font-semibold text-blue-950">
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-600" /> Approved ({unifiedRequestStats.approved})</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-yellow-400" /> Pending ({unifiedRequestStats.pending})</span>
-              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-500" /> Rejected ({unifiedRequestStats.rejected})</span>
-              <span className="ml-auto text-slate-500">Total: {unifiedRequestStats.total}</span>
-            </div>
-          </div>
-
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3">
             {/* Tab Navigation */}
             <div className="flex space-x-2 overflow-x-auto">

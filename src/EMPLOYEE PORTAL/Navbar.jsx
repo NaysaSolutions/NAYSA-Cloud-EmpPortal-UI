@@ -78,7 +78,6 @@ const Navbar = () => {
   // Build nav items only if user is loaded
   const navItems = user ? [
     { path: "/dashboard", label: "Inquiry" },
-    ...(isHr ? [{ path: "/employee-access-settings", label: "Settings" }] : []),
     {
       label: "Employee Shift",
       children: [
@@ -260,6 +259,17 @@ const Navbar = () => {
           {/* Profile Dropdown */}
           {isDropdownOpen && (
             <div className="absolute right-0 mt-12 w-48 bg-white rounded-lg py-2 z-30 shadow-lg">
+              {isHr && (
+                <button
+                  className="block px-4 py-2 text-sm text-blue-800 hover:bg-blue-50 w-full text-left"
+                  onClick={() => {
+                    navigate("/employee-access-settings");
+                    setIsDropdownOpen(false);
+                  }}
+                >
+                  Settings
+                </button>
+              )}
               <button
                 className="block px-4 py-2 text-sm text-red-600 hover:bg-gray-100 w-full text-left"
                 onClick={handleLogout}
