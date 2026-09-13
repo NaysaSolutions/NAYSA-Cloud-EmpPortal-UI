@@ -28,6 +28,8 @@ const API_ENDPOINTS = {
     loginEmp:   `${API_BASE_URL}/loginEmp`,
     regEmp:     `${API_BASE_URL}/regEmp`,
     dashBoard:  `${API_BASE_URL}/dashBoard`,
+    announcements: `${API_BASE_URL}/announcements`,
+    createAnnouncement: `${API_BASE_URL}/announcements`,
     employeePortalSettings: `${API_BASE_URL}/employeePortalSettings`,
     updateEmployeePortalSettings: `${API_BASE_URL}/updateEmployeePortalSettings`,
 

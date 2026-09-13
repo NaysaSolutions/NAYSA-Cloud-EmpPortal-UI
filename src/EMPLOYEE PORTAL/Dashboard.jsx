@@ -8,7 +8,7 @@ import timezone from "dayjs/plugin/timezone";
 import { useAuth } from "./AuthContext"; 
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowUp, faClock } from "@fortawesome/free-solid-svg-icons";
+import { faArrowUp, faBell, faBullhorn, faCalendarDays, faClock, faEye, faPaperPlane, faPen, faPlus, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
 import LeaveCreditModal from "./LeaveCreditModal";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import "@/index.css";
@@ -140,6 +140,27 @@ const DEFAULT_SUM = Object.freeze({
 
 const normalizeStatus = (value) => String(value || "").trim().toLowerCase();
 const isEnabledFlag = (value) => ["1", "y", "yes", "true"].includes(normalizeStatus(value));
+const normalizeAnnouncement = (announcement, index) => ({
+  id: announcement?.id ?? announcement?.announcementId ?? announcement?.announcement_id ?? index,
+  title: String(announcement?.title ?? announcement?.subject ?? announcement?.announcement_title ?? "Announcement").trim(),
+  message: String(announcement?.message ?? announcement?.body ?? announcement?.description ?? "").trim(),
+  postedBy: String(announcement?.postedBy ?? announcement?.posted_by ?? announcement?.createdBy ?? announcement?.created_by ?? "HR").trim(),
+  postedAt: announcement?.postedAt ?? announcement?.posted_at ?? announcement?.createdAt ?? announcement?.created_at ?? "",
+  expiresAt:
+    announcement?.expiresAt ??
+    announcement?.expires_at ??
+    announcement?.expirationDate ??
+    announcement?.expiration_date ??
+    "",
+  updatedBy:
+    announcement?.updatedBy ??
+    announcement?.updated_by ??
+    "",
+  updatedAt:
+    announcement?.updatedAt ??
+    announcement?.updated_at ??
+    "",
+});
 const getObjectField = (source, fieldName) => {
   const matchedKey = Object.keys(source || {}).find(
     (key) => key.toLowerCase() === String(fieldName).toLowerCase()
@@ -191,9 +212,215 @@ const Dashboard = () => {
   const [activeApproverTab, setActiveApproverTab] = useState("leave");
   const [approvalsum, setApprovalsum] = useState(DEFAULT_SUM);
   const [attendanceSummary, setAttendanceSummary] = useState({});
+  const [announcements, setAnnouncements] = useState([]);
+  const [announcementTitle, setAnnouncementTitle] = useState("");
+  const [announcementMessage, setAnnouncementMessage] = useState("");
+  const [announcementExpirationDate, setAnnouncementExpirationDate] = useState("");
+  const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(false);
+  const [isAnnouncementPosting, setIsAnnouncementPosting] = useState(false);
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState(null);
+  const [deletingAnnouncementId, setDeletingAnnouncementId] = useState(null);
+  const [announcementError, setAnnouncementError] = useState("");
+  const [announcementPostError, setAnnouncementPostError] = useState("");
 
   const { user, setUser, authLoading } = useAuth();
   const navigate = useNavigate();
+  const isHrUser = isEnabledFlag(user?.hrFlag ?? user?.hrflag);
+
+  const fetchAnnouncements = useCallback(async () => {
+    setIsAnnouncementLoading(true);
+    setAnnouncementError("");
+
+    try {
+      const response = await fetch(API_ENDPOINTS.announcements, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+
+      if (!response.ok) throw new Error(`Announcements request failed (${response.status}).`);
+
+      const payload = await response.json();
+      const rows = Array.isArray(payload) ? payload : payload?.data ?? payload?.announcements ?? [];
+      setAnnouncements(rows.map(normalizeAnnouncement).filter((item) => item.message));
+    } catch (requestError) {
+      console.error("Error fetching announcements:", requestError);
+      setAnnouncementError("Announcements are temporarily unavailable.");
+    } finally {
+      setIsAnnouncementLoading(false);
+    }
+  }, []);
+
+  const closeAnnouncementModal = useCallback(() => {
+    if (isAnnouncementPosting) return;
+
+    setIsAnnouncementModalOpen(false);
+    setEditingAnnouncement(null);
+    setAnnouncementTitle("");
+    setAnnouncementMessage("");
+    setAnnouncementExpirationDate("");
+    setAnnouncementPostError("");
+  }, [isAnnouncementPosting]);
+
+  const openAnnouncementModal = () => {
+    setEditingAnnouncement(null);
+    setAnnouncementTitle("");
+    setAnnouncementMessage("");
+    setAnnouncementExpirationDate("");
+    setAnnouncementPostError("");
+    setIsAnnouncementModalOpen(true);
+  };
+
+  const openAnnouncementEditModal = (announcement) => {
+    if (!isHrUser) return;
+
+    setEditingAnnouncement(announcement);
+    setAnnouncementTitle(announcement?.title || "");
+    setAnnouncementMessage(announcement?.message || "");
+    setAnnouncementExpirationDate(
+      announcement?.expiresAt
+        ? dayjs(announcement.expiresAt).format("YYYY-MM-DD")
+        : ""
+    );
+    setAnnouncementPostError("");
+    setIsAnnouncementModalOpen(true);
+  };
+
+  const openAnnouncementViewModal = (announcement) => {
+    setSelectedAnnouncement(announcement);
+  };
+
+  const closeAnnouncementViewModal = useCallback(() => {
+    setSelectedAnnouncement(null);
+  }, []);
+
+  const handleSaveAnnouncement = async (event) => {
+    event.preventDefault();
+
+    if (
+      !isHrUser ||
+      !announcementTitle.trim() ||
+      !announcementMessage.trim() ||
+      !announcementExpirationDate
+    ) {
+      return;
+    }
+
+    setIsAnnouncementPosting(true);
+    setAnnouncementPostError("");
+
+    const isEditing = Boolean(editingAnnouncement?.id);
+    const endpoint = isEditing
+      ? `${API_ENDPOINTS.announcements}/${editingAnnouncement.id}`
+      : API_ENDPOINTS.createAnnouncement;
+
+    try {
+      const response = await fetch(endpoint, {
+        method: isEditing ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(
+          isEditing
+            ? {
+                title: announcementTitle.trim(),
+                message: announcementMessage.trim(),
+                expirationDate: announcementExpirationDate,
+                updatedBy: user?.empNo,
+              }
+            : {
+                title: announcementTitle.trim(),
+                message: announcementMessage.trim(),
+                expirationDate: announcementExpirationDate,
+                createdBy: user?.empNo,
+              }
+        ),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message ||
+            `Announcement ${isEditing ? "update" : "post"} failed (${response.status}).`
+        );
+      }
+
+      setIsAnnouncementModalOpen(false);
+      setEditingAnnouncement(null);
+      setAnnouncementTitle("");
+      setAnnouncementMessage("");
+      setAnnouncementExpirationDate("");
+      await fetchAnnouncements();
+    } catch (requestError) {
+      console.error(
+        `Error ${isEditing ? "updating" : "posting"} announcement:`,
+        requestError
+      );
+      setAnnouncementPostError(
+        requestError instanceof Error
+          ? requestError.message
+          : `Unable to ${isEditing ? "update" : "post"} announcement. Please try again.`
+      );
+    } finally {
+      setIsAnnouncementPosting(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (announcement) => {
+    if (!isHrUser || !announcement?.id || deletingAnnouncementId) return;
+
+    const confirmed = window.confirm(
+      `Delete "${announcement.title}"?\n\nThis announcement will no longer be visible to employees.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingAnnouncementId(announcement.id);
+    setAnnouncementError("");
+
+    try {
+      const response = await fetch(
+        `${API_ENDPOINTS.announcements}/${announcement.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            deletedBy: user?.empNo,
+          }),
+        }
+      );
+
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(
+          payload?.message ||
+            `Announcement delete failed (${response.status}).`
+        );
+      }
+
+      if (selectedAnnouncement?.id === announcement.id) {
+        setSelectedAnnouncement(null);
+      }
+
+      await fetchAnnouncements();
+    } catch (requestError) {
+      console.error("Error deleting announcement:", requestError);
+      setAnnouncementError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to delete announcement. Please try again."
+      );
+    } finally {
+      setDeletingAnnouncementId(null);
+    }
+  };
 
   const getTrustedPhilippineNow = useCallback(() => {
     const trustedClock = trustedClockRef.current;
@@ -396,8 +623,9 @@ const Dashboard = () => {
   useEffect(() => {
     if (!authLoading) {
       fetchDashboardData();
+      fetchAnnouncements();
     }
-  }, [authLoading, fetchDashboardData]);
+  }, [authLoading, fetchDashboardData, fetchAnnouncements]);
 
   useEffect(() => {
     syncPhilippineClock();
@@ -421,6 +649,39 @@ const Dashboard = () => {
       window.clearInterval(clockInterval);
     };
   }, [getTrustedPhilippineNow, syncPhilippineClock]);
+
+  useEffect(() => {
+    if (!isAnnouncementModalOpen && !selectedAnnouncement) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event) => {
+      if (event.key !== "Escape") return;
+
+      if (selectedAnnouncement) {
+        closeAnnouncementViewModal();
+        return;
+      }
+
+      if (!isAnnouncementPosting) {
+        closeAnnouncementModal();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [
+    closeAnnouncementModal,
+    closeAnnouncementViewModal,
+    isAnnouncementModalOpen,
+    isAnnouncementPosting,
+    selectedAnnouncement,
+  ]);
 
   const handlePrevMonth = () => {
     setCurrentMonth(currentMonth.subtract(1, "month"));
@@ -1163,6 +1424,176 @@ const Dashboard = () => {
             </button>
           </div>
         )}
+
+        <section className="relative overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-sm">
+          <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-100/50 blur-3xl" />
+
+          <div className="relative flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-800 to-blue-600 text-white shadow-sm">
+                <FontAwesomeIcon icon={faBullhorn} />
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-extrabold text-slate-950 sm:text-lg">
+                    Announcement Board
+                  </h2>
+                  <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-extrabold text-blue-700">
+                    {announcements.length} {announcements.length === 1 ? "post" : "posts"}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Company notices and important updates from Human Resources.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isAnnouncementLoading && (
+                <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-2 text-[11px] font-semibold text-slate-500">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" />
+                  Updating
+                </span>
+              )}
+
+              {isHrUser && (
+                <button
+                  type="button"
+                  onClick={openAnnouncementModal}
+                  className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-blue-800 px-4 text-xs font-bold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-md focus:outline-none focus:ring-4 focus:ring-blue-100"
+                >
+                  <FontAwesomeIcon icon={faPlus} />
+                  New Announcement
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-5">
+            {announcementError ? (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-800">
+                <span>{announcementError}</span>
+                <button
+                  type="button"
+                  onClick={fetchAnnouncements}
+                  className="shrink-0 rounded-xl bg-white px-3 py-1.5 font-bold text-amber-800 shadow-sm ring-1 ring-amber-200 transition hover:bg-amber-100"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : isAnnouncementLoading && announcements.length === 0 ? (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {[0, 1, 2].map((item) => (
+                  <div key={item} className="animate-pulse rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                    <div className="h-3 w-24 rounded bg-slate-200" />
+                    <div className="mt-3 h-4 w-3/4 rounded bg-slate-200" />
+                    <div className="mt-2 h-3 w-full rounded bg-slate-200" />
+                    <div className="mt-1 h-3 w-5/6 rounded bg-slate-200" />
+                  </div>
+                ))}
+              </div>
+            ) : announcements.length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {announcements.map((announcement, index) => (
+                  <article
+                    key={announcement.id}
+                    className={`group relative flex min-h-[150px] flex-col overflow-hidden rounded-2xl border p-4 transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${
+                      index === 0
+                        ? "border-blue-200 bg-gradient-to-br from-blue-50 via-white to-white"
+                        : "border-slate-200 bg-white hover:border-blue-200"
+                    }`}
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.12em] ${
+                          index === 0
+                            ? "bg-blue-800 text-white"
+                            : "bg-slate-100 text-slate-500"
+                        }`}
+                      >
+                        <FontAwesomeIcon icon={faBell} className="text-[8px]" />
+                        {index === 0 ? "Latest" : "Announcement"}
+                      </span>
+                      {announcement.postedAt && (
+                        <span className="text-[10px] font-semibold text-slate-400">
+                          {dayjs(announcement.postedAt).format("MMM DD, YYYY")}
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-sm font-extrabold leading-5 text-blue-950">
+                      {announcement.title}
+                    </h3>
+
+                    <p className="mt-2 line-clamp-4 flex-1 whitespace-pre-wrap text-xs leading-5 text-slate-600">
+                      {announcement.message}
+                    </p>
+
+                    {announcement.expiresAt && (
+                      <div className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-xl bg-amber-50 px-2 py-1 text-[9px] font-bold text-amber-700">
+                        <FontAwesomeIcon icon={faCalendarDays} />
+                        Expires {dayjs(announcement.expiresAt).format("MMM DD, YYYY")}
+                      </div>
+                    )}
+
+                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
+                      <span className="min-w-0 truncate text-[10px] font-bold text-slate-500">
+                        Posted by {announcement.postedBy || "HR"}
+                      </span>
+
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => openAnnouncementViewModal(announcement)}
+                          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-xl border border-blue-100 bg-blue-50 px-2.5 text-[10px] font-extrabold text-blue-800 transition hover:border-blue-200 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                          aria-label={`View announcement: ${announcement.title}`}
+                        >
+                          <FontAwesomeIcon icon={faEye} />
+                          View
+                        </button>
+
+                        {isHrUser && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => openAnnouncementEditModal(announcement)}
+                              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 text-[10px] font-extrabold text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                              aria-label={`Edit announcement: ${announcement.title}`}
+                            >
+                              <FontAwesomeIcon icon={faPen} />
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAnnouncement(announcement)}
+                              disabled={deletingAnnouncementId === announcement.id}
+                              className="inline-flex h-8 items-center justify-center gap-1.5 rounded-xl border border-red-100 bg-red-50 px-2.5 text-[10px] font-extrabold text-red-700 transition hover:border-red-200 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              aria-label={`Delete announcement: ${announcement.title}`}
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                              {deletingAnnouncementId === announcement.id ? "Deleting..." : "Delete"}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="flex min-h-36 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 text-center">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-slate-400 shadow-sm ring-1 ring-slate-200">
+                  <FontAwesomeIcon icon={faBell} />
+                </span>
+                <p className="mt-3 text-sm font-bold text-slate-700">No announcements yet</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  Important company notices will appear here.
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
 
         {/* Personal pulse */}
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
@@ -2546,6 +2977,285 @@ const Dashboard = () => {
               >
                 View All <span className="ml-1">→</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {selectedAnnouncement && (
+          <div
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-[2px]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="announcement-view-modal-title"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                closeAnnouncementViewModal();
+              }
+            }}
+          >
+            <div className="flex max-h-[78vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+              <div className="shrink-0 border-b border-slate-100 bg-white px-4 py-3.5 sm:px-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-800 text-white">
+                      <FontAwesomeIcon icon={faBullhorn} className="text-sm" />
+                    </span>
+
+                    <div className="min-w-0">
+                      <div className="mb-1 flex flex-wrap items-center gap-2">
+                        <span className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-blue-700">
+                          Announcement
+                        </span>
+                        {selectedAnnouncement.postedAt && (
+                          <span className="text-[9px] font-semibold text-slate-400">
+                            {dayjs(selectedAnnouncement.postedAt).format("MMM DD, YYYY • h:mm A")}
+                          </span>
+                        )}
+                      </div>
+
+                      <h2
+                        id="announcement-view-modal-title"
+                        className="break-words text-sm font-extrabold leading-5 text-slate-900 sm:text-base"
+                      >
+                        {selectedAnnouncement.title}
+                      </h2>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={closeAnnouncementViewModal}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    aria-label="Close announcement"
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-4">
+                <p className="whitespace-pre-wrap break-words text-[11px] sm:text-xs leading-6 text-slate-700">
+                  {selectedAnnouncement.message}
+                </p>
+              </div>
+
+              <div className="shrink-0 border-t border-slate-100 bg-slate-50 px-4 py-3 sm:px-5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 text-[10px] text-slate-500">
+                    <span className="font-bold text-slate-700">
+                      Posted by {selectedAnnouncement.postedBy || "HR"}
+                    </span>
+                    {selectedAnnouncement.expiresAt && (
+                      <span className="ml-2 inline-flex items-center gap-1 text-amber-700">
+                        <FontAwesomeIcon icon={faCalendarDays} />
+                        Expires {dayjs(selectedAnnouncement.expiresAt).format("MMM DD, YYYY")}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2">
+                    {isHrUser && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          closeAnnouncementViewModal();
+                          openAnnouncementEditModal(selectedAnnouncement);
+                        }}
+                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-bold text-slate-700 transition hover:bg-slate-100"
+                      >
+                        <FontAwesomeIcon icon={faPen} />
+                        Edit
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={closeAnnouncementViewModal}
+                      className="inline-flex h-9 min-w-[84px] items-center justify-center rounded-xl bg-blue-800 px-3 text-[10px] font-bold text-white transition hover:bg-blue-700"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isHrUser && isAnnouncementModalOpen && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-[2px] sm:p-5"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="announcement-modal-title"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !isAnnouncementPosting) {
+                closeAnnouncementModal();
+              }
+            }}
+          >
+            <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl">
+              <div className="relative overflow-hidden bg-gradient-to-br from-blue-900 via-blue-800 to-blue-600 px-4 py-3 text-white sm:px-4">
+                <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
+                <div className="relative flex items-start justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/20">
+                      <FontAwesomeIcon icon={faBullhorn} />
+                    </span>
+                    <div>
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-blue-100">
+                        Human Resources
+                      </p>
+                      <h2 id="announcement-modal-title" className="mt-0.5 text-base font-extrabold sm:text-lg">
+                        {editingAnnouncement ? "Edit Announcement" : "New Announcement"}
+                      </h2>
+                      <p className="mt-1 text-xs text-blue-100">
+                        {editingAnnouncement
+                          ? "Update the announcement details and expiration date."
+                          : "This announcement will be visible to employees until its expiration date."}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={closeAnnouncementModal}
+                    disabled={isAnnouncementPosting}
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Close announcement modal"
+                  >
+                    <FontAwesomeIcon icon={faXmark} />
+                  </button>
+                </div>
+              </div>
+
+              <form onSubmit={handleSaveAnnouncement} className="flex min-h-0 flex-1 flex-col">
+                <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 sm:px-4">
+                  {announcementPostError && (
+                    <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs font-semibold text-red-700">
+                      {announcementPostError}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between gap-3">
+                        <label htmlFor="announcement-title" className="text-xs font-extrabold text-slate-700">
+                          Announcement Title
+                        </label>
+                        <span className={`text-[10px] font-semibold ${
+                          announcementTitle.length >= 140 ? "text-amber-600" : "text-slate-400"
+                        }`}>
+                          {announcementTitle.length}/150
+                        </span>
+                      </div>
+                      <input
+                        id="announcement-title"
+                        type="text"
+                        value={announcementTitle}
+                        onChange={(event) => setAnnouncementTitle(event.target.value)}
+                        maxLength={150}
+                        autoFocus
+                        placeholder="e.g. Payroll Cut-off Advisory"
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm font-semibold text-slate-800 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between gap-3">
+                        <label htmlFor="announcement-expiration-date" className="text-xs font-extrabold text-slate-700">
+                          Expiration Date
+                        </label>
+                        <span className="text-[10px] font-semibold text-slate-400">
+                          Required
+                        </span>
+                      </div>
+                      <input
+                        id="announcement-expiration-date"
+                        type="date"
+                        value={announcementExpirationDate}
+                        onChange={(event) => setAnnouncementExpirationDate(event.target.value)}
+                        min={currentDate?.format("YYYY-MM-DD") || undefined}
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                        required
+                      />
+                      <p className="mt-1.5 text-[10px] text-slate-400">
+                        The announcement will automatically stop appearing after this date.
+                      </p>
+                    </div>
+
+                    <div>
+                      <div className="mb-1.5 flex items-center justify-between gap-3">
+                        <label htmlFor="announcement-message" className="text-xs font-extrabold text-slate-700">
+                          Message
+                        </label>
+                        <span className={`text-[10px] font-semibold ${
+                          announcementMessage.length >= 1850 ? "text-amber-600" : "text-slate-400"
+                        }`}>
+                          {announcementMessage.length}/2000
+                        </span>
+                      </div>
+                      <textarea
+                        id="announcement-message"
+                        value={announcementMessage}
+                        onChange={(event) => setAnnouncementMessage(event.target.value)}
+                        maxLength={2000}
+                        rows={9}
+                        placeholder="Write the announcement details here..."
+                        className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-xs leading-5 text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                        required
+                      />
+                    </div>
+
+                    <div className="rounded-xl border border-blue-100 bg-blue-50/70 px-3.5 py-3">
+                      <div className="flex items-start gap-2.5">
+                        <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+                          <FontAwesomeIcon icon={faBell} className="text-xs" />
+                        </span>
+                        <div>
+                          <p className="text-xs font-bold text-blue-950">Dashboard visibility</p>
+                          <p className="mt-0.5 text-[11px] leading-5 text-blue-800/80">
+                            {editingAnnouncement
+                              ? "Saving will immediately update the announcement for employees."
+                              : "After posting, the announcement will immediately appear at the top of the Announcement Board."}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50/80 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+                  <button
+                    type="button"
+                    onClick={closeAnnouncementModal}
+                    disabled={isAnnouncementPosting}
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={
+                      isAnnouncementPosting ||
+                      !announcementTitle.trim() ||
+                      !announcementMessage.trim() ||
+                      !announcementExpirationDate
+                    }
+                    className="inline-flex h-10 min-w-[150px] items-center justify-center gap-2 rounded-xl bg-blue-800 px-5 text-xs font-bold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <FontAwesomeIcon icon={faPaperPlane} />
+                    {isAnnouncementPosting
+                      ? editingAnnouncement
+                        ? "Saving..."
+                        : "Posting..."
+                      : editingAnnouncement
+                      ? "Save Changes"
+                      : "Post Announcement"}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         )}
