@@ -159,6 +159,102 @@ const formatEventTypeLabel = (value) =>
     .toLowerCase()
     .replace(/\b\w/g, (character) => character.toUpperCase());
 
+const TodayTimelineItem = React.memo(function TodayTimelineItem({
+  label,
+  value,
+  location,
+  tone = "blue",
+  imageUrl = "",
+  imageFallbacksJson = "[]",
+  showLocation = true,
+}) {
+  const isRed = tone === "red";
+  const toneClass = isRed ? "text-red-700" : "text-blue-800";
+  const iconClass = isRed ? "text-red-500" : "text-blue-600";
+  const recorded = Boolean(value);
+
+  const handleImageError = (event) => {
+    let fallbackSrcs = [];
+
+    try {
+      fallbackSrcs = event.currentTarget.dataset.fallbackSrcs
+        ? JSON.parse(event.currentTarget.dataset.fallbackSrcs)
+        : [];
+    } catch {
+      fallbackSrcs = [];
+    }
+
+    const fallbackIndex = Number(
+      event.currentTarget.dataset.fallbackIndex || 0
+    );
+
+    if (fallbackIndex < fallbackSrcs.length) {
+      event.currentTarget.dataset.fallbackIndex = String(fallbackIndex + 1);
+      event.currentTarget.src = fallbackSrcs[fallbackIndex];
+      return;
+    }
+
+    console.log(
+      `${label} image failed. Tried all paths. Last src:`,
+      event.currentTarget.src
+    );
+  };
+
+  return (
+    <article className="grid grid-cols-[minmax(0,1fr)_4.5rem] gap-3 rounded-xl border border-slate-200 bg-slate-50/80 p-3 shadow-sm sm:grid-cols-[minmax(0,1fr)_5.5rem]">
+      <div className="min-w-0">
+        <div className="flex items-start justify-between gap-3">
+          <div
+            className={`flex min-w-0 items-center gap-2 text-sm font-extrabold ${toneClass}`}
+          >
+            <Clock3 className={`h-4 w-4 shrink-0 ${iconClass}`} />
+            <span>{label}:</span>
+          </div>
+
+          <span
+            className={`max-w-[58%] text-right text-xs font-extrabold leading-snug sm:text-sm ${
+              recorded ? "text-slate-900" : "text-red-600"
+            }`}
+          >
+            {value || "Not Recorded"}
+          </span>
+        </div>
+
+        {showLocation && (
+          <div className="mt-2 flex items-start gap-2">
+            <MapPin className={`mt-0.5 h-4 w-4 shrink-0 ${iconClass}`} />
+            <p className="min-w-0 break-words text-[11px] font-medium leading-relaxed text-slate-600 sm:text-xs">
+              <span className="font-bold text-slate-800">Location:</span>{" "}
+              {location || "Not Recorded"}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-200 shadow-sm">
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt={`${label} captured photo`}
+            className="h-[4.5rem] w-full object-cover sm:h-[5.5rem]"
+            data-fallback-srcs={imageFallbacksJson}
+            data-fallback-index="0"
+            onError={handleImageError}
+            decoding="async"
+          />
+        ) : (
+          <div className="flex h-[4.5rem] items-center justify-center bg-slate-200 sm:h-[5.5rem]">
+            <ImageIcon className="h-6 w-6 text-slate-400" />
+          </div>
+        )}
+        <div className="bg-slate-700 px-1 py-1 text-center text-[8px] font-bold leading-none text-white sm:text-[9px]">
+          {imageUrl ? "Photo" : "No Photo"}
+        </div>
+      </div>
+    </article>
+  );
+});
+
 const Timekeeping = ({ onBreakStart }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -1661,6 +1757,24 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
         return nextRecords;
       }
 
+      const applyPendingImage = (record, pendingImage, prefix) => {
+        if (!pendingImage) return {};
+
+        const previewKey = `${prefix}_image_preview`;
+        const pathKey = `${prefix}_image_path`;
+        const idKey = `${prefix}_image_id`;
+
+        return {
+          [previewKey]: pendingImage.previewUrl || record?.[previewKey] || "",
+          [pathKey]:
+            pendingImage.previewUrl ||
+            record?.[pathKey] ||
+            pendingImage.path ||
+            "",
+          [idKey]: record?.[idKey] || pendingImage.id || "",
+        };
+      };
+
       return nextRecords.map((record) => {
         const recordDate = getNormalizedRecordDate(record);
 
@@ -1669,56 +1783,26 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
         const timeInImage = pendingTimekeepingImagesRef.current.get(
           `${recordDate}:TIME IN`
         );
+        const breakInImage = pendingTimekeepingImagesRef.current.get(
+          `${recordDate}:BREAK IN`
+        );
+        const breakOutImage = pendingTimekeepingImagesRef.current.get(
+          `${recordDate}:BREAK OUT`
+        );
         const timeOutImage = pendingTimekeepingImagesRef.current.get(
           `${recordDate}:TIME OUT`
         );
 
-        if (!timeInImage && !timeOutImage) return record;
+        if (!timeInImage && !breakInImage && !breakOutImage && !timeOutImage) {
+          return record;
+        }
 
         return {
           ...record,
-          ...(timeInImage
-            ? {
-                time_in_image_preview:
-                  timeInImage.previewUrl ||
-                  record.time_in_image_preview ||
-                  record.timeInImagePreview ||
-                  "",
-                time_in_image_path:
-                  timeInImage.previewUrl ||
-                  record.time_in_image_path ||
-                  record.timeInImagePath ||
-                  record.TIME_IN_IMAGE_PATH ||
-                  record.time_in_image ||
-                  timeInImage.path,
-                time_in_image_id:
-                  record.time_in_image_id ||
-                  record.timeInImageId ||
-                  record.TIME_IN_IMAGE_ID ||
-                  timeInImage.id,
-              }
-            : {}),
-          ...(timeOutImage
-            ? {
-                time_out_image_preview:
-                  timeOutImage.previewUrl ||
-                  record.time_out_image_preview ||
-                  record.timeOutImagePreview ||
-                  "",
-                time_out_image_path:
-                  timeOutImage.previewUrl ||
-                  record.time_out_image_path ||
-                  record.timeOutImagePath ||
-                  record.TIME_OUT_IMAGE_PATH ||
-                  record.time_out_image ||
-                  timeOutImage.path,
-                time_out_image_id:
-                  record.time_out_image_id ||
-                  record.timeOutImageId ||
-                  record.TIME_OUT_IMAGE_ID ||
-                  timeOutImage.id,
-              }
-            : {}),
+          ...applyPendingImage(record, timeInImage, "time_in"),
+          ...applyPendingImage(record, breakInImage, "break_in"),
+          ...applyPendingImage(record, breakOutImage, "break_out"),
+          ...applyPendingImage(record, timeOutImage, "time_out"),
         };
       });
     },
@@ -2149,10 +2233,7 @@ capturedImageInfo = await captureImageProcess(type);
     const response = await axios.post(API_ENDPOINTS.upsertTimeIn, eventData);
 
     if (response.data.status === "success") {
-      if (
-        capturedImageInfo &&
-        (type === "TIME IN" || type === "TIME OUT")
-      ) {
+      if (capturedImageInfo) {
         pendingTimekeepingImagesRef.current.set(`${eventDateStr}:${type}`, {
           id: capturedImageInfo.id,
           path: capturedImageInfo.path,
@@ -2180,6 +2261,38 @@ capturedImageInfo = await captureImageProcess(type);
             nextRecord.time_in_image_path =
               capturedImageInfo.previewUrl || capturedImageInfo.path;
             nextRecord.time_in_image_id = capturedImageInfo.id;
+          }
+        }
+
+        if (type === "BREAK IN") {
+          nextRecord.break_in = currentTime;
+          nextRecord.break_in_date = currentDateStr;
+          nextRecord.break_in_datetime = `${currentDateStr} ${currentTime}`;
+          nextRecord.break_in_address = geotaggingEnabled
+            ? actualCapturedLocation
+            : "N/A";
+
+          if (capturedImageInfo) {
+            nextRecord.break_in_image_preview = capturedImageInfo.previewUrl || "";
+            nextRecord.break_in_image_path =
+              capturedImageInfo.previewUrl || capturedImageInfo.path;
+            nextRecord.break_in_image_id = capturedImageInfo.id;
+          }
+        }
+
+        if (type === "BREAK OUT") {
+          nextRecord.break_out = currentTime;
+          nextRecord.break_out_date = currentDateStr;
+          nextRecord.break_out_datetime = `${currentDateStr} ${currentTime}`;
+          nextRecord.break_out_address = geotaggingEnabled
+            ? actualCapturedLocation
+            : "N/A";
+
+          if (capturedImageInfo) {
+            nextRecord.break_out_image_preview = capturedImageInfo.previewUrl || "";
+            nextRecord.break_out_image_path =
+              capturedImageInfo.previewUrl || capturedImageInfo.path;
+            nextRecord.break_out_image_id = capturedImageInfo.id;
           }
         }
 
@@ -2675,10 +2788,100 @@ if (!confirm) return;
     };
   };
 
+  const getEventImageInfo = (record, event) => {
+    if (!record) {
+      return { imageUrl: "", fallbacks: [] };
+    }
+
+    const fields = {
+      timeIn: [
+        "time_in_image_preview",
+        "timeInImagePreview",
+        "time_in_image_path",
+        "timeInImagePath",
+        "TIME_IN_IMAGE_PATH",
+        "time_in_image",
+        "timeInImage",
+      ],
+      breakIn: [
+        "break_in_image_preview",
+        "breakInImagePreview",
+        "break_in_image_path",
+        "breakInImagePath",
+        "BREAK_IN_IMAGE_PATH",
+        "break_in_image",
+        "breakInImage",
+      ],
+      breakOut: [
+        "break_out_image_preview",
+        "breakOutImagePreview",
+        "break_out_image_path",
+        "breakOutImagePath",
+        "BREAK_OUT_IMAGE_PATH",
+        "break_out_image",
+        "breakOutImage",
+      ],
+      timeOut: [
+        "time_out_image_preview",
+        "timeOutImagePreview",
+        "time_out_image_path",
+        "timeOutImagePath",
+        "TIME_OUT_IMAGE_PATH",
+        "time_out_image",
+        "timeOutImage",
+      ],
+    };
+
+    const idFields = {
+      timeIn: [
+        "time_in_image_id",
+        "timeInImageId",
+        "TIME_IN_IMAGE_ID",
+        "time_in_imageid",
+        "timeInImageID",
+      ],
+      breakIn: [
+        "break_in_image_id",
+        "breakInImageId",
+        "BREAK_IN_IMAGE_ID",
+        "break_in_imageid",
+        "breakInImageID",
+      ],
+      breakOut: [
+        "break_out_image_id",
+        "breakOutImageId",
+        "BREAK_OUT_IMAGE_ID",
+        "break_out_imageid",
+        "breakOutImageID",
+      ],
+      timeOut: [
+        "time_out_image_id",
+        "timeOutImageId",
+        "TIME_OUT_IMAGE_ID",
+        "time_out_imageid",
+        "timeOutImageID",
+      ],
+    };
+
+    const imagePath = getRecordValue(record, fields[event] || []);
+    const imageId = getRecordValue(record, idFields[event] || []);
+
+    return {
+      imageUrl: getTimekeepingImageUrl(imagePath, imageId, record),
+      fallbacks: getTimekeepingImageFallbacks(imagePath, imageId, record),
+    };
+  };
+
+  const getEventImageUrl = (record, event) =>
+    getEventImageInfo(record, event).imageUrl;
+
   const isBlankRecordValue = (value) => value == null || String(value).trim() === "";
 
-  const getWorkedHoursDisplay = (record) =>
-    record.worked_hrs != null ? `${Number(record.worked_hrs).toFixed(2)} hrs` : "0.00 hrs";
+  const getWorkedHoursDisplay = (record) => {
+    const value = record?.worked_hrs ?? record?.workedHrs ?? record?.workedHours ?? record?.work_hrs ?? record?.workHrs;
+    const hours = Number(value);
+    return Number.isFinite(hours) ? `${hours.toFixed(2)} hrs` : "0.00 hrs";
+  };
 
   const TimeValue = ({ label, value, missing = "N/A", tone = "slate" }) => (
     <div className="rounded-xl bg-slate-50 p-3">
@@ -2744,34 +2947,6 @@ if (!confirm) return;
       {label}: {active ? "ON" : "OFF"}
     </span>
   );
-
-  const TodayTimelineItem = ({ label, value, location, tone = "blue" }) => {
-    const toneClass = tone === "red" ? "text-red-800" : "text-blue-800";
-    const iconClass = tone === "red" ? "text-red-500" : "text-blue-600";
-
-    return (
-      <div className="rounded-xl border border-slate-100 bg-slate-50 p-2 sm:p-3">
-        <div className="grid grid-cols-[1rem_minmax(0,1fr)] gap-x-2 gap-y-2">
-          <Clock3 className={`mt-0.5 h-4 w-4 ${iconClass}`} />
-          <div className="min-w-0 sm:flex sm:items-start sm:justify-between sm:gap-3">
-            <div className={`text-sm font-extrabold ${toneClass}`}>{label}:</div>
-            <div className={`break-words text-sm font-semibold ${value ? "text-slate-800" : "text-red-700"}`}>
-              {value || "Not Recorded"}
-            </div>
-          </div>
-          {shouldShowLocationAddress && (
-            <>
-              <MapPin className={`mt-0.5 h-4 w-4 ${iconClass}`} />
-              <div className="min-w-0 text-[12px] font-medium leading-relaxed text-slate-600">
-                <span className="font-bold text-slate-700">Location:</span>{" "}
-                <span className="break-words">{location || "Not Recorded"}</span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    );
-  };
 
   const handleTimekeepingImageError = (event, label = "Timekeeping") => {
     const fallbackSrcs = event.currentTarget.dataset.fallbackSrcs
@@ -2867,7 +3042,7 @@ if (!confirm) return;
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="truncate text-sm font-bold text-gray-900 lg:text-base">
+                    <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 lg:text-base">
                       {dayjs(record.date).format("MMMM D, YYYY")}
                     </h3>
                     <RecordBadge isFinal={isFinal} />
@@ -2881,10 +3056,17 @@ if (!confirm) return;
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     Worked Hours
                   </div>
+                  <div className="font-mono text-sm font-bold text-blue-800 lg:text-lg">
+                    {getWorkedHoursDisplay(record)}
+                  </div>
+                  {/* <div className="mt-1 space-y-0.5 text-[9px] font-medium text-slate-600 sm:text-[10px]">
+                    <div><span className="font-bold text-slate-500"></span> {record.time_in ? formatDtrActualDateTime(record, "timeIn") : "N/A"}</div>
+                    <div><span className="font-bold text-slate-500"></span> {record.time_out ? formatDtrActualDateTime(record, "timeOut") : "N/A"}</div>
+                  </div> */}
                   {/* <div className="text-[10px] lg:text-[11px] text-gray-400 uppercase tracking-widest mb-1 font-bold">
                     IN • OUT
                   </div> */}
-                  <div className="font-mono text-xs lg:text-base font-semibold text-gray-800">
+                  <div className="font-mono text-[11px] lg:text-base font-semibold text-gray-800">
                     {record.time_in
                       ? formatDtrActualDateTime(record, "timeIn")
                       : "N/A"}{" "}
@@ -2893,7 +3075,7 @@ if (!confirm) return;
                       ? formatDtrActualDateTime(record, "timeOut")
                       : "N/A"} */}
                   </div>
-                  <div className="font-mono text-xs lg:text-base font-semibold text-gray-800">
+                  <div className="font-mono text-[11px] lg:text-base font-semibold text-gray-800">
                     {/* {record.time_in
                       ? formatDtrActualDateTime(record, "timeIn")
                       : "N/A"}{" "}
@@ -3569,7 +3751,7 @@ if (!confirm) return;
             <div className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-50 backdrop-blur">
               Timekeeping
             </div>
-            <h1 className="max-w-[13rem] text-right text-lg font-extrabold leading-snug tracking-tight sm:ml-1 sm:mt-2 sm:max-w-none sm:text-left sm:text-2xl">
+            <h1 className="max-w-[13rem] text-right text-base font-extrabold leading-snug tracking-tight sm:ml-1 mt-0.5 sm:mt-2 sm:max-w-none sm:text-left sm:text-2xl">
               {currentDate ? currentDate.format("dddd, MMMM DD, YYYY") : "Verifying Philippine date..."}
             </h1>
             </div>
@@ -3615,7 +3797,7 @@ if (!confirm) return;
         </div>
       )}
 
-      <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(20rem,1fr)]">
+      <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-[minmax(18rem,1.5fr)_minmax(34rem,2.5fr)]">
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-md">
           {isImageCaptureRequired && (
             <div className="relative mx-auto mb-4 w-full max-w-[420px] overflow-hidden rounded-2xl bg-slate-900 shadow-md">
@@ -3766,29 +3948,60 @@ if (!confirm) return;
           )}
           </div>
 
-          <div className="mt-3 space-y-1">
-            <TodayTimelineItem
-              label="Time In"
-              value={todayRecord?.time_in ? formatDtrActualDateTime(todayRecord, "timeIn") : ""}
-              location={todayRecord?.time_in_address}
-            />
-            <TodayTimelineItem
-              label="Break In"
-              tone="red"
-              value={todayRecord?.break_in ? formatDtrBreakDateTime(todayRecord, "breakIn") : ""}
-              location={todayRecord?.break_in_address}
-            />
-            <TodayTimelineItem
-              label="Break Out"
-              tone="red"
-              value={todayRecord?.break_out ? formatDtrBreakDateTime(todayRecord, "breakOut") : ""}
-              location={todayRecord?.break_out_address}
-            />
-            <TodayTimelineItem
-              label="Time Out"
-              value={todayRecord?.time_out ? formatDtrActualDateTime(todayRecord, "timeOut") : ""}
-              location={todayRecord?.time_out_address}
-            />
+          <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+            {[
+              [
+                "timeIn",
+                "Time In",
+                todayRecord?.time_in
+                  ? formatDtrActualDateTime(todayRecord, "timeIn")
+                  : "",
+                todayRecord?.time_in_address,
+                "blue",
+              ],
+              [
+                "timeOut",
+                "Time Out",
+                todayRecord?.time_out
+                  ? formatDtrActualDateTime(todayRecord, "timeOut")
+                  : "",
+                todayRecord?.time_out_address,
+                "blue",
+              ],
+              [
+                "breakIn",
+                "Break In",
+                todayRecord?.break_in
+                  ? formatDtrBreakDateTime(todayRecord, "breakIn")
+                  : "",
+                todayRecord?.break_in_address,
+                "red",
+              ],
+              [
+                "breakOut",
+                "Break Out",
+                todayRecord?.break_out
+                  ? formatDtrBreakDateTime(todayRecord, "breakOut")
+                  : "",
+                todayRecord?.break_out_address,
+                "red",
+              ],
+            ].map(([event, label, timestamp, location, tone]) => {
+              const imageInfo = getEventImageInfo(todayRecord, event);
+
+              return (
+                <TodayTimelineItem
+                  key={event}
+                  label={label}
+                  value={timestamp}
+                  location={location}
+                  tone={tone}
+                  imageUrl={imageInfo.imageUrl}
+                  imageFallbacksJson={JSON.stringify(imageInfo.fallbacks)}
+                  showLocation={shouldShowLocationAddress}
+                />
+              );
+            })}
           </div>
         </div>
       </div>
@@ -3880,8 +4093,8 @@ if (!confirm) return;
                 <div className="mt-1 text-lg font-bold text-amber-700">{incompleteRecordCount}</div>
               </div>
               <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Total Hours</div>
-                <div className="mt-1 text-lg font-bold text-blue-900">{totalWorkedHours.toFixed(2)}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Worked Hours</div>
+                <div className="mt-1 text-lg font-bold text-blue-900">{totalWorkedHours.toFixed(2)} hrs</div>
               </div>
             </div>
 

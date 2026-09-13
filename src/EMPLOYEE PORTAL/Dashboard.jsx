@@ -1099,7 +1099,7 @@ const Dashboard = () => {
               <div className="mb-2 inline-flex items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-blue-50 backdrop-blur">
                 Employee Portal
               </div>
-              <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">
+              <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">
                 {dashboardGreeting}, {employeeDisplayName}
               </h1>
               <p className="mt-1 text-sm font-medium text-blue-100">
@@ -1168,7 +1168,7 @@ const Dashboard = () => {
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
           <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              Avg. Hours
+              My Average Hours
             </p>
             <div className="mt-2 flex items-end justify-between gap-2">
               <p className="text-2xl font-extrabold tabular-nums text-blue-950">
@@ -1200,7 +1200,7 @@ const Dashboard = () => {
               : "border-slate-200"
           }`}>
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              DTR Issues
+              Incomplete DTR
             </p>
             <p className={`mt-2 text-2xl font-extrabold tabular-nums ${
               personalDashboardInsights.incompleteDtrDays > 0
@@ -1214,7 +1214,7 @@ const Dashboard = () => {
 
           <div className="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              Available Leave
+              My Available Leaves
             </p>
             <p className="mt-2 text-2xl font-extrabold tabular-nums text-violet-700">
               {formatDashboardNumber(leaveCreditInsights.totals.remaining, 1)}
@@ -1228,7 +1228,7 @@ const Dashboard = () => {
               : "border-slate-200"
           }`}>
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-              Pending Requests
+              My Pending Requests
             </p>
             <p className="mt-2 text-2xl font-extrabold tabular-nums text-blue-800">
               {personalDashboardInsights.pendingRequests}
@@ -1259,7 +1259,7 @@ const Dashboard = () => {
                   className="group rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50 hover:shadow-sm focus:outline-none focus:ring-4 focus:ring-blue-100"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-white px-2 text-[10px] font-extrabold text-blue-800 shadow-sm">
+                    <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-blue-800 px-2 text-[10px] font-extrabold text-white shadow-sm">
                       {action.code}
                     </span>
                     <span className="text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-blue-700">

@@ -437,30 +437,30 @@ export default function EmployeeShift() {
     {/* Schedule */}
     <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 p-4">
-        <div className="flex flex-wrap items-end gap-4">
-          <label className="w-40 text-sm text-gray-600">
+        <div className="flex w-full flex-wrap items-end gap-3 xl:w-auto xl:gap-4">
+          <label className="w-[calc(50%-0.375rem)] text-sm text-gray-600 xl:w-40">
             <span className="mb-1 block text-xs text-gray-500">From</span>
             <DateInput value={from} onChange={(e) => setFrom(e.target.value)} />
           </label>
-          <label className="w-40 text-sm text-gray-600">
+          <label className="w-[calc(50%-0.375rem)] text-sm text-gray-600 xl:w-40">
             <span className="mb-1 block text-xs text-gray-500">To</span>
             <DateInput value={to} min={from} onChange={(e) => setTo(e.target.value)} />
           </label>
-          <div className="flex overflow-hidden rounded-xl border border-slate-300">
+          <div className="flex w-full overflow-hidden rounded-xl border border-slate-300 xl:w-auto">
             {[["prev", "Last Month"], ["this", "This Month"], ["next", "Next Month"]].map(([key, label]) => (
               <button type="button" key={key} onClick={() => setPreset(key)}
-                className={`px-3 py-2.5 text-xs font-medium transition-colors ${activePreset === key ? "bg-blue-800 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>
+                className={`flex-1 px-3 py-2.5 text-xs font-medium transition-colors xl:flex-none ${activePreset === key ? "bg-blue-800 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>
                 {label}
               </button>
             ))}
           </div>
-          <button className="flex items-center gap-1.5 rounded-xl bg-blue-800 px-4 py-2 text-sm font-medium text-white hover:bg-blue-900" onClick={load} disabled={loading}>
+        </div>
+          <button className="flex h-10 w-[calc(100%-0.5rem)] items-center justify-center gap-1.5 rounded-xl bg-blue-800 px-3 text-sm font-medium text-white hover:bg-blue-900 xl:w-auto xl:px-4" onClick={load} disabled={loading}>
             <Icon.Refresh className={`h-4 w-5 ${loading ? "animate-spin" : ""}`} />
             {loading ? "Loading" : "Refresh"}
           </button>
-        </div>
  
-        <div className="rounded-xl bg-blue-50 px-3 py-2 text-sm font-medium text-blue-800">Schedule date range</div>
+        {/* <div className="flex h-10 w-[calc(50%-0.5rem)] items-center justify-center rounded-xl bg-blue-50 px-2 text-center text-xs font-medium text-blue-800 xl:w-auto xl:px-3 xl:text-sm">Schedule date range</div> */}
       </div>
  
       <div className="border-b border-slate-200 p-4">
