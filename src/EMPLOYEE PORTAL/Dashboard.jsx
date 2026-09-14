@@ -6,6 +6,7 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { useAuth } from "./AuthContext"; 
+import { getAccessRights } from "./accessRights";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowUp, faBell, faBullhorn, faCalendarDays, faClock, faEye, faPaperPlane, faPen, faPlus, faTrash, faXmark } from "@fortawesome/free-solid-svg-icons";
@@ -535,11 +536,17 @@ const Dashboard = () => {
       const employeePortalOB = getObjectField(employee, "portalOB");
       const employeePortalOT = getObjectField(employee, "portalOT");
       const employeePortalOffset = getObjectField(employee, "portalOffSet");
+      const employeeMgrFlag = getObjectField(employee, "mgrFlag");
+      const employeeSupFlag = getObjectField(employee, "supFlag");
+      const employeePortalDtrConfirm = getObjectField(employee, "portalDTRConfirm");
 
       setUser((previousUser) => {
         if (
           previousUser?.approver === employee.approver &&
           previousUser?.hrFlag === (employee.hrFlag ?? employee.hrflag) &&
+          previousUser?.mgrFlag === employeeMgrFlag &&
+          previousUser?.supFlag === employeeSupFlag &&
+          previousUser?.portalDtrConfirm === employeePortalDtrConfirm &&
           previousUser?.portalDTR === employeePortalDTR &&
           previousUser?.portalTK === employeePortalTK &&
           previousUser?.portalLV === employeePortalLV &&
@@ -552,6 +559,9 @@ const Dashboard = () => {
           ...(previousUser || {}),
           approver: employee.approver,
           hrFlag: employee.hrFlag ?? employee.hrflag ?? previousUser?.hrFlag,
+          mgrFlag: employeeMgrFlag ?? previousUser?.mgrFlag,
+          supFlag: employeeSupFlag ?? previousUser?.supFlag,
+          portalDtrConfirm: employeePortalDtrConfirm ?? previousUser?.portalDtrConfirm,
           portalDTR: employeePortalDTR ?? previousUser?.portalDTR,
           portalTK: employeePortalTK ?? previousUser?.portalTK,
           portalLV: employeePortalLV ?? previousUser?.portalLV,
@@ -990,7 +1000,8 @@ const Dashboard = () => {
   const employeeDisplayName =
     user?.empName || user?.employeeName || user?.name || user?.userName || user?.empname || "Employee";
 
-  const isManagementUser = isEnabledFlag(user?.hrFlag ?? user?.hrflag) || isEnabledFlag(user?.approver);
+  const { canApprove, isHr, isManager, isSupervisor } = getAccessRights(user);
+  const isManagementUser = isHr || isManager || isSupervisor || canApprove;
   const portalAccess = {
     dtr: isEnabledFlag(getObjectField(user, "portalDTR")),
     timekeeping: isEnabledFlag(getObjectField(user, "portalTK")),
@@ -2806,7 +2817,7 @@ const Dashboard = () => {
         )}
 
         {/* Unified Approvals Tabbed Component */}
-        {isManagementUser && (portalAccess.leave || portalAccess.overtime || portalAccess.officialBusiness) && (
+        {canApprove && (portalAccess.leave || portalAccess.overtime || portalAccess.officialBusiness) && (
           <div className="relative flex w-full flex-grow flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
             
             <div className="mb-4">

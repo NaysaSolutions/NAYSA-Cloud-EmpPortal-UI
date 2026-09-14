@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 import API_ENDPOINTS from "../apiConfig";
 import { useAuth } from "./AuthContext";
+import { getAccessRights } from "./accessRights";
 import { useSidebarStore } from "./useSidebarStore";
 
 const monthStart = () => dayjs().startOf("month").format("YYYY-MM-DD");
@@ -260,12 +261,6 @@ const getUserName = (user) =>
       "name",
     ]),
   );
-
-const getUserHrFlag = (user) =>
-  upper(findFirstValue(user, ["hr", "isHr", "hr_flag", "HR_FLAG", "hrFlag"]));
-
-const getUserApprover = (user) =>
-  text(findFirstValue(user, ["approver", "APPROVER", "appFlag", "APP_FLAG"]));
 
 const parseJson = (value) => {
   if (typeof value !== "string") return value;
@@ -625,11 +620,9 @@ export default function LeaveMonitoring() {
   const isSidebarOpen = useSidebarStore((state) => state.isOpen);
   const currentEmpNo = getUserEmpNo(user);
   const currentEmpName = getUserName(user) || currentEmpNo;
-  const isHrUser = ["Y", "YES", "1", "TRUE"].includes(getUserHrFlag(user));
-  const isApproverUser = getUserApprover(user) === "1";
-  const canViewEmployeeLeave = isApproverUser || isHrUser;
+  const { canViewLeaveMonitoring: canViewEmployeeLeave, isHr: isHrUser, canApprove } = getAccessRights(user);
   const leaveInquiryEndpoint =
-    !isHrUser && isApproverUser
+    !isHrUser && canApprove
       ? text(API_ENDPOINTS?.getLeaveInquiryApprover) || "/api/getLVInquiryApprover"
       : text(API_ENDPOINTS?.getLeaveInquiry) || "/api/getLVInquiry";
 

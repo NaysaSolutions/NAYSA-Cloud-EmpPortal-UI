@@ -5,6 +5,7 @@ import Swal from "sweetalert2";
 import { CalendarDays } from "lucide-react";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
+import { getAccessRights } from "./accessRights";
  
 const resultRows = (result) => {
   const raw = result?.data?.[0]?.result ?? result?.data;
@@ -47,10 +48,16 @@ const readJsonResponse = async (response, endpointName) => {
   return result;
 };
 
-const isEnabled = (value) => ["1", "y", "yes", "true"].includes(String(value ?? "").trim().toLowerCase());
-const hasHrAccess = (user) => isEnabled(user?.hrFlag ?? user?.hrflag);
-const hasApproverAccess = (user) => isEnabled(user?.approver);
-const canManage = (user) => hasHrAccess(user) || hasApproverAccess(user);
+  // const { isApprover, isHr, isManager, canApprove, canConfirmDtr,
+  //   canViewDtrMonitoring, canViewLeaveMonitoring, canManageEmployeeShifts,
+  //   canApproveEmployeeShifts } = getAccessRights(user);
+
+const hasHrAccess = (user) => getAccessRights(user).isHr;
+const hasApproverAccess = (user) => getAccessRights(user).isApprover;
+const canManage = (user) => getAccessRights(user).isManager;
+const hasManagerAccess = (user) => getAccessRights(user).isManager;
+const hasSupervisorAccess = (user) => getAccessRights(user).isSupervisor;
+
 const fmt = (value, withTime = false) => value && dayjs(value).isValid() ? dayjs(value).format(withTime ? "MM/DD/YYYY hh:mm A" : "MM/DD/YYYY") : "-";
 const shiftTypeLabel = (value) => ({ DS: "Day Shift", MS: "Mid Shift", NS: "Night Shift" }[String(value ?? "").trim().toUpperCase()] || value || "-");
 const isRestDay = (row) => String(row?.rd ?? row?.RD ?? "").trim().toUpperCase() === "Y";
@@ -100,7 +107,8 @@ export default function EmployeeShift() {
   const { user } = useAuth();
   const hrAccess = hasHrAccess(user);
   const approverAccess = hasApproverAccess(user);
-  const manager = canManage(user);
+  const mgrAccess = hasManagerAccess(user);
+  const supAccess = hasSupervisorAccess(user);
   const [from, setFrom] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
   const [to, setTo] = useState(dayjs().endOf("month").format("YYYY-MM-DD"));
   const [rows, setRows] = useState([]); const [shifts, setShifts] = useState([]); const [loading, setLoading] = useState(false);
@@ -163,6 +171,8 @@ export default function EmployeeShift() {
         END_DATE: to,
         VIEW: scheduleView,
         HR_FLAG: hrAccess ? "Y" : "N",
+        MGR_FLAG: mgrAccess ? "Y" : "N",
+        SUP_FLAG: supAccess ? "Y" : "N",
         APPROVER: approverAccess ? "Y" : "N",
       };
 
@@ -634,12 +644,12 @@ export default function EmployeeShift() {
           <div className="flex flex-wrap gap-2"><button type="button" className="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50" onClick={clearScheduleFilters}>Clear Filters</button>{groupBy !== "none" && <><button type="button" className="rounded-xl border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-50" onClick={expandAllGroups}>Expand All</button><button type="button" className="rounded-xl border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-50" onClick={collapseAllGroups}>Collapse All</button></>}<button type="button" className="rounded-xl bg-blue-800 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-900 md:hidden" onClick={() => setShowMobileFilters((visible) => !visible)}>{showMobileFilters ? "Hide Filters" : "Filter Options"}</button></div>
         </div>
         <div className={`${showMobileFilters ? "grid" : "hidden"} gap-3 md:grid md:grid-cols-2 xl:grid-cols-4`}>
-          {manager && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Employee Shift View</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleView} onChange={(e) => handleScheduleViewChange(e.target.value)}><option value="MY">My Shift Schedule</option><option value="EMPLOYEE">Employee Shift Schedule</option></select></label>}
-          {manager && scheduleView === "EMPLOYEE" && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Employee</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={selectedEmployeeNo} onChange={(e) => setSelectedEmployeeNo(e.target.value)}><option value="">All Employees</option>{employeeOptions.map((employee) => <option key={employee.empNo} value={employee.empNo}>{employee.empNo} - {employee.empName}</option>)}</select></label>}
-          {manager && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Branch</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.branch} onChange={(e) => setScheduleFilter("branch", e.target.value)}><option value="all">All Branches</option>{filterOptions.branches.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
-          {manager && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Department</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.department} onChange={(e) => setScheduleFilter("department", e.target.value)}><option value="all">All Departments</option>{filterOptions.departments.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
-          {manager && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Payroll Group</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.payrollGroup} onChange={(e) => setScheduleFilter("payrollGroup", e.target.value)}><option value="all">All Payroll Groups</option>{filterOptions.payrollGroups.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
-          {manager && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Employee Status</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.employeeStatus} onChange={(e) => setScheduleFilter("employeeStatus", e.target.value)}><option value="all">All Employee Statuses</option>{filterOptions.employeeStatuses.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
+          {canManage && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Employee Shift View</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleView} onChange={(e) => handleScheduleViewChange(e.target.value)}><option value="MY">My Shift Schedule</option><option value="EMPLOYEE">Employee Shift Schedule</option></select></label>}
+          {canManage && scheduleView === "EMPLOYEE" && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Employee</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={selectedEmployeeNo} onChange={(e) => setSelectedEmployeeNo(e.target.value)}><option value="">All Employees</option>{employeeOptions.map((employee) => <option key={employee.empNo} value={employee.empNo}>{employee.empNo} - {employee.empName}</option>)}</select></label>}
+          {canManage && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Branch</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.branch} onChange={(e) => setScheduleFilter("branch", e.target.value)}><option value="all">All Branches</option>{filterOptions.branches.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
+          {canManage && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Department</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.department} onChange={(e) => setScheduleFilter("department", e.target.value)}><option value="all">All Departments</option>{filterOptions.departments.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
+          {canManage && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Payroll Group</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.payrollGroup} onChange={(e) => setScheduleFilter("payrollGroup", e.target.value)}><option value="all">All Payroll Groups</option>{filterOptions.payrollGroups.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
+          {canManage && <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Employee Status</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.employeeStatus} onChange={(e) => setScheduleFilter("employeeStatus", e.target.value)}><option value="all">All Employee Statuses</option>{filterOptions.employeeStatuses.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select></label>}
           <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Rest Day</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.restDay} onChange={(e) => setScheduleFilter("restDay", e.target.value)}><option value="all">All Days</option><option value="working">Working Days</option><option value="rest">Rest Days</option></select></label>
           <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Shift Type</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.shiftType} onChange={(e) => setScheduleFilter("shiftType", e.target.value)}><option value="all">All Shift Types</option>{filterOptions.shiftTypes.map((value) => <option key={value} value={value}>{shiftTypeLabel(value)}</option>)}</select></label>
           <label className="text-xs sm:text-sm text-slate-600"><span className="mb-1 block text-xs font-medium">Shift Code</span><select className="block w-full rounded-xl border border-slate-300 p-2.5 text-sm" value={scheduleFilters.shiftCode} onChange={(e) => setScheduleFilter("shiftCode", e.target.value)}><option value="all">All Shift Codes</option>{filterOptions.shiftCodes.map(({ value, label }) => <option key={value} value={value}>{value}{label && label !== value ? ` - ${label}` : ""}</option>)}</select></label>
@@ -667,7 +677,7 @@ export default function EmployeeShift() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="mb-1 text-xs font-medium text-slate-500">Employee No: {row.empNo ?? row.empno ?? "-"}</p>
-                  {manager && <p className="mb-1 text-xs font-medium text-slate-500">{row.empName ?? row.emp_name ?? row.empNo}</p>}
+                  {canManage && <p className="mb-1 text-xs font-medium text-slate-500">{row.empName ?? row.emp_name ?? row.empNo}</p>}
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold text-slate-900">{fmt(rowDate)}</p>
                     {today && <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">TODAY</span>}
@@ -722,7 +732,7 @@ export default function EmployeeShift() {
           <thead>
             <tr className="border-b border-blue-900 bg-blue-800 text-left text-xs font-semibold text-white">
               <th className="p-3">Employee No</th>
-              {manager && 
+              {canManage && 
               <th className="p-3">Employee</th>}
               <th className="p-3">Shift Date</th>
               <th className="p-3">Shift Day</th>
@@ -737,13 +747,13 @@ export default function EmployeeShift() {
           <tbody>
             {loading && !rows.length && Array.from({ length: 5 }).map((_, i) => (
               <tr key={`skeleton-${i}`} className="border-b border-slate-100">
-                <td colSpan={manager ? 10 : 9} className="p-3">
+                <td colSpan={canManage ? 10 : 9} className="p-3">
                   <div className="h-4 w-full animate-pulse rounded bg-gray-100" />
                 </td>
               </tr>
             ))}
             {groupedRows.map((item, index) => {
-              if (item.label) return <tr key={`group-${item.label}`} className="bg-blue-50"><td colSpan={manager ? 10 : 9} className="border-y border-blue-100 px-3 py-2 text-sm font-semibold text-blue-900"><div className="flex items-center justify-between gap-3"><span>{item.label} <span className="text-xs font-normal text-blue-700">({item.count}) · Work Hours: {item.totalWorkHrs.toFixed(2)}</span></span><button type="button" className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs font-semibold text-blue-800" onClick={() => toggleGroup(item.label)}>{item.collapsed ? "Expand" : "Collapse"}</button></div></td></tr>;
+              if (item.label) return <tr key={`group-${item.label}`} className="bg-blue-50"><td colSpan={canManage ? 10 : 9} className="border-y border-blue-100 px-3 py-2 text-sm font-semibold text-blue-900"><div className="flex items-center justify-between gap-3"><span>{item.label} <span className="text-xs font-normal text-blue-700">({item.count}) · Work Hours: {item.totalWorkHrs.toFixed(2)}</span></span><button type="button" className="rounded-lg border border-blue-200 bg-white px-2 py-1 text-xs font-semibold text-blue-800" onClick={() => toggleGroup(item.label)}>{item.collapsed ? "Expand" : "Collapse"}</button></div></td></tr>;
               const row = item.row;
               const rowDate = row.date ?? row.shiftDate;
               const today = isToday(rowDate);
@@ -754,7 +764,7 @@ export default function EmployeeShift() {
                   key={`${row.empNo ?? row.empno}-${row.date}-${index}`}
                 >
                   <td className="text-xs p-2 text-gray-700">{row.empNo ?? row.empno ?? "-"}</td>
-                  {manager && <td className="text-xs p-2 text-gray-700">{row.empName ?? row.emp_name ?? row.empNo}</td>}
+                  {canManage && <td className="text-xs p-2 text-gray-700">{row.empName ?? row.emp_name ?? row.empNo}</td>}
                   <td className="text-xs p-2">
                     <span className={`font-medium ${today ? "text-blue-800" : "text-gray-800"}`}>{fmt(rowDate)}</span>
                     {today && <span className="ml-2 rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">TODAY</span>}
@@ -787,7 +797,7 @@ export default function EmployeeShift() {
             })}
             {!loading && !filteredRows.length && (
               <tr>
-                <td colSpan={manager ? 10 : 9} className="p-10 text-center">
+                <td colSpan={canManage ? 10 : 9} className="p-10 text-center">
                   <p className="text-gray-500">No shift records for this range.</p>
                   <p className="text-xs text-gray-400">Try a different date range or check back later.</p>
                 </td>
@@ -861,7 +871,7 @@ export default function EmployeeShift() {
         <button className="mt-4 w-full rounded-xl bg-blue-800 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-900 sm:w-auto">Submit for Approval</button>
       </form>
  
-      {manager && (
+      {canManage && (
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="font-semibold text-blue-900">HR / Approver Shift Upload</h2><p className="text-sm text-gray-500">Use the downloaded template. Only Employee No, Payroll Period, Date, RD Flag, Shift Code, and Working Hours are uploaded.</p></div><button type="button" onClick={downloadTemplate} className="rounded-xl border border-blue-700 px-4 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-50">Download Template</button></div>
  

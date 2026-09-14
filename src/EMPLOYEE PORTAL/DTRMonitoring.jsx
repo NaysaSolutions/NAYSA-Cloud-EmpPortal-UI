@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import API_ENDPOINTS, { IMAGE_BASE_URL } from "../apiConfig";
 import { useAuth } from "./AuthContext";
+import { getAccessRights } from "./accessRights";
 import { useSidebarStore } from "./useSidebarStore";
 
 const getToday = () => new Date();
@@ -200,17 +201,6 @@ const getUserHrFlag = (user) =>
       "hrFlag",
       "HrFlag",
       "hrflag",
-    ]),
-  );
-
-const getUserApprover = (user) =>
-  normalizeText(
-    findFirstValue(user, [
-      "approver",
-      "APPROVER",
-      "Approver",
-      "appFlag",
-      "APP_FLAG",
     ]),
   );
 
@@ -1694,11 +1684,7 @@ export default function DTRMonitoring() {
       "branch_code",
     ]),
   );
-  const currentHrFlag = normalizeFlag(getUserHrFlag(resolvedUser));
-  const currentApprover = normalizeText(getUserApprover(resolvedUser));
-  const isApprover = currentApprover === "1";
-  const isHrUser = ["Y", "YES", "1", "TRUE"].includes(currentHrFlag);
-  const canUseEmployeeDtr = isApprover || isHrUser;
+  const { canViewDtrMonitoring: canUseEmployeeDtr } = getAccessRights(resolvedUser);
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");

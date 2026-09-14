@@ -34,6 +34,7 @@ import EmployeeAccessSettings from "./EMPLOYEE PORTAL/EmployeeAccessSettings";
 import Register from "./NAYSA Cloud/Register";
 import ForgotPassword from "./Authentication/ForgotPassword";
 import ScrollToTop from "./components/ScrollToTop";
+import { hasAccess } from "./EMPLOYEE PORTAL/accessRights";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -105,25 +106,25 @@ const App = () => {
             <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
             <Route path="/timekeeping" element={<ProtectedRoute><Layout><Timekeeping /></Layout></ProtectedRoute>} />
             <Route path="/timekeepingAdj" element={<ProtectedRoute><Layout><TimekeepingAdjustment /></Layout></ProtectedRoute>} />
-            <Route path="/timekeepingAdjApproval" element={<ProtectedRoute><Layout><TimekeepingAdjustmentApproval /></Layout></ProtectedRoute>} />
-            <Route path="/timekeepingAdjReview" element={<ProtectedRoute><Layout><TimekeepingAdjustmentReview /></Layout></ProtectedRoute>} />
+            <Route path="/timekeepingAdjApproval" element={<RoleRoute right="canApprove"><TimekeepingAdjustmentApproval /></RoleRoute>} />
+            <Route path="/timekeepingAdjReview" element={<RoleRoute right="canApprove"><TimekeepingAdjustmentReview /></RoleRoute>} />
             <Route path="/dtrApproval" element={<ProtectedRoute><Layout><DtrApproval /></Layout></ProtectedRoute>} />
-            <Route path="/dtrMonitoring" element={<ProtectedRoute><Layout><DTRMonitoring /></Layout></ProtectedRoute>} />
-            <Route path="/leaveMonitoring" element={<ProtectedRoute><Layout><LeaveMonitoring /></Layout></ProtectedRoute>} />
+            <Route path="/dtrMonitoring" element={<RoleRoute right="canViewDtrMonitoring"><DTRMonitoring /></RoleRoute>} />
+            <Route path="/leaveMonitoring" element={<RoleRoute right="canViewLeaveMonitoring"><LeaveMonitoring /></RoleRoute>} />
             <Route path="/offsetApplication" element={<ProtectedRoute><Layout><OffsetApplication /></Layout></ProtectedRoute>} />
-            <Route path="/offsetApproval" element={<ProtectedRoute><Layout><OffsetApproval /></Layout></ProtectedRoute>} />
+            <Route path="/offsetApproval" element={<RoleRoute right="canApprove"><OffsetApproval /></RoleRoute>} />
             <Route path="/payslipviewer" element={<ProtectedRoute><Layout><PayslipViewer /></Layout></ProtectedRoute>} />
             <Route path="/leave" element={<ProtectedRoute><Layout><Leave /></Layout></ProtectedRoute>} />
             <Route path="/overtime" element={<ProtectedRoute><Layout><Overtime /></Layout></ProtectedRoute>} />
-            <Route path="/overtimeApproval" element={<ProtectedRoute><Layout><OvertimeApproval /></Layout></ProtectedRoute>} />
+            <Route path="/overtimeApproval" element={<RoleRoute right="canApprove"><OvertimeApproval /></RoleRoute>} />
             <Route path="/overtime-review" element={<ProtectedRoute><Layout><OvertimeReview /></Layout></ProtectedRoute>} />
-            <Route path="/leaveApproval" element={<ProtectedRoute><Layout><LeaveApproval /></Layout></ProtectedRoute>} />
+            <Route path="/leaveApproval" element={<RoleRoute right="canApprove"><LeaveApproval /></RoleRoute>} />
             <Route path="/leave-review" element={<ProtectedRoute><Layout><LeaveReview /></Layout></ProtectedRoute>} />
             <Route path="/official-business" element={<ProtectedRoute><Layout><OfficialBusiness /></Layout></ProtectedRoute>} />
-            <Route path="/OfficialBusinessApproval" element={<ProtectedRoute><Layout><OfficialBusinessApproval /></Layout></ProtectedRoute>} />
+            <Route path="/OfficialBusinessApproval" element={<RoleRoute right="canApprove"><OfficialBusinessApproval /></RoleRoute>} />
             <Route path="/OfficialBusinessReview" element={<ProtectedRoute><Layout><OfficialBusinessReview /></Layout></ProtectedRoute>} />
             <Route path="/employee-shift" element={<ProtectedRoute><Layout><EmployeeShift /></Layout></ProtectedRoute>} />
-            <Route path="/employee-shift-approval" element={<ProtectedRoute><Layout><EmployeeShiftApproval /></Layout></ProtectedRoute>} />
+            <Route path="/employee-shift-approval" element={<RoleRoute right="canApproveEmployeeShifts"><EmployeeShiftApproval /></RoleRoute>} />
             <Route path="/employee-access-settings" element={<ProtectedRoute><Layout><EmployeeAccessSettings /></Layout></ProtectedRoute>} />
 
             <Route path="*" element={<Navigate to="/" />} />
@@ -147,6 +148,13 @@ const Layout = ({ children }) => (
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
   return user ? children : <Navigate to="/" replace />;
+};
+
+const RoleRoute = ({ children, right }) => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/" replace />;
+  if (!hasAccess(user, right)) return <Navigate to="/dashboard" replace />;
+  return <Layout>{children}</Layout>;
 };
 
 export default App;

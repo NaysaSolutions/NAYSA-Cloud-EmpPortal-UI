@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faXmark, faBell } from '@fortawesome/free-solid-svg-icons';
 import { useAuth } from "./AuthContext"; // Use Auth context
 import { useSidebarStore } from "./useSidebarStore";
+import { getAccessRights } from "./accessRights";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -38,14 +39,19 @@ const Navbar = () => {
   const isActive = (path) => location.pathname === path;
   const isEnabled = (value) => ["1", "y", "yes", "true"].includes(String(value ?? "").trim().toLowerCase());
   const getUserField = (fieldName) => {
+    const normalizedName = fieldName.replace(/[^a-z0-9]/gi, "").toLowerCase();
     const matchedKey = Object.keys(user || {}).find(
-      (key) => key.toLowerCase() === fieldName.toLowerCase()
+      (key) => key.toLowerCase() === fieldName.toLowerCase() ||
+        key.replace(/[^a-z0-9]/gi, "").toLowerCase() === normalizedName
     );
     return matchedKey ? user[matchedKey] : undefined;
   };
-  const isApprover = isEnabled(user?.approver);
-  const isHr = ["1", "y", "yes", "true"].includes(String(user?.hrFlag ?? user?.hrflag ?? "").toLowerCase());
-  const isManager = isHr || isApprover;
+  const { isApprover, isHr, isManager, canApprove, canConfirmDtr,
+    canViewDtrMonitoring, canViewLeaveMonitoring, canManageEmployeeShifts,
+    canApproveEmployeeShifts } = getAccessRights(user);
+
+// console.log("Access Rights:", isApprover, isHr, isManager, canConfirmDtr)
+
   const portalAccess = {
     dtr: isEnabled(getUserField("portalDTR")),
     dtrConfirmation: isEnabled(getUserField("portalDTRConfirm") ?? getUserField("portalDTConfirm")),
@@ -57,21 +63,21 @@ const Navbar = () => {
   };
   const timekeepingChildren = [
     ...(portalAccess.timekeeping ? [{ path: "/timekeeping", label: "Timekeeping (In and Out)" }] : []),
-    ...(portalAccess.dtr ? [{ path: "/timekeepingAdj", label: "Timekeeping (Adjustment)" }] : []),
-    ...(portalAccess.dtr && isManager
+    ...(portalAccess.timekeeping ? [{ path: "/timekeepingAdj", label: "Timekeeping (Adjustment)" }] : []),
+    ...(portalAccess.dtr && canApprove
       ? [{ path: "/timekeepingAdjApproval", label: "Timekeeping for Approval" }]
       : []),
-    ...(portalAccess.dtrConfirmation && isManager
+    ...(canConfirmDtr
       ? [{ path: "/dtrApproval", label: "DTR Confirmation" }]
       : []),
     ...(portalAccess.dtr ? [{ path: "/dtrMonitoring", label: "DTR Monitoring" }] : []),
   ];
   const leaveChildren = [
     { path: "/leave", label: "Leave Application" },
-    ...(isManager
+    ...(canApprove
       ? [{ path: "/leaveapproval", label: "Leave for Approval" }]
       : []),
-    { path: "/leaveMonitoring", label: "Leave Monitoring" },
+    ...(canViewLeaveMonitoring ? [{ path: "/leaveMonitoring", label: "Leave Monitoring" }] : []),
   ];
  
 
@@ -81,8 +87,8 @@ const Navbar = () => {
     {
       label: "Employee Shift",
       children: [
-        { path: "/employee-shift", label: isHr || isApprover ? "Employee Shift Setup" : "My Shift Schedule" },
-        ...(isApprover ? [{ path: "/employee-shift-approval", label: "Shift Change for Approval" }] : []),
+        { path: "/employee-shift", label: canManageEmployeeShifts ? "Employee Shift Setup" : "My Shift Schedule" },
+        ...(canApproveEmployeeShifts ? [{ path: "/employee-shift-approval", label: "Shift Change for Approval" }] : []),
       ]
     },
     ...(timekeepingChildren.length ? [{
@@ -92,7 +98,7 @@ const Navbar = () => {
     {
       path: "/payslipviewer", label: "Payslip"
     },
-    ...(portalAccess.overtime ? (!isManager
+    ...(portalAccess.overtime ? (!canApprove
       ? [{ path: "/overtime", label: "Overtime" }]
       : [{
         label: "Overtime",
@@ -105,7 +111,7 @@ const Navbar = () => {
       label: "Leave",
       children: leaveChildren
     }] : []),
-    ...(portalAccess.officialBusiness ? (!isManager
+    ...(portalAccess.officialBusiness ? (!canApprove
       ? [{ path: "/official-business", label: "Official Business" }]
       : [{
         label: "Official Business",
@@ -114,7 +120,7 @@ const Navbar = () => {
           { path: "/OfficialBusinessApproval", label: "Official Business for Approval" }
         ]
       }]) : []),
-    ...(portalAccess.offset ? (!isManager
+    ...(portalAccess.offset ? (!canApprove
       ? [{ path: "/offsetApplication", label: "Offset" }]
       : [{
         label: "Offset",
