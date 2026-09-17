@@ -20,19 +20,6 @@ import {
   Image as ImageIcon,
   CircleCheck,
   Clock3,
-  RefreshCw,
-  Coffee,
-  LogIn,
-  LogOut,
-  ShieldCheck,
-  Navigation,
-  LayoutGrid,
-  Table2,
-  AlertTriangle,
-  UserRound,
-  Building2,
-  Activity,
-  CheckCircle2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -47,11 +34,11 @@ export const upsertTimeIn = (data) =>
 export const saveImage = (data) =>
   fetchApi(API_ENDPOINTS.saveImage, "POST", data);
 
-export const getNewImageIdApi = () =>
-  fetchApi(API_ENDPOINTS.getNewImageId, "GET");
+export const getNewImageIdApi = (data) =>
+  fetchApi(API_ENDPOINTS.getNewImageId, "POST", data);
 
-export const getDTRRecords = ({ empNo, startDate, endDate }) =>
-  fetchApi(`${API_ENDPOINTS.getDTRRecords}/${empNo}/${startDate}/${endDate}`, "GET");
+export const getDTRRecords = (data) =>
+  fetchApi(API_ENDPOINTS.getDTRRecords, "POST", data);
 
 export const getEmpBranchLoc = (empNo) =>
   fetchApi(`${API_ENDPOINTS.getEmpBranchLoc}/${empNo}`, "GET");
@@ -173,15 +160,6 @@ const formatEventTypeLabel = (value) =>
     .toLowerCase()
     .replace(/\b\w/g, (character) => character.toUpperCase());
 
-const formatDurationClock = (totalSeconds = 0) => {
-  const safeSeconds = Math.max(0, Math.floor(Number(totalSeconds) || 0));
-  const hours = Math.floor(safeSeconds / 3600);
-  const minutes = Math.floor((safeSeconds % 3600) / 60);
-  const seconds = safeSeconds % 60;
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-};
-
 const TodayTimelineItem = React.memo(function TodayTimelineItem({
   label,
   value,
@@ -228,14 +206,14 @@ const TodayTimelineItem = React.memo(function TodayTimelineItem({
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-3">
           <div
-            className={`flex min-w-0 items-center gap-2 text-xs font-extrabold ${toneClass}`}
+            className={`flex min-w-0 items-center gap-2 text-sm font-extrabold ${toneClass}`}
           >
             <Clock3 className={`h-4 w-4 shrink-0 ${iconClass}`} />
             <span>{label}:</span>
           </div>
 
           <span
-            className={`max-w-[58%] text-right text-[11px] font-extrabold leading-snug sm:text-xs ${
+            className={`max-w-[58%] text-right text-xs font-extrabold leading-snug sm:text-sm ${
               recorded ? "text-slate-900" : "text-red-600"
             }`}
           >
@@ -544,7 +522,6 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   const [timeInRecoveryPrompt, setTimeInRecoveryPrompt] = useState(null);
 
   const [capturing, setCapturing] = useState(false);
-  const [cameraAccessReady, setCameraAccessReady] = useState(false);
   const [countdown, setCountdown] = useState(0);
   const [loading, setLoading] = useState({ show: false, message: "" });
   const [clockSyncStatus, setClockSyncStatus] = useState("syncing");
@@ -1056,7 +1033,6 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
         });
 
         streamRef.current = stream;
-        setCameraAccessReady(true);
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -1068,7 +1044,6 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
           };
         }
       } catch (err) {
-        setCameraAccessReady(false);
         console.error("Camera initialization error:", err);
         showErrorToast("Camera Error", "Could not access webcam. Please ensure it is connected and permissions are granted.");
       }
@@ -3168,16 +3143,11 @@ if (!confirm) return;
     );
   };
 
-  const StatusPill = ({
-    active,
-    label,
-    activeClass = "bg-green-50 text-green-700 border-green-200",
-    className = "",
-  }) => (
+  const StatusPill = ({ active, label, activeClass = "bg-green-50 text-green-700 border-green-200" }) => (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-1 text-[11px] font-semibold ${
+      className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${
         active ? activeClass : "border-gray-200 bg-gray-50 text-gray-500"
-      } ${className}`}
+      }`}
     >
       {label}: {active ? "ON" : "OFF"}
     </span>
@@ -3218,7 +3188,7 @@ if (!confirm) return;
     }
 
     return (
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 2xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
         {filteredRecords.map((record, index) => {
           const isFinal = record.stat === "F";
           const hasCompleteTime = !isBlank(record.time_in) && !isBlank(record.time_out);
@@ -3278,21 +3248,21 @@ if (!confirm) return;
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-[12px] sm:text-xs font-bold text-gray-900 lg:text-xs">
+                    <h3 className="text-[11px] sm:text-sm font-bold text-gray-900 lg:text-base">
                       {dayjs(record.date).format("MMMM D, YYYY")}
                     </h3>
                     <RecordBadge isFinal={isFinal} />
                   </div>
-                  <p className="text-[12px] font-medium text-gray-500">
+                  <p className="text-[11px] font-medium text-gray-500">
                     {dayjs(record.date).format("dddd")}
                   </p>
                 </div>
 
                 <div className="text-right">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                     Worked Hours
                   </div>
-                  <div className="text-sm font-bold text-blue-800 lg:text-base">
+                  <div className="font-mono text-sm font-bold text-blue-800 lg:text-lg">
                     {getWorkedHoursDisplay(record)}
                   </div>
                   {/* <div className="mt-1 space-y-0.5 text-[9px] font-medium text-slate-600 sm:text-[10px]">
@@ -3302,7 +3272,7 @@ if (!confirm) return;
                   {/* <div className="text-[10px] lg:text-[11px] text-gray-400 uppercase tracking-widest mb-1 font-bold">
                     IN • OUT
                   </div> */}
-                  <div className="text-[12px] lg:text-xs font-semibold text-gray-800">
+                  <div className="font-mono text-[11px] lg:text-base font-semibold text-gray-800">
                     {record.time_in
                       ? formatDtrActualDateTime(record, "timeIn")
                       : "N/A"}{" "}
@@ -3311,7 +3281,7 @@ if (!confirm) return;
                       ? formatDtrActualDateTime(record, "timeOut")
                       : "N/A"} */}
                   </div>
-                  <div className="text-[12px] lg:text-xs font-semibold text-gray-800">
+                  <div className="font-mono text-[11px] lg:text-base font-semibold text-gray-800">
                     {/* {record.time_in
                       ? formatDtrActualDateTime(record, "timeIn")
                       : "N/A"}{" "}
@@ -3983,822 +3953,430 @@ if (!confirm) return;
       ? previousOpenRecord
       : null;
 
-  const activeDisplayRecord = activeShiftRecord || currentCalendarRecord || null;
-  const activeShiftDate = getNormalizedRecordDate(activeDisplayRecord);
-  const currentRecordHasBreakIn = Boolean(activeDisplayRecord?.break_in);
-  const currentRecordHasBreakOut = Boolean(activeDisplayRecord?.break_out);
-  const currentRecordHasTimeOut =
-    activeDisplayRecord &&
-    !isValueBlank(getDtrActualDateTimeValue(activeDisplayRecord, "timeOut"));
-
-  const runningWorkingSeconds = useMemo(() => {
-    const record = activeDisplayRecord;
-
-    if (!record) return 0;
-
-    const baseDate = getNormalizedRecordDate(record) || record?.date;
-
-    const parseEventMoment = ({
-      dateKeys = [],
-      dateTimeKeys = [],
-      timeKeys = [],
-      previousMoment = null,
-    }) => {
-      const explicitDate = getFirstNonBlankValue(record, dateKeys);
-      const dateTimeValue = getFirstNonBlankValue(record, dateTimeKeys);
-      const timeValue = dateTimeValue || getFirstNonBlankValue(record, timeKeys);
-
-      if (!timeValue) return null;
-
-      const rawValue = String(timeValue).trim();
-      let parsedMoment = null;
-
-      if (/\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(rawValue)) {
-        const hasExplicitTimezone =
-          /(?:Z|[+-]\d{2}:?\d{2})$/i.test(rawValue) || /\b(?:GMT|UTC)\b/i.test(rawValue);
-
-        parsedMoment = hasExplicitTimezone
-          ? dayjs(rawValue).tz(PH_TIMEZONE)
-          : dayjs.tz(rawValue, PH_TIMEZONE);
-      } else {
-        const parsed = parseDtrDateTime(explicitDate || baseDate, rawValue);
-        parsedMoment = parsed?.isValid() ? parsed.tz(PH_TIMEZONE, true) : null;
-      }
-
-      if (!parsedMoment?.isValid()) return null;
-
-      if (
-        previousMoment &&
-        !explicitDate &&
-        !/\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(rawValue) &&
-        parsedMoment.isBefore(previousMoment)
-      ) {
-        parsedMoment = parsedMoment.add(1, "day");
-      }
-
-      return parsedMoment;
-    };
-
-    const timeInMoment = parseEventMoment({
-      dateKeys: ["time_in_date", "timeInDate", "TIME_IN_DATE"],
-      dateTimeKeys: [
-        "time_in_datetime",
-        "timeInDateTime",
-        "TIME_IN_DATETIME",
-        "actual_time_in",
-        "actualTimeIn",
-        "ACTUAL_TIME_IN",
-      ],
-      timeKeys: ["time_in", "timeIn"],
-    });
-
-    if (!timeInMoment) return 0;
-
-    const timeOutMoment = parseEventMoment({
-      dateKeys: ["time_out_date", "timeOutDate", "TIME_OUT_DATE"],
-      dateTimeKeys: [
-        "time_out_datetime",
-        "timeOutDateTime",
-        "TIME_OUT_DATETIME",
-        "actual_time_out",
-        "actualTimeOut",
-        "ACTUAL_TIME_OUT",
-      ],
-      timeKeys: ["time_out", "timeOut"],
-      previousMoment: timeInMoment,
-    });
-
-    const trustedNow = currentDate || getTrustedPhilippineNow();
-    const endMoment = timeOutMoment || trustedNow;
-
-    if (!endMoment?.isValid?.() || endMoment.isBefore(timeInMoment)) {
-      return 0;
-    }
-
-    let workingSeconds = endMoment.diff(timeInMoment, "second");
-
-    const breakInMoment = parseEventMoment({
-      dateKeys: ["break_in_date", "breakInDate", "BREAK_IN_DATE"],
-      dateTimeKeys: ["break_in_datetime", "breakInDateTime", "BREAK_IN_DATETIME"],
-      timeKeys: ["break_in", "breakIn"],
-      previousMoment: timeInMoment,
-    });
-
-    if (breakInMoment && breakInMoment.isBefore(endMoment)) {
-      const breakOutMoment = parseEventMoment({
-        dateKeys: ["break_out_date", "breakOutDate", "BREAK_OUT_DATE"],
-        dateTimeKeys: ["break_out_datetime", "breakOutDateTime", "BREAK_OUT_DATETIME"],
-        timeKeys: ["break_out", "breakOut"],
-        previousMoment: breakInMoment,
-      });
-
-      const effectiveBreakStart = breakInMoment.isBefore(timeInMoment)
-        ? timeInMoment
-        : breakInMoment;
-
-      let effectiveBreakEnd = breakOutMoment || endMoment;
-
-      if (effectiveBreakEnd.isAfter(endMoment)) {
-        effectiveBreakEnd = endMoment;
-      }
-
-      if (effectiveBreakEnd.isAfter(effectiveBreakStart)) {
-        workingSeconds -= effectiveBreakEnd.diff(effectiveBreakStart, "second");
-      }
-    }
-
-    return Math.max(0, workingSeconds);
-  }, [
-    activeDisplayRecord,
-    currentDate,
-    getNormalizedRecordDate,
-    getTrustedPhilippineNow,
-    parseDtrDateTime,
-  ]);
-
-  const runningWorkingTime = formatDurationClock(runningWorkingSeconds);
-
-  const cameraReady =
-    !isImageCaptureRequired ||
-    (cameraAccessReady && faceDetectionModelLoaded && Boolean(currentUserFaceDescriptor));
-  const locationReady = !isLocationRequired || Boolean(userLocation);
-  const assignedLocationReady = !isLocationRequired || Boolean(branchLocation);
-  const attendanceReady =
-    isClockSynced && cameraReady && locationReady && assignedLocationReady;
-
-  const setQuickDateRange = (range) => {
-    const baseDate = getTrustedPhilippineNow() || currentDate || dayjs().tz(PH_TIMEZONE);
-
-    if (range === "today") {
-      const value = baseDate.format("YYYY-MM-DD");
-      setStartDate(value);
-      setEndDate(value);
-      return;
-    }
-
-    if (range === "7days") {
-      setStartDate(baseDate.subtract(6, "day").format("YYYY-MM-DD"));
-      setEndDate(baseDate.format("YYYY-MM-DD"));
-      return;
-    }
-
-    setStartDate(baseDate.startOf("month").format("YYYY-MM-DD"));
-    setEndDate(baseDate.endOf("month").format("YYYY-MM-DD"));
-  };
-
-  const getNextAction = () => {
-    if (hasPreviousTimeIn && !hasPreviousTimeOut && !hasCurrentCalendarTimeIn) {
-      return {
-        label: "Time Out",
-        helper: "Complete your previous Shift.",
-        icon: LogOut,
-        tone: "amber",
-        onClick: handleTimeOutClick,
-      };
-    }
-
-    if (!hasCurrentCalendarTimeIn) {
-      return {
-        label: "Time In",
-        helper: "Start your scheduled Shift.",
-        icon: LogIn,
-        tone: "blue",
-        onClick: handleTimeInClick,
-      };
-    }
-
-    if (currentRecordHasTimeOut) {
-      return {
-        label: "Shift Completed",
-        helper: "Your current Shift is complete.",
-        icon: CheckCircle2,
-        tone: "green",
-        onClick: null,
-      };
-    }
-
-    if (!currentRecordHasBreakIn) {
-      return {
-        label: "Break In",
-        helper: "Start your break.",
-        icon: Coffee,
-        tone: "red",
-        onClick: () => handleTimeEvent("BREAK IN"),
-      };
-    }
-
-    if (!currentRecordHasBreakOut) {
-      return {
-        label: "Break Out",
-        helper: "Resume work.",
-        icon: Activity,
-        tone: "red",
-        onClick: () => handleTimeEvent("BREAK OUT"),
-      };
-    }
-
-    return {
-      label: "Time Out",
-      helper: "Finish your current Shift.",
-      icon: LogOut,
-      tone: "blue",
-      onClick: handleTimeOutClick,
-    };
-  };
-
-  const nextAction = getNextAction();
-  const NextActionIcon = nextAction.icon;
-  const nextActionClasses = {
-    blue: "border-blue-200 bg-blue-50 text-blue-900",
-    red: "border-rose-200 bg-rose-50 text-rose-900",
-    amber: "border-amber-200 bg-amber-50 text-amber-900",
-    green: "border-emerald-200 bg-emerald-50 text-emerald-900",
-  }[nextAction.tone];
-
   return (
-    <div className="mt-4 ml-0 min-h-screen bg-slate-100 px-3 pb-8 pt-[82px] sm:px-4 lg:ml-[200px] lg:px-4">
-      <div className="mx-auto w-full max-w-[1600px]">
-        <section
-          className="
-            relative overflow-hidden rounded-2xl
-            bg-gradient-to-br from-blue-800 via-blue-900 to-slate-900
-            p-4 text-white shadow-lg
-            sm:p-5
-            lg:px-5 lg:py-3
-          "
-        >
-          <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-28 left-1/3 h-56 w-56 rounded-full bg-blue-300/10 blur-3xl" />
+    <div className="ml-0 lg:ml-[200px] mt-[70px] p-2 sm:p-4 bg-gray-100 min-h-screen">
 
-          <div className="relative">
-            {/* <div className="flex flex-wrap items-center gap-2"> */}
-              {/* <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-blue-50 backdrop-blur">
-                <Clock3 className="h-3.5 w-3.5" />
-                Employee Timekeeping
-              </span> */}
-{/* 
-              <span
-                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] font-bold ${
-                  attendanceReady
-                    ? "border-emerald-300/30 bg-emerald-400/15 text-emerald-100"
-                    : "border-amber-300/30 bg-amber-300/15 text-amber-100"
-                }`}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    attendanceReady ? "bg-emerald-300" : "bg-amber-300"
-                  }`}
-                />
+      <section className="relative mb-2 mt-2 overflow-hidden rounded-2xl bg-gradient-to-br from-blue-800 via-blue-900 to-blue-600 p-3 text-white shadow-xl sm:p-3">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-1/3 h-48 w-48 rounded-full bg-blue-300/10 blur-3xl" />
 
-                {attendanceReady
-                  ? "Ready to record"
-                  : "Checking device readiness"}
-              </span> */}
-            {/* </div> */}
+        <div className="relative flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="mb-1 flex items-start justify-between gap-2 sm:block">
+            <div className="inline-flex shrink-0 items-center rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-50 backdrop-blur">
+              Timekeeping
+            </div>
+            <h1 className="max-w-[13rem] text-right text-base font-extrabold leading-snug tracking-tight sm:ml-1 mt-0.5 sm:mt-2 sm:max-w-none sm:text-left sm:text-2xl">
+              {currentDate ? currentDate.format("dddd, MMMM DD, YYYY") : "Verifying Philippine date..."}
+            </h1>
+            </div>
+          </div>
 
-            <div
-              className="
-                grid grid-cols-[minmax(0,1fr)_auto]
-                items-end gap-3
-                sm:gap-5
-                lg:items-center lg:gap-4
-              "
-            >
-              {/* DATE / CURRENT TIME */}
-              <div className="min-w-0">
-                <h1 className="truncate text-xs font-extrabold tracking-tight text-blue-100 sm:text-lg lg:text-base">
-                  <span className="sm:hidden">
-                    {currentDate
-                      ? currentDate.format("dddd, MMMM DD, YYYY")
-                      : "Verifying date..."}
-                  </span>
-
-                  <span className="hidden sm:inline">
-                    {currentDate
-                      ? currentDate.format("dddd, MMMM DD, YYYY")
-                      : "Verifying Philippine date..."}
-                  </span>
-                </h1>
-
-                <p
-                  className="
-                    mt-1
-                    text-2xl font-black
-                    leading-none
-                    tabular-nums
-                    sm:text-3xl
-                    lg:text-3xl
-                  "
-                >
+          <div className="w-full rounded-2xl border border-white/15 bg-white/10 px-3 py-2 backdrop-blur sm:w-auto sm:min-w-[250px]">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] text-blue-100">
+                  Philippine Standard Time
+                </p>
+                <p className="mt-1 text-lg sm:text-3xl font-extrabold leading-none tabular-nums">
                   {time || "Syncing..."}
                 </p>
               </div>
-
-              {/* RUNNING WORK TIME */}
-              <div
-                className="
-                  min-w-[118px]
-                  rounded-xl
-                  border border-white/15
-                  bg-white/10
-                  px-3 py-2
-                  text-right
-                  backdrop-blur
-
-                  sm:min-w-[180px]
-                  sm:px-4 sm:py-3
-
-                  lg:min-w-[200px]
-                  lg:px-4
-                  lg:py-2
-                "
-              >
-                <p
-                  className="
-                    text-[8px]
-                    font-bold uppercase
-                    tracking-[0.12em]
-                    text-blue-100
-
-                    sm:text-[10px]
-                    lg:text-[10px]
-                  "
-                >
-                  Running Working Time
-                </p>
-
-                <p
-                  className="
-                    font-mono
-                    text-lg font-black
-                    leading-none
-                    tabular-nums
-
-                    sm:text-2xl
-                    lg:text-2xl
-                  "
-                >
-                  {runningWorkingTime}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {clockSyncStatus !== "synced" && (
-            <div className="relative mt-3 flex items-start gap-2 rounded-xl border border-amber-200/30 bg-amber-100/10 px-3 py-2 text-xs font-semibold text-amber-50 lg:mt-2">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-
-              <span>
-                {clockSyncStatus === "syncing"
-                  ? "Verifying server time..."
-                  : "Server time could not be verified. Attendance actions remain disabled until synchronization is restored."}
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                <Clock3 className="h-5 w-5" />
               </span>
             </div>
-          )}
-        </section>
-        {hasPreviousTimeIn && !hasPreviousTimeOut && (
-          <div className="mt-3 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-900 shadow-sm">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <div>
-              <p className="font-extrabold">Previous shift is still open.</p>
-              <p className="mt-0.5 leading-relaxed">
-                You can close the previous shift first, or start a new shift when the next scheduled shift is available.
-              </p>
-            </div>
           </div>
-        )}
-
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(310px,0.9fr)_minmax(0,1.45fr)]">
-          <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            {/* <div className="border-b border-slate-100 px-4 py-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-sm font-extrabold text-slate-900">Attendance Console</p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">Photo and attendance controls</p>
-                </div>
-                <Camera className="h-5 w-5 text-blue-700" />
-              </div>
-            </div> */}
-
-            <div className="p-4">
-              {isImageCaptureRequired ? (
-                <div className="relative mx-auto overflow-hidden rounded-2xl bg-slate-950 shadow-inner">
-                  <video
-                    ref={videoRef}
-                    width={320}
-                    height={240}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="aspect-[4/3] max-h-[340px] w-full object-cover [transform:scaleX(-1)]"
-                  />
-                  <canvas ref={canvasRef} width={320} height={240} className="hidden" />
-
-                  <div className="pointer-events-none absolute inset-x-3 top-3 flex items-center justify-between gap-2">
-                    <span className="rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
-                      Keep your face centered
-                    </span>
-                    <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold backdrop-blur-sm ${
-                      cameraReady ? "bg-emerald-500/80 text-white" : "bg-amber-500/85 text-white"
-                    }`}>
-                      {cameraReady ? "Camera Ready" : "Preparing Camera"}
-                    </span>
-                  </div>
-
-                  {capturing && (
-                    <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-slate-950/45">
-                      <div className="rounded-2xl border border-white/25 bg-black/40 px-6 py-5 text-center text-white shadow-2xl backdrop-blur-sm">
-                        {countdown > 0 ? (
-                          <>
-                            <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-100">Capturing photo</div>
-                            <div className="mt-1 text-7xl font-black leading-none">{countdown}</div>
-                          </>
-                        ) : (
-                          <>
-                            <Camera className="mx-auto h-8 w-8" />
-                            <div className="mt-2 text-xl font-bold">Smile!</div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex min-h-[150px] items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 text-center">
-                  <div>
-                    <Camera className="mx-auto h-7 w-7 text-slate-400" />
-                    <p className="mt-2 text-sm font-bold text-slate-700">Photo capture is not required</p>
-                  </div>
-                </div>
-              )}
-
-              <div className={`mt-3 rounded-xl border px-3 py-2 ${nextActionClasses}`}>
-                <div className="flex min-w-0 items-center gap-2">
-                  <NextActionIcon className="h-4 w-4 shrink-0" />
-                  <p className="min-w-0 text-[11px] leading-snug sm:text-xs">
-                    <span className="font-extrabold">{nextAction.label}:</span>{" "}
-                    <span className="font-semibold opacity-80">{nextAction.helper}</span>
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button
-                  className="flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-blue-800 px-3 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
-                  onClick={handleTimeInClick}
-                  disabled={
-                    !isClockSynced ||
-                    (isImageCaptureRequired
-                      ? capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor || hasCurrentCalendarTimeIn
-                      : hasCurrentCalendarTimeIn)
-                  }
-                >
-                  <LogIn className="h-4 w-4" /> Time In
-                </button>
-
-                <button
-                  className="flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-rose-600 px-3 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
-                  onClick={() => handleTimeEvent("BREAK IN")}
-                  disabled={
-                    !isClockSynced ||
-                    (isImageCaptureRequired
-                      ? capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor || !!activeShiftRecord?.break_in || !hasActiveTimeIn
-                      : !!activeShiftRecord?.break_in || !hasActiveTimeIn)
-                  }
-                >
-                  <Coffee className="h-4 w-4" /> Break In
-                </button>
-
-                <button
-                  className="flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-rose-500 px-3 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-40"
-                  onClick={() => handleTimeEvent("BREAK OUT")}
-                  disabled={
-                    !isClockSynced ||
-                    (isImageCaptureRequired
-                      ? capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor || !!activeShiftRecord?.break_out || !activeShiftRecord?.break_in
-                      : !!activeShiftRecord?.break_out || !activeShiftRecord?.break_in)
-                  }
-                >
-                  <Activity className="h-4 w-4" /> Break Out
-                </button>
-
-                <button
-                  className="flex min-h-[52px] items-center justify-center gap-2 rounded-xl bg-blue-800 px-3 py-2.5 text-sm font-extrabold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
-                  onClick={handleTimeOutClick}
-                  disabled={
-                    !isClockSynced ||
-                    (isImageCaptureRequired
-                      ? capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor || !availableTimeOutRecord ||
-                        (availableTimeOutRecord === todayRecord ? hasCurrentTimeOut : hasPreviousTimeOut)
-                      : !availableTimeOutRecord ||
-                        (availableTimeOutRecord === todayRecord ? hasCurrentTimeOut : hasPreviousTimeOut))
-                  }
-                >
-                  <LogOut className="h-4 w-4" /> Time Out
-                </button>
-              </div>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-100 p-4 sm:p-5">
-              {/* ASSIGNED LOCATION HEADER */}
-              <div
-                className="
-                  flex flex-col gap-3
-                  md:grid md:grid-cols-[minmax(0,1fr)_auto]
-                  md:items-start md:gap-6
-                "
-              >
-                {/* LEFT - LOCATION */}
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 text-blue-800">
-                    <Building2 className="h-5 w-5 shrink-0" />
-
-                    <h2 className="truncate text-sm font-extrabold sm:text-lg">
-                      {branchLocation?.branchname || "Assigned Location Not Loaded"}
-                    </h2>
-                  </div>
-
-                  <p className="mt-1 break-words text-xs leading-relaxed text-slate-600">
-                    {branchLocation?.address ||
-                      "No assigned work location is currently available."}
-                  </p>
-                </div>
-
-                {/* RIGHT - GEOTAGGING / GEOFENCING */}
-                <div
-                  className="
-                    grid w-full grid-cols-2 gap-2
-
-                    md:flex
-                    md:w-auto
-                    md:min-w-[125px]
-                    md:flex-col
-                    md:items-stretch
-                    md:gap-1.5
-                  "
-                >
-                  <StatusPill
-                    active={shouldShowLocationAddress}
-                    label="Geotagging"
-                    className="
-                      w-full justify-center
-                      md:w-full md:justify-center
-                    "
-                  />
-
-                  <StatusPill
-                    active={shouldShowGeofenceDetails}
-                    label="Geofencing"
-                    activeClass="border-blue-200 bg-blue-50 text-blue-700"
-                    className="
-                      w-full justify-center
-                      md:w-full md:justify-center
-                    "
-                  />
-                </div>
-              </div>
-
-              {/* DEVICE READINESS */}
-              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {[
-                  ["Server Time", isClockSynced, Clock3],
-                  ["Camera / Face", cameraReady, Camera],
-                  ["Location", locationReady, Navigation],
-                  ["Assigned Site", assignedLocationReady, ShieldCheck],
-                ].map(([label, ready, Icon]) => (
-                  <div
-                    key={label}
-                    className="
-                      rounded-xl border border-slate-200
-                      bg-slate-50
-                      px-3 py-2.5
-                    "
-                  >
-                    <div className="flex items-center gap-2">
-                      <Icon
-                        className={`h-4 w-4 shrink-0 ${
-                          ready ? "text-emerald-600" : "text-amber-600"
-                        }`}
-                      />
-
-                      <span className="truncate text-[10px] font-bold uppercase tracking-wide text-slate-500">
-                        {label}
-                      </span>
-                    </div>
-
-                    <p
-                      className={`mt-1 text-xs font-extrabold ${
-                        ready ? "text-emerald-700" : "text-amber-700"
-                      }`}
-                    >
-                      {ready ? "Ready" : "Check required"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              {/* GEOFENCE DETAILS */}
-              {shouldShowGeofenceDetails && (
-                <div
-                  className="
-                    mt-3
-                    flex flex-wrap items-center
-                    gap-x-4 gap-y-1
-                    rounded-xl
-                    bg-blue-50
-                    px-3 py-2
-                    text-xs font-semibold
-                    text-blue-900
-                  "
-                >
-                  <span>
-                    <strong>Allowed Radius:</strong>{" "}
-                    {branchLocation?.allowedRadius ?? "N/A"} m
-                  </span>
-
-                  {locationAccuracy != null && (
-                    <span>
-                      <strong>GPS Accuracy:</strong>{" "}
-                      {Math.round(locationAccuracy)} m
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="p-4 sm:p-5">
-              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-extrabold text-slate-900">Active Shift</p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
-                    {activeShiftDate ? `Shift date ${dayjs(activeShiftDate).format("MM/DD/YYYY")}` : "No active shift record yet"}
-                    {employeeShiftSchedule ? ` • Schedule ${employeeShiftSchedule}` : ""}
-                  </p>
-                </div>
-                {activeDisplayRecord?.worked_hrs != null && (
-                  <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-800">
-                    {Number(activeDisplayRecord.worked_hrs || 0).toFixed(2)} hrs
-                  </span>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {[
-                  ["timeIn", "Time In", activeDisplayRecord?.time_in ? formatDtrActualDateTime(activeDisplayRecord, "timeIn") : "", activeDisplayRecord?.time_in_address, "blue"],
-                  ["breakIn", "Break In", activeDisplayRecord?.break_in ? formatDtrBreakDateTime(activeDisplayRecord, "breakIn") : "", activeDisplayRecord?.break_in_address, "red"],
-                  ["breakOut", "Break Out", activeDisplayRecord?.break_out ? formatDtrBreakDateTime(activeDisplayRecord, "breakOut") : "", activeDisplayRecord?.break_out_address, "red"],
-                  ["timeOut", "Time Out", activeDisplayRecord?.time_out ? formatDtrActualDateTime(activeDisplayRecord, "timeOut") : "", activeDisplayRecord?.time_out_address, "blue"],
-                ].map(([event, label, timestamp, location, tone]) => {
-                  const imageInfo = getEventImageInfo(activeDisplayRecord, event);
-
-                  return (
-                    <TodayTimelineItem
-                      key={event}
-                      label={label}
-                      value={timestamp}
-                      location={location}
-                      tone={tone}
-                      imageUrl={imageInfo.imageUrl}
-                      imageFallbacksJson={JSON.stringify(imageInfo.fallbacks)}
-                      showLocation={shouldShowLocationAddress}
-                    />
-                  );
-                })}
-              </div>
-            </div>
-          </section>
         </div>
 
-        <section className="mt-4 rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 p-4 sm:p-5">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-              <div className="min-w-0">
-                <div>
-                  <h2 className="text-base font-extrabold text-slate-900 sm:text-lg">Daily Time Record</h2>
-                </div>
-                <p className="mt-1 text-xs text-slate-500">Review, export, adjust, or confirm your attendance records.</p>
+        {clockSyncStatus !== "synced" && (
+          <div className="relative mt-4 inline-flex items-start gap-2 rounded-xl border border-amber-200/50 bg-amber-100/15 px-3 py-2 text-xs font-semibold text-amber-50">
+            <span className="mt-1 h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-300" />
+            <span>
+              {clockSyncStatus === "syncing"
+                ? "Verifying server time..."
+                : "Philippine Standard Time could not be verified from the server. Timekeeping buttons are disabled until sync is restored."}
+            </span>
+          </div>
+        )}
+      </section>
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <button type="button" onClick={() => setQuickDateRange("today")} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50">Today</button>
-                  <button type="button" onClick={() => setQuickDateRange("7days")} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50">Last 7 Days</button>
-                  <button type="button" onClick={() => setQuickDateRange("month")} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50">This Month</button>
+      {hasPreviousTimeIn && !hasPreviousTimeOut && (
+        <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          <p className="font-bold">Previous shift has no Time Out.</p>
+          <p>
+            Time Out will remain available for the previous shift until the next
+            scheduled Shift In. If you already timed in for today, the Time Out
+            button will ask which shift you want to close.
+          </p>
+        </div>
+      )}
+
+      <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-[minmax(18rem,1.5fr)_minmax(34rem,2.5fr)]">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-md">
+          {isImageCaptureRequired && (
+            <div className="relative mx-auto mb-4 w-full max-w-[420px] overflow-hidden rounded-2xl bg-slate-900 shadow-md">
+              <video
+                ref={videoRef}
+                width={320}
+                height={240}
+                autoPlay
+                playsInline
+                muted
+                className="h-[300px] w-full bg-black object-cover transform scale-x-[-1] sm:aspect-[4/3] sm:h-auto"
+              />
+              <canvas ref={canvasRef} width={320} height={240} className="hidden" />
+
+              {capturing && (
+                <div className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-slate-950/35">
+                  <div className="rounded-2xl border border-white/25 bg-black/35 px-6 py-5 text-center text-white shadow-2xl backdrop-blur-sm">
+                    {countdown > 0 ? (
+                      <>
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-blue-100">Capturing photo</div>
+                        <div className="mt-1 text-7xl font-black leading-none drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+                          {countdown}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="mx-auto h-8 w-8" />
+                        <div className="mt-2 text-2xl font-bold drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+                          Smile!
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="grid w-full grid-cols-2 gap-3 sm:gap-4">
+            <button
+              className="rounded-xl bg-blue-800 px-4 py-4 text-sm font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:py-5"
+              onClick={handleTimeInClick}
+              disabled={
+                !isClockSynced ||
+                (isImageCaptureRequired
+                  ? capturing ||
+                    !faceDetectionModelLoaded ||
+                    !currentUserFaceDescriptor ||
+                    hasCurrentCalendarTimeIn
+                  : hasCurrentCalendarTimeIn)
+              }
+            >
+              Time In
+            </button>
+
+            <button
+              className="rounded-xl bg-red-600 px-4 py-4 text-sm font-bold text-white shadow-md transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50 sm:py-5"
+              onClick={() => handleTimeEvent("BREAK IN")}
+              disabled={
+                !isClockSynced ||
+                (isImageCaptureRequired
+                  ? capturing ||
+                    !faceDetectionModelLoaded ||
+                    !currentUserFaceDescriptor ||
+                    !!activeShiftRecord?.break_in ||
+                    !hasActiveTimeIn
+                  : !!activeShiftRecord?.break_in || !hasActiveTimeIn)
+              }
+            >
+              Break In
+            </button>
+
+            <button
+              className="rounded-xl bg-red-500 px-4 py-4 text-sm font-bold text-white shadow-md transition hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50 sm:py-5"
+              onClick={() => handleTimeEvent("BREAK OUT")}
+              disabled={
+                !isClockSynced ||
+                (isImageCaptureRequired
+                  ? capturing ||
+                    !faceDetectionModelLoaded ||
+                    !currentUserFaceDescriptor ||
+                    !!activeShiftRecord?.break_out ||
+                    !activeShiftRecord?.break_in
+                  : !!activeShiftRecord?.break_out || !activeShiftRecord?.break_in)
+              }
+            >
+              Break Out
+            </button>
+
+            <button
+              className="rounded-xl bg-blue-800 px-4 py-4 text-sm font-bold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 sm:py-5"
+              onClick={handleTimeOutClick}
+              disabled={
+                !isClockSynced ||
+                (isImageCaptureRequired
+                  ? capturing ||
+                    !faceDetectionModelLoaded ||
+                    !currentUserFaceDescriptor ||
+                    !availableTimeOutRecord ||
+                    (availableTimeOutRecord === todayRecord
+                      ? hasCurrentTimeOut
+                      : hasPreviousTimeOut)
+                  : !availableTimeOutRecord ||
+                    (availableTimeOutRecord === todayRecord
+                      ? hasCurrentTimeOut
+                      : hasPreviousTimeOut))
+              }
+            >
+              Time Out
+            </button>
+          </div>
+        </div>
+
+        <div className="flex w-full flex-col rounded-xl border border-gray-200 bg-white p-4 shadow-md">
+          <div className="border-b border-slate-100 pb-3">
+          <p className="text-blue-800 text-base md:text-lg mb-2">
+            <span className="font-extrabold">
+              {branchLocation?.branchname || "Assigned Location Not Loaded"}
+            </span>
+          </p>
+
+          <p className="break-words text-xs font-medium leading-relaxed text-gray-800 md:text-sm">
+            <span className="font-bold">Assigned Location:</span>{" "}
+            {branchLocation?.address || "N/A"}
+          </p>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <StatusPill active={shouldShowLocationAddress} label="Geotagging" />
+            <StatusPill
+              active={shouldShowGeofenceDetails}
+              label="Geofence"
+              activeClass="border-blue-200 bg-blue-50 text-blue-700"
+            />
+          </div>
+
+          {shouldShowGeofenceDetails && (
+            <p className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-xs font-medium text-blue-900">
+              <span className="font-bold">Allowed Radius:</span>{" "}
+              {branchLocation?.allowedRadius ?? "N/A"} meters
+              {locationAccuracy != null && (
+                <>
+                  {" "}
+                  | <span className="font-bold">Current Accuracy:</span>{" "}
+                  {Math.round(locationAccuracy)} meters
+                </>
+              )}
+            </p>
+          )}
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+            {[
+              [
+                "timeIn",
+                "Time In",
+                todayRecord?.time_in
+                  ? formatDtrActualDateTime(todayRecord, "timeIn")
+                  : "",
+                todayRecord?.time_in_address,
+                "blue",
+              ],
+              [
+                "timeOut",
+                "Time Out",
+                todayRecord?.time_out
+                  ? formatDtrActualDateTime(todayRecord, "timeOut")
+                  : "",
+                todayRecord?.time_out_address,
+                "blue",
+              ],
+              [
+                "breakIn",
+                "Break In",
+                todayRecord?.break_in
+                  ? formatDtrBreakDateTime(todayRecord, "breakIn")
+                  : "",
+                todayRecord?.break_in_address,
+                "red",
+              ],
+              [
+                "breakOut",
+                "Break Out",
+                todayRecord?.break_out
+                  ? formatDtrBreakDateTime(todayRecord, "breakOut")
+                  : "",
+                todayRecord?.break_out_address,
+                "red",
+              ],
+            ].map(([event, label, timestamp, location, tone]) => {
+              const imageInfo = getEventImageInfo(todayRecord, event);
+
+              return (
+                <TodayTimelineItem
+                  key={event}
+                  label={label}
+                  value={timestamp}
+                  location={location}
+                  tone={tone}
+                  imageUrl={imageInfo.imageUrl}
+                  imageFallbacksJson={JSON.stringify(imageInfo.fallbacks)}
+                  showLocation={shouldShowLocationAddress}
+                />
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 p-4 bg-white rounded-xl shadow-md">
+        <div>
+          <div className="mb-6">
+            <h1 className="text-lg font-bold mb-4 text-gray-900">Daily Time Record</h1>
+
+            <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row items-end gap-3">
+                <div className="w-full sm:w-auto">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Start Date
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full min-w-0 sm:w-48 lg:w-64 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="w-full sm:w-auto">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    End Date
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={endDate}
+                      min={startDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full min-w-0 sm:w-48 lg:w-64 text-sm h-10 px-3 pr-10 border border-gray-200 rounded-xl focus:ring-blue-500 focus:border-blue-500 appearance-none"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
-                {/* <button
-                  type="button"
-                  onClick={fetchDTRRecords}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
-                >
-                  <RefreshCw className="h-4 w-4" /> Refresh
-                </button> */}
+              <div className="flex flex-wrap items-center gap-3 mt-4 xl:mt-0">
                 <button
-                  type="button"
                   onClick={handleExport}
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 text-sm font-bold text-white shadow-sm hover:bg-emerald-600"
+                  className="flex-1 sm:flex-none h-10 px-3 bg-green-700 text-white rounded-xl hover:bg-green-600 transition-colors flex items-center justify-center gap-2 text-sm font-medium shadow-sm whitespace-nowrap"
                 >
-                  <Download className="h-4 w-4" /> Export
+                  <Download size={18} />
+                  Export
                 </button>
+
+                {/* <button
+                  onClick={() => navigate("/offsetApplication", { state: { fromDTR: true } })}
+                  className="flex-1 sm:flex-none h-10 px-4 bg-blue-800 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
+                >
+                  Offset Application
+                </button> */}
+
                 {hasDtrAccess && (
                   <button
-                    type="button"
                     onClick={() => navigate("/timekeepingAdj")}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-800 px-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700"
+                    className="flex-1 sm:flex-none h-10 px-3 bg-blue-800 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
                   >
-                    <UserRound className="h-4 w-4" /> Adjustment
+                    DTR Adjustment
                   </button>
                 )}
+
                 {hasDtrConfirmationAccess && (
                   <button
-                    type="button"
                     onClick={handleDtrConfirmation}
-                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-800 px-3 text-sm font-bold text-white shadow-sm hover:bg-blue-700"
+                    className="flex-1 sm:flex-none h-10 px-3 bg-blue-800 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm whitespace-nowrap"
                   >
-                    <CircleCheck className="h-4 w-4" /> Confirm DTR
+                    <CircleCheck size={20} className="text-white inline mr-2" />DTR Confirmation
                   </button>
                 )}
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:max-w-2xl">
-              <label className="block">
-                <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">From</span>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                />
-              </label>
-              <label className="block">
-                <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">To</span>
-                <input
-                  type="date"
-                  value={endDate}
-                  min={startDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                />
-              </label>
+            <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Displayed Records</div>
+                <div className="mt-1 text-lg font-bold text-blue-900">{filteredRecords.length}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Final Records</div>
+                <div className="mt-1 text-lg font-bold text-emerald-700">{finalRecordCount}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Incomplete</div>
+                <div className="mt-1 text-lg font-bold text-amber-700">{incompleteRecordCount}</div>
+              </div>
+              <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">Worked Hours</div>
+                <div className="mt-1 text-lg font-bold text-blue-900">{totalWorkedHours.toFixed(2)} hrs</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-0 overflow-hidden rounded-xl border border-gray-200 sm:grid-cols-4">
+              <button
+                onClick={() => setViewMode("cards")}
+                className={`py-2 text-sm font-medium transition-all ${
+                  viewMode === "cards"
+                    ? "bg-blue-800 text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border-r border-gray-200"
+                }`}
+              >
+                Cards
+              </button>
+
+              <button
+                onClick={() => setViewMode("table")}
+                className={`py-2 text-sm font-medium transition-all ${
+                  viewMode === "table"
+                    ? "bg-blue-800 text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border-r border-gray-200"
+                }`}
+              >
+                Compact
+              </button>
+
+              <button
+                onClick={() => setViewMode("summary")}
+                className={`py-2 text-sm font-medium transition-all ${
+                  viewMode === "summary"
+                    ? "bg-blue-800 text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border-r border-gray-200"
+                }`}
+              >
+                Summary
+              </button>
+
+              <button
+                onClick={() => setViewMode("tableSummary")}
+                className={`py-2 text-sm font-medium transition-all ${
+                  viewMode === "tableSummary"
+                    ? "bg-blue-800 text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                Table
+              </button>
             </div>
           </div>
 
-          <div className="p-4 sm:p-5">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Records</p>
-                <p className="mt-1 text-xl font-black text-blue-900">{filteredRecords.length}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Final</p>
-                <p className="mt-1 text-xl font-black text-emerald-700">{finalRecordCount}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Incomplete</p>
-                <p className="mt-1 text-xl font-black text-amber-700">{incompleteRecordCount}</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Worked Hours</p>
-                <p className="mt-1 text-xl font-black text-blue-900">{totalWorkedHours.toFixed(2)}</p>
-              </div>
-            </div>
+          {viewMode === "cards" && CardView({ filteredRecords })}
+          {viewMode === "accordion" && <AccordionView filteredRecords={filteredRecords} />}
+          {viewMode === "table" && <CompactTableView filteredRecords={filteredRecords} />}
+          {viewMode === "tableSummary" && <FullTableView filteredRecords={filteredRecords} />}
+          {viewMode === "summary" && <FullSummaryView filteredRecords={filteredRecords} />}
 
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold text-slate-500">
-                {startDate && endDate ? `${dayjs(startDate).format("MMM D, YYYY")} – ${dayjs(endDate).format("MMM D, YYYY")}` : "Select a date range"}
-              </p>
-              <div className="inline-flex overflow-hidden rounded-xl border border-slate-200 bg-white">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("cards")}
-                  className={`inline-flex h-9 items-center gap-1.5 px-3 text-xs font-bold transition ${
-                    viewMode === "cards" ? "bg-blue-800 text-white" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <LayoutGrid className="h-4 w-4" /> Cards
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("tableSummary")}
-                  className={`inline-flex h-9 items-center gap-1.5 border-l border-slate-200 px-3 text-xs font-bold transition ${
-                    viewMode === "tableSummary" ? "bg-blue-800 text-white" : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  <Table2 className="h-4 w-4" /> Table
-                </button>
+          <div className="mt-6 bg-blue-50 p-2 rounded-xl">
+            <div className="flex justify-between items-center">
+              <div className="px-2 py-1 text-xs md:text-sm font-bold text-gray-700">
+                Total Hours:
               </div>
-            </div>
-
-            <div className="mt-4">
-              {viewMode === "tableSummary"
-                ? <FullTableView filteredRecords={filteredRecords} />
-                : CardView({ filteredRecords })}
+              <div className="px-2 py-1 text-right text-xs md:text-sm font-bold text-gray-900">
+                {totalWorkedHours.toFixed(2)} hrs
+              </div>
             </div>
           </div>
-        </section>
+        </div>
       </div>
 
       {timeInRecoveryPrompt && (

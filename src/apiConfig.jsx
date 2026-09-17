@@ -24,6 +24,8 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 const API_ENDPOINTS = {
     //AUTHENTICATION
+    companyName: `${API_BASE_URL}/company-name`,
+    
     login:      `${API_BASE_URL}/loginEmp`,
     loginEmp:   `${API_BASE_URL}/loginEmp`,
     regEmp:     `${API_BASE_URL}/regEmp`,
