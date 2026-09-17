@@ -54,9 +54,20 @@ const readJsonResponse = async (response, endpointName) => {
 
 const hasHrAccess = (user) => getAccessRights(user).isHr;
 const hasApproverAccess = (user) => getAccessRights(user).isApprover;
-const canManage = (user) => getAccessRights(user).isManager;
 const hasManagerAccess = (user) => getAccessRights(user).isManager;
 const hasSupervisorAccess = (user) => getAccessRights(user).isSupervisor;
+
+const hasManageAccess = (user) => {
+  const rights = getAccessRights(user);
+
+  return Boolean(
+    rights.canManageEmployeeShifts ||
+    rights.isHr ||
+    rights.isApprover ||
+    rights.isManager ||
+    rights.isSupervisor
+  );
+};
 
 const fmt = (value, withTime = false) => value && dayjs(value).isValid() ? dayjs(value).format(withTime ? "MM/DD/YYYY hh:mm A" : "MM/DD/YYYY") : "-";
 const shiftTypeLabel = (value) => ({ DS: "Day Shift", MS: "Mid Shift", NS: "Night Shift" }[String(value ?? "").trim().toUpperCase()] || value || "-");
@@ -109,6 +120,7 @@ export default function EmployeeShift() {
   const approverAccess = hasApproverAccess(user);
   const mgrAccess = hasManagerAccess(user);
   const supAccess = hasSupervisorAccess(user);
+  const canManage = hasManageAccess(user);
   const [from, setFrom] = useState(dayjs().startOf("month").format("YYYY-MM-DD"));
   const [to, setTo] = useState(dayjs().endOf("month").format("YYYY-MM-DD"));
   const [rows, setRows] = useState([]); const [shifts, setShifts] = useState([]); const [loading, setLoading] = useState(false);
@@ -262,6 +274,8 @@ export default function EmployeeShift() {
     scheduleView,
     hrAccess,
     approverAccess,
+    mgrAccess,
+    supAccess,
   ]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
@@ -484,7 +498,13 @@ export default function EmployeeShift() {
       const response = await fetch(API_ENDPOINTS.employeeShiftTemplateData, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ EMP_NO: user.empNo })
+        body: JSON.stringify({
+          EMP_NO: user.empNo,
+          HR_FLAG: hrAccess ? "Y" : "N",
+          MGR_FLAG: mgrAccess ? "Y" : "N",
+          SUP_FLAG: supAccess ? "Y" : "N",
+          APPROVER: approverAccess ? "Y" : "N",
+        })
       });
 
       const responseText = await response.text();
@@ -530,9 +550,10 @@ export default function EmployeeShift() {
           "Employee No": row.empNo ?? "",
           "Employee Name": row.empName ?? "",
           "Payroll Frequency": row.payFreq ?? "",
-          "Employee Status": row.empStat ?? "",
-          "Department": row.department ?? "",
           "Branch": row.branch ?? "",
+          "Payroll Group": row.payGroup ?? "",
+          "Department": row.department ?? "",
+          "Employee Status": row.empStat ?? "",
         }))
       );
 
@@ -553,8 +574,20 @@ export default function EmployeeShift() {
       payrollSheet["!cols"] = [
         { wch: 10 }, { wch: 18 }, { wch: 28 }, { wch: 14 }, { wch: 16 }, { wch: 16 }
       ];
+      // Auto-fit Department to the longest department name.
+      const departmentWidth = Math.max(
+        30,
+        ...employees.map((row) => String(row.department ?? "").length + 3)
+      );
+
       employeeSheet["!cols"] = [
-        { wch: 18 }, { wch: 35 }, { wch: 18 }, { wch: 22 }, { wch: 16 }, { wch: 30 }
+        { wch: 14 },
+        { wch: 35 },
+        { wch: 16 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: departmentWidth },
+        { wch: 20 }
       ];
       shiftSheet["!cols"] = [
         { wch: 14 }, { wch: 28 }, { wch: 16 }, { wch: 14 }

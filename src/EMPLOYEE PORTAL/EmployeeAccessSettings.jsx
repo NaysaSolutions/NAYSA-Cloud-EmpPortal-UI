@@ -572,6 +572,7 @@ export default function EmployeeAccessSettings() {
                 {saving ? "Saving..." : `Save (${changedCount})`}
               </button>
             </div>
+            
           </div>
         </section>
 
@@ -770,7 +771,7 @@ export default function EmployeeAccessSettings() {
                                     {pick(row, "branchName", "branch") || "No designation"}
                                   </div>
                                   <div className="mt-1 flex max-w-[220px] flex-wrap gap-1 text-[9px] font-semibold text-slate-500">
-                                    {[pick(row, "positionName", "position"), pick(row, "payGroupName", "payrollGroup", "payGroup"), pick(row, "deptName", "department")].filter(Boolean).map((value) => <span key={value} className="rounded bg-slate-100 px-1.5 py-0.5">{value}</span>)}
+                                    {[pick(row, "payGroupName", "payrollGroup", "payGroup"), pick(row, "deptName", "department"), pick(row, "positionName", "position")].filter(Boolean).map((value) => <span key={value} className="rounded bg-slate-100 px-1.5 py-0.5">{value}</span>)}
                                   </div>
                                 </div>
                                 {isChanged && (

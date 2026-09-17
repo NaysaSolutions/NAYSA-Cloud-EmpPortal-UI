@@ -145,8 +145,10 @@ const normalizeAnnouncement = (announcement, index) => ({
   id: announcement?.id ?? announcement?.announcementId ?? announcement?.announcement_id ?? index,
   title: String(announcement?.title ?? announcement?.subject ?? announcement?.announcement_title ?? "Announcement").trim(),
   message: String(announcement?.message ?? announcement?.body ?? announcement?.description ?? "").trim(),
+  createdBy: String(announcement?.createdBy ?? announcement?.created_by ?? "").trim(),
   postedBy: String(announcement?.postedBy ?? announcement?.posted_by ?? announcement?.createdBy ?? announcement?.created_by ?? "HR").trim(),
   postedAt: announcement?.postedAt ?? announcement?.posted_at ?? announcement?.createdAt ?? announcement?.created_at ?? "",
+  visibilityScope: String(announcement?.visibilityScope ?? announcement?.visibility_scope ?? "ALL").trim().toUpperCase(),
   expiresAt:
     announcement?.expiresAt ??
     announcement?.expires_at ??
@@ -217,6 +219,7 @@ const Dashboard = () => {
   const [announcementTitle, setAnnouncementTitle] = useState("");
   const [announcementMessage, setAnnouncementMessage] = useState("");
   const [announcementExpirationDate, setAnnouncementExpirationDate] = useState("");
+  const [announcementVisibilityScope, setAnnouncementVisibilityScope] = useState("ALL");
   const [isAnnouncementLoading, setIsAnnouncementLoading] = useState(false);
   const [isAnnouncementPosting, setIsAnnouncementPosting] = useState(false);
   const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
@@ -228,14 +231,23 @@ const Dashboard = () => {
 
   const { user, setUser, authLoading } = useAuth();
   const navigate = useNavigate();
-  const isHrUser = isEnabledFlag(user?.hrFlag ?? user?.hrflag);
+  const { canApprove, isHr, isManager, isSupervisor } = getAccessRights(user);
+  const canPostAnnouncement = isHr || isManager || isSupervisor;
+  const canPostTeamAnnouncement = isManager || isSupervisor;
 
   const fetchAnnouncements = useCallback(async () => {
+    if (!user?.empNo) {
+      setAnnouncements([]);
+      setIsAnnouncementLoading(false);
+      return;
+    }
+
     setIsAnnouncementLoading(true);
     setAnnouncementError("");
 
     try {
-      const response = await fetch(API_ENDPOINTS.announcements, {
+      const url = `${API_ENDPOINTS.announcements}?EMP_NO=${encodeURIComponent(user.empNo)}`;
+      const response = await fetch(url, {
         method: "GET",
         headers: { Accept: "application/json" },
       });
@@ -251,7 +263,17 @@ const Dashboard = () => {
     } finally {
       setIsAnnouncementLoading(false);
     }
-  }, []);
+  }, [user?.empNo]);
+
+  const canManageAnnouncement = useCallback(
+    (announcement) =>
+      Boolean(
+        user?.empNo &&
+        announcement?.createdBy &&
+        String(announcement.createdBy).trim() === String(user.empNo).trim()
+      ),
+    [user?.empNo]
+  );
 
   const closeAnnouncementModal = useCallback(() => {
     if (isAnnouncementPosting) return;
@@ -261,20 +283,24 @@ const Dashboard = () => {
     setAnnouncementTitle("");
     setAnnouncementMessage("");
     setAnnouncementExpirationDate("");
+    setAnnouncementVisibilityScope(isHr ? "ALL" : "TEAM");
     setAnnouncementPostError("");
-  }, [isAnnouncementPosting]);
+  }, [isAnnouncementPosting, isHr]);
 
   const openAnnouncementModal = () => {
+    if (!canPostAnnouncement) return;
+
     setEditingAnnouncement(null);
     setAnnouncementTitle("");
     setAnnouncementMessage("");
     setAnnouncementExpirationDate("");
+    setAnnouncementVisibilityScope(isHr ? "ALL" : "TEAM");
     setAnnouncementPostError("");
     setIsAnnouncementModalOpen(true);
   };
 
   const openAnnouncementEditModal = (announcement) => {
-    if (!isHrUser) return;
+    if (!canManageAnnouncement(announcement)) return;
 
     setEditingAnnouncement(announcement);
     setAnnouncementTitle(announcement?.title || "");
@@ -284,6 +310,7 @@ const Dashboard = () => {
         ? dayjs(announcement.expiresAt).format("YYYY-MM-DD")
         : ""
     );
+    setAnnouncementVisibilityScope(announcement?.visibilityScope || (isHr ? "ALL" : "TEAM"));
     setAnnouncementPostError("");
     setIsAnnouncementModalOpen(true);
   };
@@ -299,8 +326,10 @@ const Dashboard = () => {
   const handleSaveAnnouncement = async (event) => {
     event.preventDefault();
 
+    const isEditing = Boolean(editingAnnouncement?.id);
+
     if (
-      !isHrUser ||
+      (isEditing ? !canManageAnnouncement(editingAnnouncement) : !canPostAnnouncement) ||
       !announcementTitle.trim() ||
       !announcementMessage.trim() ||
       !announcementExpirationDate
@@ -310,8 +339,6 @@ const Dashboard = () => {
 
     setIsAnnouncementPosting(true);
     setAnnouncementPostError("");
-
-    const isEditing = Boolean(editingAnnouncement?.id);
     const endpoint = isEditing
       ? `${API_ENDPOINTS.announcements}/${editingAnnouncement.id}`
       : API_ENDPOINTS.createAnnouncement;
@@ -336,6 +363,7 @@ const Dashboard = () => {
                 message: announcementMessage.trim(),
                 expirationDate: announcementExpirationDate,
                 createdBy: user?.empNo,
+                visibilityScope: announcementVisibilityScope,
               }
         ),
       });
@@ -354,6 +382,7 @@ const Dashboard = () => {
       setAnnouncementTitle("");
       setAnnouncementMessage("");
       setAnnouncementExpirationDate("");
+      setAnnouncementVisibilityScope(isHr ? "ALL" : "TEAM");
       await fetchAnnouncements();
     } catch (requestError) {
       console.error(
@@ -371,7 +400,7 @@ const Dashboard = () => {
   };
 
   const handleDeleteAnnouncement = async (announcement) => {
-    if (!isHrUser || !announcement?.id || deletingAnnouncementId) return;
+    if (!canManageAnnouncement(announcement) || !announcement?.id || deletingAnnouncementId) return;
 
     const confirmed = window.confirm(
       `Delete "${announcement.title}"?\n\nThis announcement will no longer be visible to employees.`
@@ -1000,7 +1029,6 @@ const Dashboard = () => {
   const employeeDisplayName =
     user?.empName || user?.employeeName || user?.name || user?.userName || user?.empname || "Employee";
 
-  const { canApprove, isHr, isManager, isSupervisor } = getAccessRights(user);
   const isManagementUser = isHr || isManager || isSupervisor || canApprove;
   const portalAccess = {
     dtr: isEnabledFlag(getObjectField(user, "portalDTR")),
@@ -1372,7 +1400,7 @@ const Dashboard = () => {
                 Employee Portal
               </div>
               <h1 className="text-xl font-extrabold tracking-tight sm:text-2xl">
-                {dashboardGreeting}, {employeeDisplayName}
+                {dashboardGreeting} {employeeDisplayName}
               </h1>
               <p className="mt-1 text-sm font-medium text-blue-100">
                 {currentDate ? currentDate.format("dddd, MMMM DD, YYYY") : "Verifying Philippine date…"}
@@ -1454,7 +1482,7 @@ const Dashboard = () => {
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500">
-                  Company notices and important updates from Human Resources.
+                  Company notices and important updates from HR, Managers, and Supervisors.
                 </p>
               </div>
             </div>
@@ -1467,7 +1495,7 @@ const Dashboard = () => {
                 </span>
               )}
 
-              {isHrUser && (
+              {canPostAnnouncement && (
                 <button
                   type="button"
                   onClick={openAnnouncementModal}
@@ -1514,9 +1542,9 @@ const Dashboard = () => {
                         : "border-slate-200 bg-white hover:border-blue-200"
                     }`}
                   >
-                    <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="mb-3 flex items-start justify-between gap-3">
                       <span
-                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.12em] ${
+                        className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.12em] ${
                           index === 0
                             ? "bg-blue-800 text-white"
                             : "bg-slate-100 text-slate-500"
@@ -1525,11 +1553,20 @@ const Dashboard = () => {
                         <FontAwesomeIcon icon={faBell} className="text-[8px]" />
                         {index === 0 ? "Latest" : "Announcement"}
                       </span>
-                      {announcement.postedAt && (
-                        <span className="text-[10px] font-semibold text-slate-400">
-                          {dayjs(announcement.postedAt).format("MMM DD, YYYY")}
-                        </span>
-                      )}
+
+                      <div className="shrink-0 text-right text-[9px] font-semibold leading-4">
+                        {announcement.postedAt && (
+                          <div className="text-slate-400">
+                            Post Date {dayjs(announcement.postedAt).format("MMM DD, YYYY")}
+                          </div>
+                        )}
+                        {announcement.expiresAt && (
+                          <div className="inline-flex items-center justify-end gap-1 text-amber-700">
+                            <FontAwesomeIcon icon={faCalendarDays} />
+                            Expires {dayjs(announcement.expiresAt).format("MMM DD, YYYY")}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <h3 className="text-sm font-extrabold leading-5 text-blue-950">
@@ -1540,19 +1577,12 @@ const Dashboard = () => {
                       {announcement.message}
                     </p>
 
-                    {announcement.expiresAt && (
-                      <div className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-xl bg-amber-50 px-2 py-1 text-[9px] font-bold text-amber-700">
-                        <FontAwesomeIcon icon={faCalendarDays} />
-                        Expires {dayjs(announcement.expiresAt).format("MMM DD, YYYY")}
-                      </div>
-                    )}
-
-                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-100 pt-3">
-                      <span className="min-w-0 truncate text-[10px] font-bold text-slate-500">
+                    <div className="mt-4 flex flex-col items-start gap-3 border-t border-slate-100 pt-3 sm:flex-row sm:items-end sm:justify-between">
+                      <span className="min-w-0 break-words text-[10px] font-bold leading-4 text-slate-500">
                         Posted by {announcement.postedBy || "HR"}
                       </span>
 
-                      <div className="flex shrink-0 items-center gap-1.5">
+                      <div className="flex shrink-0 flex-wrap items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => openAnnouncementViewModal(announcement)}
@@ -1563,7 +1593,7 @@ const Dashboard = () => {
                           View
                         </button>
 
-                        {isHrUser && (
+                        {canManageAnnouncement(announcement) && (
                           <>
                             <button
                               type="button"
@@ -1687,9 +1717,16 @@ const Dashboard = () => {
                 <h2 className="text-base font-extrabold text-slate-950 sm:text-lg">Quick Actions</h2>
                 <p className="mt-1 text-xs text-slate-500">Go directly to your most-used employee services.</p>
               </div>
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">
+              {/* <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500">
                 {quickActions.length} available
-              </span>
+              </span> */}
+
+              <div className="rounded-xl bg-blue-50 px-3 py-2 text-right">
+                <p className="text-[9px] font-bold uppercase tracking-wider text-blue-600">Available</p>
+                <p className="text-xl font-extrabold tabular-nums text-blue-900">
+                  {quickActions.length}
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -1863,7 +1900,7 @@ const Dashboard = () => {
               </div>
               <div className="rounded-xl bg-blue-50 px-4 py-2">
                 <p className="text-[9px] font-bold uppercase tracking-wider text-blue-700">Employees</p>
-                <p className="text-2xl font-extrabold tabular-nums text-blue-900">
+                <p className="text-2xl text-right font-extrabold tabular-nums text-blue-900">
                   {employeeAttendanceCards.total}
                 </p>
               </div>
@@ -2830,7 +2867,7 @@ const Dashboard = () => {
               <div className="flex space-x-2 overflow-x-auto">
                 {portalAccess.leave && <button
                   onClick={() => setActiveApproverTab("leave")}
-                  className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
+                  className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors ${
                     activeApproverTab === "leave"
                       ? "bg-blue-800 text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"
@@ -2840,7 +2877,7 @@ const Dashboard = () => {
                 </button>}
                 {portalAccess.overtime && <button
                   onClick={() => setActiveApproverTab("ot")}
-                  className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
+                  className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors ${
                     activeApproverTab === "ot"
                       ? "bg-blue-800 text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"
@@ -2850,7 +2887,7 @@ const Dashboard = () => {
                 </button>}
                 {portalAccess.officialBusiness && <button
                   onClick={() => setActiveApproverTab("ob")}
-                  className={`px-4 py-2 text-sm font-semibold rounded-t-xl transition-colors ${
+                  className={`px-4 py-2 text-xs sm:text-sm font-semibold rounded-t-xl transition-colors ${
                     activeApproverTab === "ob"
                       ? "bg-blue-800 text-white"
                       : "bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-blue-800"
@@ -3005,43 +3042,85 @@ const Dashboard = () => {
             }}
           >
             <div className="flex max-h-[78vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-              <div className="shrink-0 border-b border-slate-100 bg-white px-4 py-3.5 sm:px-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-800 text-white">
-                      <FontAwesomeIcon icon={faBullhorn} className="text-sm" />
-                    </span>
+              {/* Announcement Header */}
+              <div className="shrink-0 border-b border-slate-200 bg-white px-4 py-4 sm:px-5">
+                <div className="flex items-start justify-between gap-4">
 
-                    <div className="min-w-0">
-                      <div className="mb-1 flex flex-wrap items-center gap-2">
-                        <span className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-blue-700">
-                          Announcement
-                        </span>
-                        {selectedAnnouncement.postedAt && (
-                          <span className="text-[9px] font-semibold text-slate-400">
-                            {dayjs(selectedAnnouncement.postedAt).format("MMM DD, YYYY • h:mm A")}
-                          </span>
-                        )}
-                      </div>
+                  {/* Left side */}
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    {/* Icon */}
+                    <div className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-800 text-white shadow-sm">
+                      <FontAwesomeIcon icon={faBullhorn} className="text-base" />
+                    </div>
+
+                    {/* Announcement + title */}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-blue-700">
+                        Announcement
+                      </p>
 
                       <h2
                         id="announcement-view-modal-title"
-                        className="break-words text-sm font-extrabold leading-5 text-slate-900 sm:text-base"
+                        className="mt-1 break-words text-base font-extrabold leading-6 text-slate-900 sm:text-lg"
                       >
                         {selectedAnnouncement.title}
                       </h2>
                     </div>
                   </div>
 
+                  {/* Close */}
                   <button
                     type="button"
                     onClick={closeAnnouncementViewModal}
-                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    className="
+                      inline-flex h-9 w-9 shrink-0 items-center justify-center
+                      rounded-xl text-slate-400 transition
+                      hover:bg-slate-100 hover:text-slate-700
+                      focus:outline-none focus:ring-2 focus:ring-blue-100
+                    "
                     aria-label="Close announcement"
                   >
                     <FontAwesomeIcon icon={faXmark} />
                   </button>
                 </div>
+
+                {/* Date information */}
+                {(selectedAnnouncement.postedAt || selectedAnnouncement.expiresAt) && (
+                  <div className="mt-1 ml-0 flex flex-wrap items-center gap-x-4 gap-y-1 sm:ml-14">
+
+                    {selectedAnnouncement.postedAt && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-500">
+                        <FontAwesomeIcon
+                          icon={faCalendarDays}
+                          className="text-[9px] text-slate-400"
+                        />
+
+                        <span className="font-semibold text-slate-500">
+                          Posted
+                        </span>
+
+                        <span className="font-bold text-slate-700">
+                          {dayjs(selectedAnnouncement.postedAt).format(
+                            "MMM DD, YYYY • h:mm A"
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    {selectedAnnouncement.expiresAt && (
+                      <div className="flex items-center gap-1.5 text-[10px]">
+                        <span className="font-semibold text-slate-400">
+                          Expires
+                        </span>
+
+                        <span className="rounded-md bg-amber-50 px-2 py-0.5 font-bold text-amber-700">
+                          {dayjs(selectedAnnouncement.expiresAt).format("MMM DD, YYYY")}
+                        </span>
+                      </div>
+                    )}
+
+                  </div>
+                )}
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-4">
@@ -3050,31 +3129,43 @@ const Dashboard = () => {
                 </p>
               </div>
 
-              <div className="shrink-0 border-t border-slate-100 bg-slate-50 px-4 py-3 sm:px-5">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0 text-[10px] text-slate-500">
-                    <span className="font-bold text-slate-700">
-                      Posted by {selectedAnnouncement.postedBy || "HR"}
-                    </span>
-                    {selectedAnnouncement.expiresAt && (
-                      <span className="ml-2 inline-flex items-center gap-1 text-amber-700">
-                        <FontAwesomeIcon icon={faCalendarDays} />
-                        Expires {dayjs(selectedAnnouncement.expiresAt).format("MMM DD, YYYY")}
-                      </span>
-                    )}
+              {/* Announcement Footer */}
+              <div className="shrink-0 border-t border-slate-200 bg-slate-50 px-4 py-3 sm:px-5">
+                <div className="flex items-center justify-between gap-3">
+
+                  {/* Posted By */}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-slate-400">
+                      Posted by
+                    </p>
+
+                    <p
+                      className="mt-0.5 break-words text-[10px] font-extrabold leading-4 text-slate-700 sm:text-[11px]"
+                      title={selectedAnnouncement.postedBy || "HR"}
+                    >
+                      {selectedAnnouncement.postedBy || "HR"}
+                    </p>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2">
-                    {isHrUser && (
+                  {/* Actions */}
+                  <div className="flex shrink-0 items-center gap-2">
+                    {canManageAnnouncement(selectedAnnouncement) && (
                       <button
                         type="button"
                         onClick={() => {
                           closeAnnouncementViewModal();
                           openAnnouncementEditModal(selectedAnnouncement);
                         }}
-                        className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-[10px] font-bold text-slate-700 transition hover:bg-slate-100"
+                        className="
+                          inline-flex h-9 items-center justify-center gap-1.5
+                          rounded-xl border border-slate-200 bg-white
+                          px-3 text-[10px] font-bold text-slate-700
+                          shadow-sm transition
+                          hover:border-blue-200 hover:bg-blue-50 hover:text-blue-800
+                          focus:outline-none focus:ring-2 focus:ring-blue-100
+                        "
                       >
-                        <FontAwesomeIcon icon={faPen} />
+                        <FontAwesomeIcon icon={faPen} className="text-[9px]" />
                         Edit
                       </button>
                     )}
@@ -3082,7 +3173,14 @@ const Dashboard = () => {
                     <button
                       type="button"
                       onClick={closeAnnouncementViewModal}
-                      className="inline-flex h-9 min-w-[84px] items-center justify-center rounded-xl bg-blue-800 px-3 text-[10px] font-bold text-white transition hover:bg-blue-700"
+                      className="
+                        inline-flex h-9 min-w-[72px] items-center justify-center
+                        rounded-xl bg-blue-800 px-4
+                        text-[10px] font-bold text-white
+                        shadow-sm transition
+                        hover:bg-blue-700
+                        focus:outline-none focus:ring-2 focus:ring-blue-200
+                      "
                     >
                       Close
                     </button>
@@ -3093,7 +3191,7 @@ const Dashboard = () => {
           </div>
         )}
 
-        {isHrUser && isAnnouncementModalOpen && (
+        {isAnnouncementModalOpen && (editingAnnouncement ? canManageAnnouncement(editingAnnouncement) : canPostAnnouncement) && (
           <div
             className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/55 p-3 backdrop-blur-[2px] sm:p-5"
             role="dialog"
@@ -3105,7 +3203,7 @@ const Dashboard = () => {
               }
             }}
           >
-            <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-white/70 bg-white shadow-2xl">
+            <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
               <div className="relative overflow-hidden bg-gradient-to-br from-blue-900 via-blue-800 to-blue-600 px-4 py-3 text-white sm:px-4">
                 <div className="pointer-events-none absolute -right-10 -top-12 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
                 <div className="relative flex items-start justify-between gap-4">
@@ -3115,7 +3213,7 @@ const Dashboard = () => {
                     </span>
                     <div>
                       <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-blue-100">
-                        Human Resources
+                        Employee Announcement
                       </p>
                       <h2 id="announcement-modal-title" className="mt-0.5 text-base font-extrabold sm:text-lg">
                         {editingAnnouncement ? "Edit Announcement" : "New Announcement"}
@@ -3123,7 +3221,7 @@ const Dashboard = () => {
                       <p className="mt-1 text-xs text-blue-100">
                         {editingAnnouncement
                           ? "Update the announcement details and expiration date."
-                          : "This announcement will be visible to employees until its expiration date."}
+                          : "Select the intended audience, then publish the announcement."}
                       </p>
                     </div>
                   </div>
@@ -3172,6 +3270,44 @@ const Dashboard = () => {
                         required
                       />
                     </div>
+
+                    {!editingAnnouncement && (
+                      <div>
+                        <div className="mb-1.5 flex items-center justify-between gap-3">
+                          <label htmlFor="announcement-visibility-scope" className="text-xs font-extrabold text-slate-700">
+                            Audience
+                          </label>
+                          <span className="text-[10px] font-semibold text-slate-400">
+                            {isHr ? "HR posting option" : "Based on your role"}
+                          </span>
+                        </div>
+
+                        {isHr && canPostTeamAnnouncement ? (
+                          <select
+                            id="announcement-visibility-scope"
+                            value={announcementVisibilityScope}
+                            onChange={(event) => setAnnouncementVisibilityScope(event.target.value)}
+                            className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+                          >
+                            <option value="ALL">All Employees</option>
+                            <option value="TEAM">My Team Only</option>
+                          </select>
+                        ) : (
+                          <div
+                            id="announcement-visibility-scope"
+                            className="flex min-h-11 w-full items-center rounded-xl border border-slate-200 bg-slate-50 px-3.5 text-sm font-semibold text-slate-700"
+                          >
+                            {isHr ? "All Employees" : "My Team Only"}
+                          </div>
+                        )}
+
+                        <p className="mt-1.5 text-[10px] leading-4 text-slate-400">
+                          {announcementVisibilityScope === "ALL"
+                            ? "All active employees can view this announcement."
+                            : "Only employees assigned under you as their Manager or Supervisor can view this announcement."}
+                        </p>
+                      </div>
+                    )}
 
                     <div>
                       <div className="mb-1.5 flex items-center justify-between gap-3">
@@ -3228,8 +3364,10 @@ const Dashboard = () => {
                           <p className="text-xs font-bold text-blue-950">Dashboard visibility</p>
                           <p className="mt-0.5 text-[11px] leading-5 text-blue-800/80">
                             {editingAnnouncement
-                              ? "Saving will immediately update the announcement for employees."
-                              : "After posting, the announcement will immediately appear at the top of the Announcement Board."}
+                              ? `Saving will update this ${editingAnnouncement.visibilityScope === "TEAM" ? "team" : "company-wide"} announcement immediately.`
+                              : announcementVisibilityScope === "ALL"
+                              ? "After posting, the announcement will appear for all active employees."
+                              : "After posting, the announcement will appear only for employees under you as Manager or Supervisor."}
                           </p>
                         </div>
                       </div>
