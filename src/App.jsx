@@ -109,8 +109,8 @@ const App = () => {
             <Route path="/timekeepingAdjApproval" element={<RoleRoute right="canApprove"><TimekeepingAdjustmentApproval /></RoleRoute>} />
             <Route path="/timekeepingAdjReview" element={<RoleRoute right="canApprove"><TimekeepingAdjustmentReview /></RoleRoute>} />
             <Route path="/dtrApproval" element={<ProtectedRoute><Layout><DtrApproval /></Layout></ProtectedRoute>} />
-            <Route path="/dtrMonitoring" element={<RoleRoute right="canViewDtrMonitoring"><DTRMonitoring /></RoleRoute>} />
-            <Route path="/leaveMonitoring" element={<RoleRoute right="canViewLeaveMonitoring"><LeaveMonitoring /></RoleRoute>} />
+            <Route path="/dtrMonitoring" element={<ProtectedRoute><Layout><DTRMonitoring /></Layout></ProtectedRoute>} />
+            <Route path="/leaveMonitoring" element={<ProtectedRoute><Layout><LeaveMonitoring /></Layout></ProtectedRoute>} />
             <Route path="/offsetApplication" element={<ProtectedRoute><Layout><OffsetApplication /></Layout></ProtectedRoute>} />
             <Route path="/offsetApproval" element={<RoleRoute right="canApprove"><OffsetApproval /></RoleRoute>} />
             <Route path="/payslipviewer" element={<ProtectedRoute><Layout><PayslipViewer /></Layout></ProtectedRoute>} />

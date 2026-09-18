@@ -63,7 +63,15 @@ const LOCATION_QUICK_TIMEOUT_MS = 3500;
 const LOCATION_WATCH_TIMEOUT_MS = 8000;
 const SERVER_TIME_SYNC_INTERVAL_MS = 300000;
 const EARLY_TIME_IN_WINDOW_MINUTES = 180;
-const MINIMUM_NEXT_SHIFT_GAP_HOURS = 12;
+// Do not use this value to force-close or replace an open shift. It is only
+// a warning threshold so unusually long / straight-duty sessions remain valid.
+const LONG_OPEN_SHIFT_WARNING_HOURS = 20;
+// Keep enough history loaded to recover an open straight-duty shift that may
+// have crossed more than one midnight.
+const OPEN_SHIFT_LOOKBACK_DAYS = 7;
+// Employee Shift is checked for the current date and upcoming dates so an
+// approved changed shift / Rest Day controls the next Time In window.
+const SHIFT_REFERENCE_LOOKAHEAD_DAYS = 7;
 
 const parseServerDateTime = (value) => {
   if (value == null || value === "") return null;
@@ -568,6 +576,11 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
       "SCHEDULE",
     ])
   );
+  // Date-specific Employee Shift rows returned by /employeeShifts.
+  // These override the default Dashboard/user shift for the matching date.
+  const [employeeShiftReferences, setEmployeeShiftReferences] = useState([]);
+  const [employeeShiftReferencesLoaded, setEmployeeShiftReferencesLoaded] =
+    useState(false);
 
   const roundCoord = (n, p = 5) => Number(n).toFixed(p);
 
@@ -1676,91 +1689,97 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
       if (!now) return null;
 
       const todayStr = now.format("YYYY-MM-DD");
-      const yesterdayStr = now.subtract(1, "day").format("YYYY-MM-DD");
-      const today =
-        nextRecords.find((record) => getNormalizedRecordDate(record) === todayStr) ||
-        null;
 
-      const openPreviousRecords = nextRecords
-        .filter((record) => {
-          const recordDate = getNormalizedRecordDate(record);
+      const getRecordTimeInMoment = (record) => {
+        const recordDate =
+          getDtrActualDateValue(record, "timeIn") ||
+          getNormalizedRecordDate(record);
+        const rawTimeIn = getDtrActualDateTimeValue(record, "timeIn");
 
-          return (
-            recordDate &&
-            recordDate === yesterdayStr &&
-            !isValueBlank(getDtrActualDateTimeValue(record, "timeIn")) &&
-            isValueBlank(getDtrActualDateTimeValue(record, "timeOut"))
-          );
-        })
+        if (!recordDate || isValueBlank(rawTimeIn)) return null;
+
+        const parsed = parseDtrDateTime(recordDate, rawTimeIn);
+        return parsed?.isValid?.() ? parsed : null;
+      };
+
+      const todayRecords = nextRecords
+        .filter(
+          (record) => getNormalizedRecordDate(record) === todayStr
+        )
         .sort((a, b) => {
-          const dateA = getNormalizedRecordDate(a) || "";
-          const dateB = getNormalizedRecordDate(b) || "";
+          const aMoment = getRecordTimeInMoment(a);
+          const bMoment = getRecordTimeInMoment(b);
 
-          return dateB.localeCompare(dateA);
+          return (bMoment?.valueOf?.() || 0) - (aMoment?.valueOf?.() || 0);
         });
 
-      const openPreviousRecord = openPreviousRecords[0] || null;
+      // If the employee intentionally started a new session today while an
+      // older shift is still open, the newest open same-day session is active.
+      const todayOpenRecord =
+        todayRecords.find(
+          (record) =>
+            !isValueBlank(getDtrActualDateTimeValue(record, "timeIn")) &&
+            isValueBlank(getDtrActualDateTimeValue(record, "timeOut"))
+        ) || null;
 
-      if (!openPreviousRecord) return today;
+      if (todayOpenRecord) return todayOpenRecord;
 
-      const openRecordDate = getNormalizedRecordDate(openPreviousRecord);
-      const openShiftTimeIn =
-        getRecordShiftTimeInDateTime(openPreviousRecord) ||
-        getShiftTimeInDateTime(openRecordDate, getEmployeeShiftTimeIn());
-      const nextShiftTimeIn = openShiftTimeIn
-        ? openShiftTimeIn.add(1, "day")
-        : null;
+      // Otherwise straight duty from an earlier date remains active until the
+      // employee explicitly records Time Out or starts a new session.
+      const openPreviousRecord =
+        nextRecords
+          .filter((record) => {
+            const recordDate = getNormalizedRecordDate(record);
 
-      if (nextShiftTimeIn && now.isBefore(nextShiftTimeIn)) {
-        return openPreviousRecord;
-      }
+            return (
+              recordDate &&
+              recordDate < todayStr &&
+              !isValueBlank(getDtrActualDateTimeValue(record, "timeIn")) &&
+              isValueBlank(getDtrActualDateTimeValue(record, "timeOut"))
+            );
+          })
+          .sort((a, b) => {
+            const aMoment = getRecordTimeInMoment(a);
+            const bMoment = getRecordTimeInMoment(b);
 
-      const todayShiftTimeIn = getShiftTimeInDateTime(
-        todayStr,
-        getRecordShiftTimeIn(today) || getEmployeeShiftTimeIn()
-      );
+            if (aMoment || bMoment) {
+              return (bMoment?.valueOf?.() || 0) - (aMoment?.valueOf?.() || 0);
+            }
 
-      const earliestTodayTimeIn = todayShiftTimeIn
-        ? todayShiftTimeIn.subtract(EARLY_TIME_IN_WINDOW_MINUTES, "minute")
-        : null;
+            const dateA = getNormalizedRecordDate(a) || "";
+            const dateB = getNormalizedRecordDate(b) || "";
+            return dateB.localeCompare(dateA);
+          })[0] || null;
 
-      // A previous open record remains the active shift until the employee is
-      // within the allowed early-clock-in window for the next shift. This
-      // preserves night-shift records after midnight while allowing a new
-      // normal-shift Time In before the scheduled start.
-      if (earliestTodayTimeIn && now.isBefore(earliestTodayTimeIn)) {
-        return openPreviousRecord;
-      }
+      if (openPreviousRecord) return openPreviousRecord;
 
-      return today || null;
+      return todayRecords[0] || null;
     },
     [
-      getNormalizedRecordDate,
       getDtrActualDateTimeValue,
-      getEmployeeShiftTimeIn,
-      getRecordShiftTimeIn,
-      getRecordShiftTimeInDateTime,
-      getShiftTimeInDateTime,
+      getDtrActualDateValue,
+      getNormalizedRecordDate,
       getTrustedPhilippineNow,
       isValueBlank,
+      parseDtrDateTime,
     ]
   );
 
   const getOpenPreviousTimekeepingRecord = useCallback(
-    (nextRecords, currentShiftRecord) => {
+    (nextRecords) => {
       const now = getTrustedPhilippineNow();
 
       if (!now) return null;
 
-      const yesterdayStr = now.subtract(1, "day").format("YYYY-MM-DD");
+      const todayStr = now.format("YYYY-MM-DD");
 
       return nextRecords
         .filter((record) => {
           const recordDate = getNormalizedRecordDate(record);
 
           return (
-            record !== currentShiftRecord &&
-            recordDate === yesterdayStr &&
+            recordDate &&
+            recordDate < todayStr &&
             !isValueBlank(getDtrActualDateTimeValue(record, "timeIn")) &&
             isValueBlank(getDtrActualDateTimeValue(record, "timeOut"))
           );
@@ -1784,25 +1803,263 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   );
 
   const previousOpenRecord = useMemo(
-    () => getOpenPreviousTimekeepingRecord(records, todayRecord),
-    [getOpenPreviousTimekeepingRecord, records, todayRecord]
+    () => getOpenPreviousTimekeepingRecord(records),
+    [getOpenPreviousTimekeepingRecord, records]
   );
 
   // The calendar-day record is used only when starting a new shift. The
   // active record may still be yesterday's record for an overnight shift.
   const currentCalendarDate = getTrustedPhilippineNow()?.format("YYYY-MM-DD");
-  const currentCalendarRecord = useMemo(
-    () =>
-      records.find(
-        (record) => getNormalizedRecordDate(record) === currentCalendarDate
-      ) || null,
-    [currentCalendarDate, getNormalizedRecordDate, records]
+  const currentCalendarRecord = useMemo(() => {
+    if (!currentCalendarDate) return null;
+
+    const sameDayRecords = records.filter(
+      (record) => getNormalizedRecordDate(record) === currentCalendarDate
+    );
+
+    if (sameDayRecords.length === 0) return null;
+
+    return [...sameDayRecords].sort((a, b) => {
+      const getTimeInValue = (record) => {
+        const recordDate =
+          getDtrActualDateValue(record, "timeIn") ||
+          getNormalizedRecordDate(record) ||
+          currentCalendarDate;
+        const parsed = parseDtrDateTime(
+          recordDate,
+          getDtrActualDateTimeValue(record, "timeIn")
+        );
+
+        return parsed?.isValid?.() ? parsed.valueOf() : 0;
+      };
+
+      return getTimeInValue(b) - getTimeInValue(a);
+    })[0];
+  }, [
+    currentCalendarDate,
+    getDtrActualDateTimeValue,
+    getDtrActualDateValue,
+    getNormalizedRecordDate,
+    parseDtrDateTime,
+    records,
+  ]);
+
+
+  const fetchEmployeeShiftReferences = useCallback(async () => {
+    if (!user?.empNo || !currentCalendarDate) return;
+
+    const referenceStartDate = currentCalendarDate;
+    const referenceEndDate = dayjs(currentCalendarDate)
+      .add(SHIFT_REFERENCE_LOOKAHEAD_DAYS, "day")
+      .format("YYYY-MM-DD");
+
+    setEmployeeShiftReferencesLoaded(false);
+
+    try {
+      const response = await axios.post(API_ENDPOINTS.employeeShifts, {
+        EMP_NO: String(user.empNo),
+        START_DATE: referenceStartDate,
+        END_DATE: referenceEndDate,
+        VIEW: "MY",
+        HR_FLAG: "N",
+        MGR_FLAG: "N",
+        SUP_FLAG: "N",
+        APPROVER: "N",
+      });
+
+      const payload =
+        response?.data?.data ||
+        response?.data?.records ||
+        response?.data?.result ||
+        [];
+
+      setEmployeeShiftReferences(Array.isArray(payload) ? payload : []);
+      setEmployeeShiftReferencesLoaded(true);
+    } catch (error) {
+      // Timekeeping must remain usable even when the optional Employee Shift
+      // reference cannot be loaded. In that case, the default shift remains
+      // the fallback.
+      console.warn(
+        "Unable to load Employee Shift references. Default shift will be used.",
+        error
+      );
+      setEmployeeShiftReferences([]);
+      setEmployeeShiftReferencesLoaded(true);
+    }
+  }, [currentCalendarDate, user?.empNo]);
+
+  useEffect(() => {
+    if (!isClockSynced || !currentCalendarDate) return;
+    fetchEmployeeShiftReferences();
+  }, [
+    currentCalendarDate,
+    fetchEmployeeShiftReferences,
+    isClockSynced,
+  ]);
+
+  const getEmployeeShiftReferenceForDate = useCallback(
+    (shiftDate) => {
+      if (!shiftDate) return null;
+
+      return (
+        employeeShiftReferences.find((shift) => {
+          const rawDate =
+            shift?.date ||
+            shift?.shiftDate ||
+            shift?.shift_date ||
+            shift?.DATE ||
+            shift?.SHIFT_DATE;
+
+          if (!rawDate) return false;
+
+          const parsedDate = dayjs(rawDate);
+          return (
+            parsedDate.isValid() &&
+            parsedDate.format("YYYY-MM-DD") === shiftDate
+          );
+        }) || null
+      );
+    },
+    [employeeShiftReferences]
   );
 
-  // A previous shift can remain open on the same calendar date (for example,
-  // an 8:00 AM shift that was not timed out before an 8:00 PM shift). Treat
-  // that stale open record as recoverable instead of locking the next Time In.
-  const staleCurrentOpenRecord = useMemo(() => {
+  const isEmployeeShiftRestDay = useCallback((shift) => {
+    if (!shift) return false;
+
+    const rd = getFirstNonBlankValue(shift, [
+      "rd",
+      "RD",
+      "restDay",
+      "rest_day",
+      "REST_DAY",
+    ]);
+
+    return ["Y", "YES", "1", "TRUE"].includes(
+      String(rd || "").trim().toUpperCase()
+    );
+  }, []);
+
+  const getEmployeeShiftReferenceTimeIn = useCallback(
+    (shift) => {
+      if (!shift) return "";
+
+      return getFirstNonBlankValue(shift, [
+        "shiftIn",
+        "shift_in",
+        "SHIFT_IN",
+        "shiftTimeIn",
+        "shift_time_in",
+        "SHIFT_TIME_IN",
+      ]);
+    },
+    []
+  );
+
+  // Resolve the authoritative schedule for a date.
+  //
+  // Priority:
+  //   1) Employee Shift row for the date (including approved Change Shift)
+  //   2) Explicit Rest Day row => NO shift and NO default fallback
+  //   3) If no row exists, use the employee's default Dashboard/user shift
+  //
+  // A Pending change request does not replace the Employee Shift row, so
+  // Timekeeping continues to use the currently effective schedule.
+  const resolveEmployeeShiftForDate = useCallback(
+    (shiftDate) => {
+      if (!shiftDate) return null;
+
+      // Do not temporarily enable a default next-shift window while the
+      // authoritative Employee Shift reference is still loading. If the API
+      // fails, employeeShiftReferencesLoaded is set to true and the normal
+      // default fallback becomes available.
+      if (!employeeShiftReferencesLoaded) {
+        return {
+          date: shiftDate,
+          isRestDay: false,
+          shiftTimeIn: "",
+          shiftTimeOut: "",
+          shiftCode: "",
+          source: "LOADING",
+          reference: null,
+        };
+      }
+
+      const shiftReference = getEmployeeShiftReferenceForDate(shiftDate);
+
+      if (shiftReference) {
+        const restDay = isEmployeeShiftRestDay(shiftReference);
+
+        if (restDay) {
+          return {
+            date: shiftDate,
+            isRestDay: true,
+            shiftTimeIn: "",
+            shiftTimeOut: getFirstNonBlankValue(shiftReference, [
+              "shiftOut",
+              "shift_out",
+              "SHIFT_OUT",
+            ]),
+            shiftCode: getFirstNonBlankValue(shiftReference, [
+              "shiftCode",
+              "shift_code",
+              "SHIFT_CODE",
+            ]),
+            source: "EMPLOYEE_SHIFT",
+            reference: shiftReference,
+          };
+        }
+
+        const referenceTimeIn =
+          getEmployeeShiftReferenceTimeIn(shiftReference);
+
+        return {
+          date: shiftDate,
+          isRestDay: false,
+          // If a Duty row exists but its time is unexpectedly blank, allow the
+          // normal default shift to keep Timekeeping usable.
+          shiftTimeIn: referenceTimeIn || getEmployeeShiftTimeIn(),
+          shiftTimeOut: getFirstNonBlankValue(shiftReference, [
+            "shiftOut",
+            "shift_out",
+            "SHIFT_OUT",
+          ]),
+          shiftCode: getFirstNonBlankValue(shiftReference, [
+            "shiftCode",
+            "shift_code",
+            "SHIFT_CODE",
+          ]),
+          source: referenceTimeIn
+            ? "EMPLOYEE_SHIFT"
+            : "DEFAULT_FALLBACK",
+          reference: shiftReference,
+        };
+      }
+
+      const defaultShiftTimeIn = getEmployeeShiftTimeIn();
+
+      return {
+        date: shiftDate,
+        isRestDay: false,
+        shiftTimeIn: defaultShiftTimeIn,
+        shiftTimeOut: "",
+        shiftCode: "",
+        source: "DEFAULT",
+        reference: null,
+      };
+    },
+    [
+      employeeShiftReferencesLoaded,
+      getEmployeeShiftReferenceForDate,
+      getEmployeeShiftReferenceTimeIn,
+      getEmployeeShiftTimeIn,
+      isEmployeeShiftRestDay,
+    ]
+  );
+
+  // A current-calendar record can still be open when the employee needs to
+  // start another legitimate duty session on the same date. Do not auto-close
+  // it; treat it as an open attendance session and let the employee decide.
+  const currentCalendarOpenRecord = useMemo(() => {
     if (!currentCalendarRecord) return null;
 
     const hasTimeIn = !isValueBlank(
@@ -1812,75 +2069,220 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
       getDtrActualDateTimeValue(currentCalendarRecord, "timeOut")
     );
 
-    if (!hasTimeIn || hasTimeOut) return null;
+    return hasTimeIn && !hasTimeOut ? currentCalendarRecord : null;
+  }, [currentCalendarRecord, getDtrActualDateTimeValue, isValueBlank]);
+
+  // canStartNewScheduledShift is calculated after the date-specific next shift is resolved.
+
+  const getOpenShiftElapsedHours = useCallback(
+    (record) => {
+      if (!record) return 0;
+
+      const now = getTrustedPhilippineNow();
+      const recordDate = getNormalizedRecordDate(record);
+      const actualTimeIn = getDtrActualDateTimeValue(record, "timeIn");
+      const actualTimeInDate =
+        getDtrActualDateValue(record, "timeIn") || recordDate;
+
+      let shiftStart = parseDtrDateTime(actualTimeInDate, actualTimeIn);
+
+      if (!shiftStart?.isValid?.()) {
+        shiftStart =
+          getRecordShiftTimeInDateTime(record) ||
+          getShiftTimeInDateTime(recordDate, getEmployeeShiftTimeIn());
+      }
+
+      if (!now || !shiftStart?.isValid?.() || now.isBefore(shiftStart)) return 0;
+
+      return now.diff(shiftStart, "minute", true) / 60;
+    },
+    [
+      getDtrActualDateTimeValue,
+      getDtrActualDateValue,
+      getEmployeeShiftTimeIn,
+      getNormalizedRecordDate,
+      getRecordShiftTimeInDateTime,
+      getShiftTimeInDateTime,
+      getTrustedPhilippineNow,
+      parseDtrDateTime,
+    ]
+  );
+
+  const nextScheduledShiftReference = useMemo(() => {
+    if (!currentCalendarDate) return null;
 
     const now = getTrustedPhilippineNow();
-    const recordDate = getNormalizedRecordDate(currentCalendarRecord);
-    const shiftStart =
-      getRecordShiftTimeInDateTime(currentCalendarRecord) ||
-      getShiftTimeInDateTime(recordDate, getEmployeeShiftTimeIn());
+    if (!now) return null;
 
-    return now && shiftStart && now.diff(shiftStart, "hour", true) >= MINIMUM_NEXT_SHIFT_GAP_HOURS
-      ? currentCalendarRecord
-      : null;
-  }, [
-    currentCalendarRecord,
-    getDtrActualDateTimeValue,
-    getEmployeeShiftTimeIn,
-    getNormalizedRecordDate,
-    getRecordShiftTimeInDateTime,
-    getShiftTimeInDateTime,
-    getTrustedPhilippineNow,
-    isValueBlank,
-  ]);
+    // Start with today's actual schedule. If today is an explicit Rest Day,
+    // advance until the next Duty date. Missing rows use the default shift.
+    for (let offset = 0; offset <= SHIFT_REFERENCE_LOOKAHEAD_DAYS; offset += 1) {
+      const shiftDate = dayjs(currentCalendarDate)
+        .add(offset, "day")
+        .format("YYYY-MM-DD");
+      const resolvedShift = resolveEmployeeShiftForDate(shiftDate);
 
-  const unresolvedPreviousShift = previousOpenRecord || staleCurrentOpenRecord;
+      if (
+        !resolvedShift ||
+        resolvedShift.isRestDay ||
+        isValueBlank(resolvedShift.shiftTimeIn)
+      ) {
+        continue;
+      }
 
-  const canStartNewScheduledShift = useMemo(() => {
-    if (!currentCalendarRecord || !currentCalendarDate) return false;
-
-    const currentTimeIn = getDtrActualDateTimeValue(
-      currentCalendarRecord,
-      "timeIn"
-    );
-    if (isValueBlank(currentTimeIn)) return false;
-
-    const shiftStart =
-      getShiftTimeInDateTime(
-        currentCalendarDate,
-        getRecordShiftTimeIn(currentCalendarRecord) || getEmployeeShiftTimeIn()
+      const shiftStart = getShiftTimeInDateTime(
+        shiftDate,
+        resolvedShift.shiftTimeIn
       );
-    const now = getTrustedPhilippineNow();
 
-    if (!shiftStart || !now) return false;
+      if (!shiftStart?.isValid?.()) continue;
 
-    const earlyClockInStart = shiftStart.subtract(
-      EARLY_TIME_IN_WINDOW_MINUTES,
-      "minute"
-    );
-    if (now.isBefore(earlyClockInStart)) return false;
+      const earlyTimeInStart = shiftStart.subtract(
+        EARLY_TIME_IN_WINDOW_MINUTES,
+        "minute"
+      );
 
-    const timeInDate =
-      getDtrActualDateValue(currentCalendarRecord, "timeIn") ||
-      currentCalendarDate;
-    const parsedTimeIn = parseDtrDateTime(timeInDate, currentTimeIn);
+      // Today's scheduled shift remains the target even if its start time has
+      // already passed; this allows late Time In / forgotten previous Time Out.
+      if (offset === 0) {
+        // If today's attendance was already completed and tomorrow's early
+        // window has opened (possible for very early shifts), move on and
+        // evaluate the next date instead.
+        const currentDayCompleted =
+          currentCalendarRecord &&
+          !isValueBlank(
+            getDtrActualDateTimeValue(currentCalendarRecord, "timeIn")
+          ) &&
+          !isValueBlank(
+            getDtrActualDateTimeValue(currentCalendarRecord, "timeOut")
+          );
 
-    // The existing record belongs to an earlier shift if its Time In was
-    // before the current shift's early-clock-in window. This permits a second
-    // shift on the same calendar date without treating it as a duplicate.
-    return !parsedTimeIn || parsedTimeIn.isBefore(earlyClockInStart);
+        if (!currentDayCompleted) {
+          return {
+            ...resolvedShift,
+            shiftStart,
+            earlyTimeInStart,
+          };
+        }
+
+        // The completed current-day shift should not be reused as the "next"
+        // shift. Continue searching upcoming dates.
+        continue;
+      }
+
+      return {
+        ...resolvedShift,
+        shiftStart,
+        earlyTimeInStart,
+      };
+    }
+
+    return null;
   }, [
     currentCalendarDate,
     currentCalendarRecord,
+    currentDate,
     getDtrActualDateTimeValue,
-    getDtrActualDateValue,
-    getEmployeeShiftTimeIn,
-    getRecordShiftTimeIn,
     getShiftTimeInDateTime,
     getTrustedPhilippineNow,
     isValueBlank,
+    resolveEmployeeShiftForDate,
+  ]);
+
+  const nextScheduledShiftStart =
+    nextScheduledShiftReference?.shiftStart || null;
+
+  const nextScheduledShiftDate =
+    nextScheduledShiftReference?.date || currentCalendarDate || null;
+
+  const nextScheduledShiftTimeInAvailableAt =
+    nextScheduledShiftReference?.earlyTimeInStart || null;
+
+  const isWithinNextShiftTimeInWindow = useMemo(() => {
+    const now = getTrustedPhilippineNow();
+
+    if (!now || !nextScheduledShiftTimeInAvailableAt) return false;
+
+    return now.isSameOrAfter(nextScheduledShiftTimeInAvailableAt);
+  }, [
+    currentDate,
+    getTrustedPhilippineNow,
+    nextScheduledShiftTimeInAvailableAt,
+  ]);
+
+  const canStartNewScheduledShift = useMemo(() => {
+    if (
+      !currentCalendarOpenRecord ||
+      !nextScheduledShiftStart ||
+      !nextScheduledShiftTimeInAvailableAt
+    ) {
+      return false;
+    }
+
+    const now = getTrustedPhilippineNow();
+
+    if (!now || now.isBefore(nextScheduledShiftTimeInAvailableAt)) {
+      return false;
+    }
+
+    const currentTimeIn = getDtrActualDateTimeValue(
+      currentCalendarOpenRecord,
+      "timeIn"
+    );
+
+    if (isValueBlank(currentTimeIn)) return false;
+
+    const timeInDate =
+      getDtrActualDateValue(currentCalendarOpenRecord, "timeIn") ||
+      getNormalizedRecordDate(currentCalendarOpenRecord) ||
+      currentCalendarDate;
+    const parsedTimeIn = parseDtrDateTime(timeInDate, currentTimeIn);
+
+    // The current open session is an earlier attendance only when its actual
+    // Time In occurred before the early window of the resolved scheduled shift.
+    return (
+      !parsedTimeIn ||
+      parsedTimeIn.isBefore(nextScheduledShiftTimeInAvailableAt)
+    );
+  }, [
+    currentCalendarDate,
+    currentCalendarOpenRecord,
+    getDtrActualDateTimeValue,
+    getDtrActualDateValue,
+    getNormalizedRecordDate,
+    getTrustedPhilippineNow,
+    isValueBlank,
+    nextScheduledShiftStart,
+    nextScheduledShiftTimeInAvailableAt,
     parseDtrDateTime,
   ]);
+
+
+  const previousOpenShiftHours = getOpenShiftElapsedHours(previousOpenRecord);
+  const currentOpenShiftHours = getOpenShiftElapsedHours(currentCalendarOpenRecord);
+
+  const isPreviousOpenShiftLong =
+    previousOpenShiftHours >= LONG_OPEN_SHIFT_WARNING_HOURS;
+  const isCurrentOpenShiftLong =
+    currentOpenShiftHours >= LONG_OPEN_SHIFT_WARNING_HOURS;
+
+  // This is the shift that must be resolved by an explicit employee decision
+  // before another Time In is recorded. A prior-day open shift always qualifies.
+  // A same-day shift qualifies when it is old enough to be suspicious or when
+  // the next scheduled Time In window has arrived.
+  const unresolvedPreviousShift =
+    previousOpenRecord ||
+    (currentCalendarOpenRecord &&
+    (canStartNewScheduledShift || isCurrentOpenShiftLong)
+      ? currentCalendarOpenRecord
+      : null);
+
+  const unresolvedShiftHours = unresolvedPreviousShift
+    ? getOpenShiftElapsedHours(unresolvedPreviousShift)
+    : 0;
+
+  const unresolvedShiftIsLong =
+    unresolvedShiftHours >= LONG_OPEN_SHIFT_WARNING_HOURS;
 
   const applyPendingTimekeepingImages = useCallback(
     (nextRecords) => {
@@ -1947,7 +2349,9 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
     try {
       // Include a small look-back window so a night shift that started on the
       // last day of the previous month remains available after midnight.
-      const queryStartDate = dayjs(startDate).subtract(2, "day").format("YYYY-MM-DD");
+      const queryStartDate = dayjs(startDate)
+        .subtract(OPEN_SHIFT_LOOKBACK_DAYS, "day")
+        .format("YYYY-MM-DD");
       const response = await axios.get(
         `${API_ENDPOINTS.getDTRRecords}/${user.empNo}/${queryStartDate}/${endDate}`
       );
@@ -2047,52 +2451,82 @@ const showConfirmToast = ({
 };
 
   const handleTimeInClick = () => {
-    const currentTimeInExists =
-      currentCalendarRecord &&
-      !isValueBlank(getDtrActualDateTimeValue(currentCalendarRecord, "timeIn"));
+    const currentTimeInExists = Boolean(currentCalendarOpenRecord);
 
-    if (
-      currentTimeInExists &&
-      !staleCurrentOpenRecord &&
-      !canStartNewScheduledShift
-    ) {
+    if (unresolvedPreviousShift) {
+      setTimeInRecoveryPrompt({
+        previousRecord: unresolvedPreviousShift,
+        withinNextShiftWindow: isWithinNextShiftTimeInWindow,
+        nextShiftTimeInAvailableAt: nextScheduledShiftTimeInAvailableAt,
+        nextShiftDate: nextScheduledShiftDate,
+        nextShiftSource: nextScheduledShiftReference?.source || "",
+        openHours: unresolvedShiftHours,
+        longOpenShift: unresolvedShiftIsLong,
+      });
       return;
     }
 
-    if (unresolvedPreviousShift) {
-      setTimeInRecoveryPrompt({ previousRecord: unresolvedPreviousShift });
+    // Prevent a duplicate Time In for the same active shift. This does not
+    // block prior-day forgotten Time Outs or recoverable same-day sessions;
+    // those are handled by the decision prompt above.
+    if (currentTimeInExists && !canStartNewScheduledShift) {
       return;
     }
 
     handleTimeEvent("TIME IN", null, {
       startNewSession: Boolean(canStartNewScheduledShift),
+      shiftDateOverride: canStartNewScheduledShift
+        ? nextScheduledShiftDate
+        : null,
     });
   };
 
   const handleTimeOutClick = () => {
     const hasCurrentTimeIn =
-      todayRecord &&
-      !isValueBlank(getDtrActualDateTimeValue(todayRecord, "timeIn"));
+      currentCalendarOpenRecord &&
+      !isValueBlank(
+        getDtrActualDateTimeValue(currentCalendarOpenRecord, "timeIn")
+      );
     const hasPreviousTimeIn =
       previousOpenRecord &&
       !isValueBlank(getDtrActualDateTimeValue(previousOpenRecord, "timeIn"));
 
     if (hasCurrentTimeIn && hasPreviousTimeIn) {
       setTimeOutTargetPrompt({
-        currentRecord: todayRecord,
+        currentRecord: currentCalendarOpenRecord,
         previousRecord: previousOpenRecord,
       });
       return;
     }
 
-    handleTimeEvent("TIME OUT", hasCurrentTimeIn ? todayRecord : previousOpenRecord);
+    handleTimeEvent(
+      "TIME OUT",
+      hasCurrentTimeIn ? currentCalendarOpenRecord : previousOpenRecord
+    );
   };
 
   const handleTimeEvent = async (
     type,
     targetRecord = null,
-    { startNewSession = false } = {}
+    { startNewSession = false, shiftDateOverride = null } = {}
   ) => {
+  if (
+    type === "TIME IN" &&
+    startNewSession &&
+    unresolvedPreviousShift &&
+    !isWithinNextShiftTimeInWindow
+  ) {
+    const availableAtText = nextScheduledShiftTimeInAvailableAt?.isValid?.()
+      ? nextScheduledShiftTimeInAvailableAt.format("MM/DD/YYYY hh:mm A")
+      : "the allowed next-shift Time In window";
+
+    showWarningToast(
+      "Next Shift Not Available Yet",
+      `You can start a new shift beginning ${availableAtText}. Continue the current shift until then.`
+    );
+    return;
+  }
+
   if (isProcessingTimeEventRef.current) {
     console.warn("Duplicate time event ignored:", type);
     return;
@@ -2130,7 +2564,7 @@ const showConfirmToast = ({
         : targetRecord ||
           (type === "TIME IN"
             ? currentCalendarRecord
-            : todayRecord || previousOpenRecord);
+            : currentCalendarOpenRecord || previousOpenRecord || todayRecord);
 
     if (type === "TIME IN" && eventRecord &&
       !isValueBlank(getDtrActualDateTimeValue(eventRecord, "timeIn"))) {
@@ -2339,7 +2773,9 @@ capturedImageInfo = await captureImageProcess(type);
     // overnight Break In/Out and Time Out attached to Aug 31 when recorded
     // after midnight on Sep 1 (or across any month/year boundary).
     const eventDateStr =
-      getNormalizedRecordDate(eventRecord) || currentDateStr;
+      (startNewSession && shiftDateOverride) ||
+      getNormalizedRecordDate(eventRecord) ||
+      currentDateStr;
     const attendanceId = startNewSession
       ? null
       : getRecordAttendanceId(eventRecord);
@@ -3343,22 +3779,22 @@ if (!confirm) return;
                       <Camera size={14} /> Time In
                     </div>
                     {timeInImageUrl ? (
-  <img
-    key={`time-in-${timeInImageKey}`}
-    src={timeInImageUrl}
-    alt="Time In"
-    className="aspect-square w-full object-cover rounded-xl border border-gray-100 shadow-sm"
-    data-fallback-srcs={JSON.stringify(
-      getTimekeepingImageFallbacks(timeInImagePath, timeInImageId, record)
-    )}
-    data-fallback-index="0"
-    onError={(e) => handleTimekeepingImageError(e, "Time In")}
-  />
-) : (
-  <div className="flex aspect-square w-full items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white">
-    <ImageIcon size={24} className="text-gray-300" />
-  </div>
-)}
+                      <img
+                        key={`time-in-${timeInImageKey}`}
+                        src={timeInImageUrl}
+                        alt="Time In"
+                        className="aspect-square w-full object-cover rounded-xl border border-gray-100 shadow-sm"
+                        data-fallback-srcs={JSON.stringify(
+                          getTimekeepingImageFallbacks(timeInImagePath, timeInImageId, record)
+                        )}
+                        data-fallback-index="0"
+                        onError={(e) => handleTimekeepingImageError(e, "Time In")}
+                      />
+                    ) : (
+                      <div className="flex aspect-square w-full items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white">
+                        <ImageIcon size={24} className="text-gray-300" />
+                      </div>
+                    )}
                   </div>
 
                   {shouldShowLocationAddress && (
@@ -3379,22 +3815,22 @@ if (!confirm) return;
                       <Camera size={14} /> Time Out
                     </div>
                     {timeOutImageUrl ? (
-  <img
-    key={`time-out-${timeOutImageKey}`}
-    src={timeOutImageUrl}
-    alt="Time Out"
-    className="aspect-square w-full object-cover rounded-xl border border-gray-100 shadow-sm"
-    data-fallback-srcs={JSON.stringify(
-      getTimekeepingImageFallbacks(timeOutImagePath, timeOutImageId, record)
-    )}
-    data-fallback-index="0"
-    onError={(e) => handleTimekeepingImageError(e, "Time Out")}
-  />
-) : (
-  <div className="flex aspect-square w-full items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white">
-    <ImageIcon size={24} className="text-gray-300" />
-  </div>
-)}
+                      <img
+                        key={`time-out-${timeOutImageKey}`}
+                        src={timeOutImageUrl}
+                        alt="Time Out"
+                        className="aspect-square w-full object-cover rounded-xl border border-gray-100 shadow-sm"
+                        data-fallback-srcs={JSON.stringify(
+                          getTimekeepingImageFallbacks(timeOutImagePath, timeOutImageId, record)
+                        )}
+                        data-fallback-index="0"
+                        onError={(e) => handleTimekeepingImageError(e, "Time Out")}
+                      />
+                    ) : (
+                      <div className="flex aspect-square w-full items-center justify-center rounded-xl border border-dashed border-gray-200 bg-white">
+                        <ImageIcon size={24} className="text-gray-300" />
+                      </div>
+                    )}  
                   </div>
 
                   <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -3957,11 +4393,13 @@ if (!confirm) return;
   };
 
   const hasCurrentTimeIn =
-    todayRecord &&
-    !isValueBlank(getDtrActualDateTimeValue(todayRecord, "timeIn"));
+    currentCalendarOpenRecord &&
+    !isValueBlank(
+      getDtrActualDateTimeValue(currentCalendarOpenRecord, "timeIn")
+    );
   const hasCurrentTimeOut =
-    todayRecord &&
-    !isValueBlank(getDtrActualDateTimeValue(todayRecord, "timeOut"));
+    currentCalendarRecord &&
+    !isValueBlank(getDtrActualDateTimeValue(currentCalendarRecord, "timeOut"));
   const hasPreviousTimeIn =
     previousOpenRecord &&
     !isValueBlank(getDtrActualDateTimeValue(previousOpenRecord, "timeIn"));
@@ -3969,16 +4407,16 @@ if (!confirm) return;
     previousOpenRecord &&
     !isValueBlank(getDtrActualDateTimeValue(previousOpenRecord, "timeOut"));
   const hasCurrentCalendarTimeIn =
-    currentCalendarRecord &&
-    !isValueBlank(getDtrActualDateTimeValue(currentCalendarRecord, "timeIn")) &&
-    !staleCurrentOpenRecord &&
-    !canStartNewScheduledShift;
-  const activeShiftRecord = todayRecord || previousOpenRecord;
+    currentCalendarOpenRecord &&
+    !canStartNewScheduledShift &&
+    !isCurrentOpenShiftLong;
+  const activeShiftRecord =
+    currentCalendarOpenRecord || previousOpenRecord || todayRecord;
   const hasActiveTimeIn =
     activeShiftRecord &&
     !isValueBlank(getDtrActualDateTimeValue(activeShiftRecord, "timeIn"));
   const availableTimeOutRecord = hasCurrentTimeIn
-    ? todayRecord
+    ? currentCalendarOpenRecord
     : hasPreviousTimeIn && !hasPreviousTimeOut
       ? previousOpenRecord
       : null;
@@ -4362,8 +4800,13 @@ if (!confirm) return;
             <div>
               <p className="font-extrabold">Previous shift is still open.</p>
               <p className="mt-0.5 leading-relaxed">
-                You can close the previous shift first, or start a new shift when the next scheduled shift is available.
+                If you are still working, keep the previous shift open for straight duty and record Time Out when duty actually ends. If you need a separate attendance session, press Time In and choose Start New Shift.
               </p>
+              {isPreviousOpenShiftLong && (
+                <p className="mt-1 font-bold text-amber-800">
+                  Long open shift: {previousOpenShiftHours.toFixed(1)} hours. This is a warning only; the shift will not be auto-closed.
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -4382,7 +4825,7 @@ if (!confirm) return;
 
             <div className="p-4">
               {isImageCaptureRequired ? (
-                <div className="relative mx-auto overflow-hidden rounded-2xl bg-slate-950 shadow-inner">
+                <div className="relative mx-auto overflow-hidden rounded-2xl bg-slate-950 shadow-inner sm:max-w-[420px]">
                   <video
                     ref={videoRef}
                     width={320}
@@ -4390,7 +4833,7 @@ if (!confirm) return;
                     autoPlay
                     playsInline
                     muted
-                    className="aspect-[4/3] max-h-[340px] w-full object-cover [transform:scaleX(-1)]"
+                    className="h-[320px] w-full object-cover [transform:scaleX(-1)] sm:h-[360px] md:max-h-[340px] md:h-auto md:aspect-[4/3]"
                   />
                   <canvas ref={canvasRef} width={320} height={240} className="hidden" />
 
@@ -4489,9 +4932,9 @@ if (!confirm) return;
                     !isClockSynced ||
                     (isImageCaptureRequired
                       ? capturing || !faceDetectionModelLoaded || !currentUserFaceDescriptor || !availableTimeOutRecord ||
-                        (availableTimeOutRecord === todayRecord ? hasCurrentTimeOut : hasPreviousTimeOut)
+                        (availableTimeOutRecord === currentCalendarOpenRecord ? hasCurrentTimeOut : hasPreviousTimeOut)
                       : !availableTimeOutRecord ||
-                        (availableTimeOutRecord === todayRecord ? hasCurrentTimeOut : hasPreviousTimeOut))
+                        (availableTimeOutRecord === currentCalendarOpenRecord ? hasCurrentTimeOut : hasPreviousTimeOut))
                   }
                 >
                   <LogOut className="h-4 w-4" /> Time Out
@@ -4804,37 +5247,79 @@ if (!confirm) return;
       {timeInRecoveryPrompt && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl">
-            <h2 className="text-lg font-bold text-gray-900">Previous Shift Needs Time Out</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              The shift dated {getNormalizedRecordDate(timeInRecoveryPrompt.previousRecord) || "the previous day"}
-              has a Time In but no Time Out. You may resolve it first or start a new shift.
+            <div className="flex items-start gap-3">
+              <div className="rounded-full bg-amber-100 p-2 text-amber-700">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold text-gray-900">Previous Shift Still Open</h2>
+                <p className="mt-1 text-sm text-gray-600">
+                  The shift dated {getNormalizedRecordDate(timeInRecoveryPrompt.previousRecord) || "the previous day"} has a Time In but no Time Out.
+                </p>
+              </div>
+            </div>
+
+            {timeInRecoveryPrompt.longOpenShift && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+                This shift has been open for approximately {Number(timeInRecoveryPrompt.openHours || 0).toFixed(1)} hours. This is only a warning; straight duty remains allowed.
+              </div>
+            )}
+
+            <p className="mt-4 text-sm leading-relaxed text-gray-700">
+              {timeInRecoveryPrompt.withinNextShiftWindow
+                ? `Are you continuing straight duty, or are you starting your next scheduled shift${
+                    timeInRecoveryPrompt.nextShiftDate
+                      ? ` for ${dayjs(timeInRecoveryPrompt.nextShiftDate).format("MM/DD/YYYY")}`
+                      : ""
+                  }?`
+                : `The next scheduled Time In window has not started yet. Continue the current shift. You can start the next shift beginning ${
+                    timeInRecoveryPrompt.nextShiftTimeInAvailableAt?.isValid?.()
+                      ? timeInRecoveryPrompt.nextShiftTimeInAvailableAt.format("MM/DD/YYYY hh:mm A")
+                      : "the allowed early Time In window"
+                  }.`}
             </p>
 
             <div className="mt-4 space-y-3">
               <button
                 type="button"
                 onClick={() => {
-                  const targetRecord = timeInRecoveryPrompt.previousRecord;
                   setTimeInRecoveryPrompt(null);
-                  handleTimeEvent("TIME OUT", targetRecord);
+                  showSuccessToast(
+                    "Straight Duty Continued",
+                    "Your existing shift remains active. Record Time Out only when this duty actually ends."
+                  );
                 }}
-                className="w-full rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-left text-sm text-amber-900 hover:bg-amber-100"
+                className="w-full rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-left text-sm text-emerald-900 hover:bg-emerald-100"
               >
-                <span className="block font-bold">Record Time Out for Previous Shift</span>
-                <span className="block text-xs">This keeps the previous shift open for completion.</span>
+                <span className="block font-bold">
+                  {timeInRecoveryPrompt.withinNextShiftWindow
+                    ? "Continue Straight Duty"
+                    : "Continue Current Shift"}
+                </span>
+                <span className="block text-xs">
+                  Keep the same attendance session, shift date, and attendance ID. No new Time In will be recorded.
+                </span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setTimeInRecoveryPrompt(null);
-                  handleTimeEvent("TIME IN", null, { startNewSession: true });
-                }}
-                className="w-full rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-left text-sm text-blue-900 hover:bg-blue-100"
-              >
-                <span className="block font-bold">Start New Shift</span>
-                <span className="block text-xs">The previous shift will remain incomplete for review.</span>
-              </button>
+              {timeInRecoveryPrompt.withinNextShiftWindow && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTimeInRecoveryPrompt(null);
+                    handleTimeEvent("TIME IN", null, {
+                      startNewSession: true,
+                      shiftDateOverride:
+                        timeInRecoveryPrompt.nextShiftDate || currentCalendarDate,
+                    });
+                  }}
+                  className="w-full rounded-lg border border-blue-300 bg-blue-50 px-4 py-3 text-left text-sm text-blue-900 hover:bg-blue-100"
+                >
+                  <span className="block font-bold">Start New Shift</span>
+                  <span className="block text-xs">
+                    Create a separate attendance session. The earlier shift remains incomplete and can be corrected through Adjust Time.
+                  </span>
+                </button>
+              )}
 
               <button
                 type="button"

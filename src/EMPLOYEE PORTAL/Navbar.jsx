@@ -77,7 +77,7 @@ const Navbar = () => {
     ...(canApprove
       ? [{ path: "/leaveapproval", label: "Leave for Approval" }]
       : []),
-    ...(canViewLeaveMonitoring ? [{ path: "/leaveMonitoring", label: "Leave Monitoring" }] : []),
+    ...(portalAccess.leave ? [{ path: "/leaveMonitoring", label: "Leave Monitoring" }] : []),
   ];
  
 
