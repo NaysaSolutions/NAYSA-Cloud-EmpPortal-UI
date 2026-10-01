@@ -127,8 +127,8 @@ const buildExportTableHtml = (
           h1 { font-size: 18px; margin: 0 0 4px; }
           p { font-size: 11px; margin: 0 0 20px; color: #475569; font-weight: 700; }
           table { width: 100%; border-collapse: collapse; font-size: ${fontSize}px; }
-          th { border: 1px solid #cbd5e1; background: #e2e8f0; padding: 4px; text-align: left; font-weight: 700; }
-          td { border: 1px solid #e2e8f0; padding: 4px; vertical-align: top; }
+          th { background: #e2e8f0; padding: 4px; text-align: left; font-weight: 700; }
+          td { padding: 4px; vertical-align: top; }
         </style>
       </head>
       <body>
@@ -621,10 +621,13 @@ export default function LeaveMonitoring() {
   const currentEmpNo = getUserEmpNo(user);
   const currentEmpName = getUserName(user) || currentEmpNo;
   const { canViewLeaveMonitoring: canViewEmployeeLeave, isHr: isHrUser, canApprove } = getAccessRights(user);
+  
   const leaveInquiryEndpoint =
-    !isHrUser && canApprove
-      ? text(API_ENDPOINTS?.getLeaveInquiryApprover) || "/api/getLVInquiryApprover"
-      : text(API_ENDPOINTS?.getLeaveInquiry) || "/api/getLVInquiry";
+    text(API_ENDPOINTS?.getLeaveInquiry) || "/api/getLVInquiry";
+
+  const leaveInquiryApproverEndpoint =
+    text(API_ENDPOINTS?.getLeaveInquiryApprover) ||
+    "/api/getLVInquiryApprover";
 
   const [startDate, setStartDate] = useState(monthStart);
   const [endDate, setEndDate] = useState(monthEnd);
@@ -689,12 +692,18 @@ export default function LeaveMonitoring() {
     let active = true;
     const loadEmployeeDirectory = async () => {
       try {
+        // getAllDTRHR rejects ranges that extend beyond today. Leave Monitoring
+        // may intentionally default to the whole current month, so cap only
+        // this directory lookup while preserving the leave query range.
+        const directoryEndDate = dayjs(endDate).isAfter(dayjs(), "day")
+          ? dayjs().format("YYYY-MM-DD")
+          : endDate;
         const response = await axios.get(API_ENDPOINTS.getAllDTRHR, {
           params: {
             startDate,
-            endDate,
+            endDate: directoryEndDate,
             START_DATE: startDate,
-            END_DATE: endDate,
+            END_DATE: directoryEndDate,
             empno: currentEmpNo,
             EMPNO: currentEmpNo,
             empNo: currentEmpNo,
@@ -781,27 +790,76 @@ export default function LeaveMonitoring() {
           );
         }
 
-        const employeeTargets = shouldLoadAllEmployees
-          ? Array.from(new Set([
-            currentEmpNo,
-            ...employeeDirectory.map((employee) => text(employee.empNo)),
-          ].filter(Boolean)))
-          : [targetEmployeeNo];
-        const responses = await Promise.all(
-          employeeTargets.map((employee) => axios.post(
-            leaveInquiryEndpoint,
-            {
-              EMP_NO: employee,
-              START_DATE: startDate,
-              END_DATE: endDate,
-              // Always retrieve all statuses so the status cards remain accurate.
-              STAT: null,
+        // const employeeTargets = shouldLoadAllEmployees
+        //   ? Array.from(new Set([
+        //     currentEmpNo,
+        //     ...employeeDirectory.map((employee) => text(employee.empNo)),
+        //   ].filter(Boolean)))
+        //   : [targetEmployeeNo];
+        // const responses = await Promise.all(
+        //   employeeTargets.map((employee) => axios.post(
+        //     leaveInquiryEndpoint,
+        //     {
+        //       EMP_NO: employee,
+        //       START_DATE: startDate,
+        //       END_DATE: endDate,
+        //       // Always retrieve all statuses so the status cards remain accurate.
+        //       STAT: null,
+        //     },
+        //     { headers: { Accept: "application/json" } },
+        //   )),
+        // );
+
+        // const nextRows = responses.flatMap((response) => extractRows(response.data) || []).map(normalizeRow);
+
+        let requestEndpoint = leaveInquiryEndpoint;
+        let requestEmpNo = targetEmployeeNo;
+        let filterApproverEmployee = false;
+
+        if (scope === "MY") {
+          requestEndpoint = leaveInquiryEndpoint;
+          requestEmpNo = currentEmpNo;
+        } else if (scope === "EMPLOYEE") {
+          if (isHrUser) {
+            requestEndpoint = leaveInquiryEndpoint;
+            requestEmpNo = targetEmployeeNo;
+          } else if (canApprove) {
+            requestEndpoint = leaveInquiryApproverEndpoint;
+            requestEmpNo = currentEmpNo;
+            filterApproverEmployee = true;
+          } else {
+            requestEndpoint = leaveInquiryEndpoint;
+            requestEmpNo = targetEmployeeNo;
+          }
+        }
+
+        const response = await axios.post(
+          requestEndpoint,
+          {
+            EMP_NO: requestEmpNo,
+            START_DATE: startDate,
+            END_DATE: endDate,
+            STAT: null,
+          },
+          {
+            headers: {
+              Accept: "application/json",
             },
-            { headers: { Accept: "application/json" } },
-          )),
+          },
         );
 
-        const nextRows = responses.flatMap((response) => extractRows(response.data) || []).map(normalizeRow);
+        let nextRows = (extractRows(response.data) || []).map(normalizeRow);
+
+        if (
+          filterApproverEmployee &&
+          targetEmployeeNo !== "ALL"
+        ) {
+          nextRows = nextRows.filter(
+            (row) =>
+              text(row.empNo).toUpperCase() ===
+              text(targetEmployeeNo).toUpperCase(),
+          );
+        }
         const nextSignature = JSON.stringify(nextRows);
 
         if (
@@ -841,7 +899,10 @@ export default function LeaveMonitoring() {
       shouldLoadAllEmployees,
       employeeDirectory,
       leaveInquiryEndpoint,
+      leaveInquiryApproverEndpoint,
       currentEmpNo,
+      isHrUser,
+      canApprove,
     ],
   );
 
