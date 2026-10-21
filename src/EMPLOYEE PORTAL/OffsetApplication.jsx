@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import dayjs from "dayjs";
-import { Calendar } from "lucide-react";
 
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useForm, Controller } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -28,13 +27,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -83,33 +75,23 @@ const StatusBadge = ({ status }) => (
 
 const fmtDate = (d) => (d ? dayjs(d).format("MM/DD/YYYY") : "—");
 
-/** Calendar icon date input */
-const DateInput = ({ id, value, onChange, min, disabled, className = "" }) => {
-  const openPicker = () => {
-    const el = document.getElementById(id);
-    el?.showPicker?.(); // Chrome/Edge
-    el?.focus?.(); // fallback
-  };
-
-  return (
-    <div className="relative">
-      <Calendar
-        className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 cursor-pointer"
-        onClick={openPicker}
-      />
-      <Input
-        id={id}
-        type="date"
-        value={value}
-        onChange={onChange}
-        min={min}
-        disabled={disabled}
-        className={cn("pl-9", className)}
-        onClick={(e) => e.currentTarget.showPicker?.()}
-      />
-    </div>
-  );
-};
+/** Match the native date field used by OfficialBusiness.jsx. */
+const FIELD_CLASS =
+  "w-full min-w-0 text-sm h-10 px-3 border border-gray-200 rounded-xl bg-white focus:ring-blue-500 focus:border-blue-500";
+const DateInput = ({ id, value, onChange, min, disabled, className = "" }) => (
+  <input
+    id={id}
+    type="date"
+    value={value || ""}
+    onChange={onChange}
+    min={min}
+    disabled={disabled}
+    onClick={(e) => {
+      if (!disabled) e.currentTarget.showPicker?.();
+    }}
+    className={cn(FIELD_CLASS, "offset-date-input pr-3 appearance-none", className)}
+  />
+);
 
 const ViewToggle = ({ viewMode, setViewMode }) => (
   <div className="inline-flex rounded-xl border overflow-hidden self-start">
@@ -151,16 +133,6 @@ const PendingCancelButton = ({ entry, onCancel, isBusy }) => {
 const OffsetApplication = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-
-  // DTR range (computed once per mount; good enough for "current month")
-  const startDate = useMemo(
-    () => dayjs().startOf("month").format("YYYY-MM-DD"),
-    [],
-  );
-  const endDate = useMemo(
-    () => dayjs().endOf("month").format("YYYY-MM-DD"),
-    [],
-  );
 
   // Filter: Timekeeping
   const [tkDateFrom, setTkDateFrom] = useState(
@@ -213,15 +185,16 @@ const OffsetApplication = () => {
     isError: dtrError,
     error: dtrErrorObj,
   } = useQuery({
-    queryKey: ["dtrRecords", user?.empNo, startDate, endDate],
-    enabled: !!user?.empNo,
+    queryKey: ["dtrRecords", user?.empNo, tkDateFrom, tkDateTo],
+    enabled: !!user?.empNo && !!tkDateFrom && !!tkDateTo,
     queryFn: async () => {
-  const res = await axios.get(
-    `${API_ENDPOINTS.getDTROffset}/${user.empNo}/${startDate}/${endDate}`
-  );
-  console.log("getDTROffset response:", res.data);
-  return res.data?.records || [];
-},
+      const res = await axios.get(
+        `${API_ENDPOINTS.getDTROffset}/${user.empNo}/${tkDateFrom}/${tkDateTo}`,
+      );
+
+      console.log("getDTROffset response:", res.data);
+      return res.data?.records || [];
+    },
     refetchOnWindowFocus: true,
     placeholderData: (prev) => prev,
   });
@@ -267,10 +240,11 @@ const OffsetApplication = () => {
   // If approvals/history changes -> refresh DTR silently
   useEffect(() => {
     if (!user?.empNo) return;
+
     queryClient.invalidateQueries({
-      queryKey: ["dtrRecords", user?.empNo, startDate, endDate],
+      queryKey: ["dtrRecords"],
     });
-  }, [historyUpdatedAt, user?.empNo, startDate, endDate, queryClient]);
+  }, [historyUpdatedAt, user?.empNo, queryClient]);
 
   /* =========================
       MAP + FILTER TIMEKEEPING
@@ -295,35 +269,57 @@ const OffsetApplication = () => {
   }, [dtrRecords]);
 
   const validOffsetRecords = useMemo(() => {
-    const cutoffDate = dayjs().subtract(14, "day");
     return timekeepingRecords.filter((r) => {
       const recordDate = dayjs(r.date);
-      if (recordDate.isBefore(cutoffDate, "day")) return false;
+
+      // Honor the exact date range selected by the user.
       if (tkDateFrom && recordDate.isBefore(dayjs(tkDateFrom), "day")) return false;
       if (tkDateTo && recordDate.isAfter(dayjs(tkDateTo), "day")) return false;
-      return true;
+
+      // Only show actual overtime rows. Fully consumed rows remain visible
+      // so the employee can see that the OT existed but has no balance left.
+      if (recordFrom === "Opening") {
+        return Number(r.openingHours || 0) > 0;
+      }
+
+      if (recordFrom === "Closing") {
+        return Number(r.closingHours || 0) > 0;
+      }
+
+      return Number(r.totalOT || 0) > 0;
     });
-  }, [timekeepingRecords, tkDateFrom, tkDateTo]);
+  }, [timekeepingRecords, tkDateFrom, tkDateTo, recordFrom]);
 
   /* =========================
       BALANCE HELPERS
   ========================= */
 
-  const getRemainingBalance = (row) => {
+  const getRemainingByType = (row, type) => {
     if (!row) return 0;
-    if (offsetType === "Opening") {
+
+    if (type === "Opening") {
       return Math.max(
-        Number(row.openingHours) - Number(row.appliedBeforeShift),
+        Number(row.openingHours || 0) - Number(row.appliedBeforeShift || 0),
         0,
       );
     }
-    if (offsetType === "Closing") {
+
+    if (type === "Closing") {
       return Math.max(
-        Number(row.closingHours) - Number(row.appliedAfterShift),
+        Number(row.closingHours || 0) - Number(row.appliedAfterShift || 0),
         0,
       );
     }
-    return Number(row.remainingHours || 0);
+
+    return Math.max(Number(row.remainingHours || 0), 0);
+  };
+
+  const getRemainingBalance = (row) => getRemainingByType(row, offsetType);
+
+  const getRowRemainingBalance = (row) => {
+    if (recordFrom === "Opening") return getRemainingByType(row, "Opening");
+    if (recordFrom === "Closing") return getRemainingByType(row, "Closing");
+    return getRemainingByType(row, "All");
   };
 
   const computedRemainingBalance = useMemo(() => {
@@ -350,7 +346,25 @@ const OffsetApplication = () => {
       return;
     }
 
+    // Prefer the selected record filter. For "All", automatically choose
+    // a type that still has available balance.
+    let preferredType = form.getValues("offsetType");
+
+    if (recordFrom === "Opening" || recordFrom === "Closing") {
+      preferredType = recordFrom;
+    } else {
+      const openingRemaining = getRemainingByType(row, "Opening");
+      const closingRemaining = getRemainingByType(row, "Closing");
+
+      if (getRemainingByType(row, preferredType) <= 0) {
+        preferredType = openingRemaining > 0 ? "Opening" : "Closing";
+      }
+
+      if (openingRemaining <= 0 && closingRemaining <= 0) return;
+    }
+
     setSelectedRecord(row);
+    form.setValue("offsetType", preferredType, { shouldValidate: true });
     form.setValue("offsetHours", "");
     form.setValue("remarks", `Offset from overtime on ${fmtDate(row.date)}`);
   };
@@ -618,6 +632,15 @@ const OffsetApplication = () => {
 
   return (
     <div className="ml-0 lg:ml-[200px] mt-[70px] lg:mt-[80px] p-2 sm:p-4 bg-gray-100 min-h-screen">
+      {/* Hide browser-native calendar icons; clicking the date field still opens the picker. */}
+      <style>{`
+        .offset-date-input::-webkit-calendar-picker-indicator {
+          display: none;
+        }
+        .offset-date-input::-webkit-inner-spin-button {
+          display: none;
+        }
+      `}</style>
       {/* LOADING (initial only) */}
       {loading && (
         <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
@@ -646,7 +669,7 @@ const OffsetApplication = () => {
       <div className="mt-4 bg-white p-4 shadow-md rounded-xl">
         <h2 className="text-base font-semibold">Filter Timekeeping Records</h2>
 
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
           <DateInput
             id="tkDateFrom"
             value={tkDateFrom}
@@ -659,16 +682,11 @@ const OffsetApplication = () => {
             min={tkDateFrom}
           />
 
-          <Select value={recordFrom} onValueChange={setRecordFrom}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select record type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All">All Records</SelectItem>
-              <SelectItem value="Opening">Opening – Pre-Shift Overtime</SelectItem>
-              <SelectItem value="Closing">Closing – Post-Shift Overtime</SelectItem>
-            </SelectContent>
-          </Select>
+          <select value={recordFrom} onChange={(e) => setRecordFrom(e.target.value)} className={FIELD_CLASS}>
+            <option value="All">All Records</option>
+            <option value="Opening">Opening – Pre-Shift Overtime</option>
+            <option value="Closing">Closing – Post-Shift Overtime</option>
+          </select>
         </div>
       </div>
 
@@ -702,7 +720,7 @@ const OffsetApplication = () => {
             <tbody className="global-tbody">
               {validOffsetRecords.length ? (
                 validOffsetRecords.map((row) => {
-                  const remaining = Number(row?.remainingHours || 0);
+                  const remaining = getRowRemainingBalance(row);
                   const isDisabled = remaining <= 0;
                   const isSelected = selectedRecord?.id === row.id;
 
@@ -732,7 +750,7 @@ const OffsetApplication = () => {
                       </td>
 
                       <td className="global-td text-green-700 font-semibold whitespace-nowrap">
-                        {Number(row.remainingHours || 0).toFixed(2)} hr(s)
+                        {Number(remaining || 0).toFixed(2)} hr(s)
                       </td>
 
                       <td className="global-td font-bold whitespace-nowrap">
@@ -773,21 +791,21 @@ const OffsetApplication = () => {
       </div>
 
       {/* ================= OVERTIME SOURCE DETAILS ================= */}
-      <div className="mt-4 bg-white p-6 shadow rounded-xl text-sm">
+      <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-xl text-sm">
         <h2 className="text-base font-semibold mb-4">Overtime Source Details</h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block font-semibold mb-1 text-gray-600">Date</label>
-            <Input readOnly value={selectedRecord ? fmtDate(selectedRecord.date) : "—"} />
+            <input readOnly className={cn(FIELD_CLASS, "bg-gray-50")} value={selectedRecord ? fmtDate(selectedRecord.date) : "—"} />
           </div>
           <div>
             <label className="block font-semibold mb-1 text-gray-600">Time From</label>
-            <Input readOnly value={selectedRecord ? selectedRecord.timeIn : "—"} />
+            <input readOnly className={cn(FIELD_CLASS, "bg-gray-50")} value={selectedRecord ? selectedRecord.timeIn : "—"} />
           </div>
           <div>
             <label className="block font-semibold mb-1 text-gray-600">Time To</label>
-            <Input readOnly value={selectedRecord ? selectedRecord.timeOut : "—"} />
+            <input readOnly className={cn(FIELD_CLASS, "bg-gray-50")} value={selectedRecord ? selectedRecord.timeOut : "—"} />
           </div>
           <div>
             <label className="block font-semibold mb-1 text-blue-700">
@@ -795,10 +813,10 @@ const OffsetApplication = () => {
             </label>
             <Input
               readOnly
-              className="bg-blue-50 text-blue-800 font-semibold"
+              className={cn(FIELD_CLASS, "bg-blue-50 text-blue-800 font-semibold")}
               value={
                 selectedRecord
-                  ? `${Number(selectedRecord.totalOT || 0).toFixed(2)} hr(s)`
+                  ? `${Number(getRemainingBalance(selectedRecord)).toFixed(2)} hr(s)`
                   : "0.00 hr(s)"
               }
             />
@@ -807,11 +825,11 @@ const OffsetApplication = () => {
       </div>
 
       {/* ================= OFFSET APPLICATION DETAILS ================= */}
-      <div className="mt-4 bg-white p-6 shadow-md rounded-xl">
+      <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-xl">
         <h2 className="text-base font-semibold mb-5">Offset Application Details</h2>
 
         <form onSubmit={form.handleSubmit(onSubmitForm)} className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Offset Date */}
             <div className="flex flex-col">
               <label className="text-sm font-medium text-gray-700 mb-1">
@@ -834,25 +852,13 @@ const OffsetApplication = () => {
               <label className="text-sm font-medium text-gray-700 mb-1">
                 Offset Type <span className="text-red-500">*</span>
               </label>
-              <Controller
-                control={form.control}
-                name="offsetType"
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select offset type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Opening">
-                        Opening – Pre-Shift Overtime
-                      </SelectItem>
-                      <SelectItem value="Closing">
-                        Closing – Post-Shift Overtime
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              />
+              <select
+                {...form.register("offsetType")}
+                className={FIELD_CLASS}
+              >
+                <option value="Opening">Opening – Pre-Shift Overtime</option>
+                <option value="Closing">Closing – Post-Shift Overtime</option>
+              </select>
               {form.formState.errors.offsetType && (
                 <span className="text-xs text-red-600 mt-1">
                   {form.formState.errors.offsetType.message}
@@ -869,6 +875,7 @@ const OffsetApplication = () => {
                 type="number"
                 step="0.5"
                 placeholder="Enter hours"
+                className={FIELD_CLASS}
                 {...form.register("offsetHours")}
                 onChange={(e) => {
                   const value = Number(e.target.value);
@@ -891,7 +898,7 @@ const OffsetApplication = () => {
               </label>
               <Input
                 readOnly
-                className="bg-blue-50 border-blue-200 text-blue-700 font-semibold"
+                className={cn(FIELD_CLASS, "bg-blue-50 border-blue-200 text-blue-700 font-semibold")}
                 value={selectedRecord ? `${computedRemainingBalance} hr(s)` : "0.00 hr(s)"}
               />
             </div>
@@ -902,7 +909,7 @@ const OffsetApplication = () => {
             <label className="text-sm font-medium text-gray-700 mb-1 block">
               Remarks / Reason <span className="text-red-500">*</span>
             </label>
-            <Textarea rows={4} {...form.register("remarks")} />
+            <Textarea rows={4} className="w-full min-w-0 border border-gray-200 rounded-xl text-sm p-3" {...form.register("remarks")} />
             {form.formState.errors.remarks && (
               <span className="text-xs text-red-600 mt-1 block">
                 {form.formState.errors.remarks.message}
@@ -916,7 +923,7 @@ const OffsetApplication = () => {
               type="submit"
               disabled={!selectedRecord || submitMutation.isPending}
               className={cn(
-                "px-10 h-11 text-white",
+                "px-12 h-10 rounded-xl text-white",
                 BRAND_BLUE,
                 (!selectedRecord || submitMutation.isPending) && "opacity-70",
               )}
@@ -931,7 +938,7 @@ const OffsetApplication = () => {
       <div className="mt-4 bg-white p-4 shadow-md rounded-xl">
         <h2 className="text-base font-semibold">Filter Timekeeping Records History</h2>
 
-        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <DateInput
             id="historyDateFrom"
             value={historyDateFrom}
@@ -944,35 +951,27 @@ const OffsetApplication = () => {
             min={historyDateFrom || undefined}
           />
 
-          <Select
+          <select
             value={historyOffsetType || "ALL"}
-            onValueChange={(v) => setHistoryOffsetType(v === "ALL" ? "" : v)}
+            onChange={(e) => setHistoryOffsetType(e.target.value === "ALL" ? "" : e.target.value)}
+            className={FIELD_CLASS}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Records</SelectItem>
-              <SelectItem value="Opening">Opening – Pre-Shift Overtime</SelectItem>
-              <SelectItem value="Closing">Closing – Post-Shift Overtime</SelectItem>
-            </SelectContent>
-          </Select>
+            <option value="ALL">All Records</option>
+            <option value="Opening">Opening – Pre-Shift Overtime</option>
+            <option value="Closing">Closing – Post-Shift Overtime</option>
+          </select>
 
-          <Select
+          <select
             value={historyStatus || "ALL"}
-            onValueChange={(v) => setHistoryStatus(v === "ALL" ? "" : v)}
+            onChange={(e) => setHistoryStatus(e.target.value === "ALL" ? "" : e.target.value)}
+            className={FIELD_CLASS}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Status</SelectItem>
-              <SelectItem value="Pending">Pending</SelectItem>
-              <SelectItem value="Approved">Approved</SelectItem>
-              <SelectItem value="Cancelled">Cancelled</SelectItem>
-              <SelectItem value="Disapproved">Disapproved</SelectItem>
-            </SelectContent>
-          </Select>
+            <option value="ALL">All Status</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Cancelled">Cancelled</option>
+            <option value="Disapproved">Disapproved</option>
+          </select>
         </div>
       </div>
 

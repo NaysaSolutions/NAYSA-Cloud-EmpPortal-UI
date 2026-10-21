@@ -207,7 +207,7 @@ const OffsetReview = ({ offsetData, onClose, refreshData }) => {
           </h2>
           <button
             onClick={onClose}
-            className="rounded-xl hover:bg-gray-100 active:scale-[.98] transition"
+            className="rounded-lg hover:bg-gray-100 active:scale-[.98] transition"
             aria-label="Close"
             ref={firstFieldRef}
           >
@@ -232,11 +232,11 @@ const OffsetReview = ({ offsetData, onClose, refreshData }) => {
           </div>
 
           <div>
-            <label className="block text-gray-700 text-sm mb-1 text-xs">
+            <label className="block font-semibold text-gray-700 text-sm mb-1">
               Employee Name
             </label>
             <input
-              className="border rounded-xl px-3 py-2 w-full bg-gray-50 text-xs"
+              className="border border-gray-200 rounded-xl px-3 h-10 w-full bg-gray-50 text-sm"
               value={formData.empName || ""}
               readOnly
               disabled
@@ -245,12 +245,12 @@ const OffsetReview = ({ offsetData, onClose, refreshData }) => {
 
           <div className="mt-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-2">
             <div>
-              <label className="block text-gray-700 text-sm mb-1 text-xs">
+              <label className="block font-semibold text-gray-700 text-sm mb-1">
                 Source Date
               </label>
               <input
                 type="date"
-                className="border rounded-xl px-3 py-2 w-full bg-gray-50 text-xs"
+                className="border border-gray-200 rounded-xl px-3 h-10 w-full bg-gray-50 text-sm"
                 value={formData.sourceDate || ""}
                 readOnly
                 disabled
@@ -258,12 +258,12 @@ const OffsetReview = ({ offsetData, onClose, refreshData }) => {
             </div>
 
             <div>
-              <label className="block text-gray-700 text-sm mb-1 text-xs">
+              <label className="block font-semibold text-gray-700 text-sm mb-1">
                 Offset Date
               </label>
               <input
                 type="date"
-                className="border rounded-xl px-3 py-2 w-full bg-gray-50 text-xs"
+                className="border border-gray-200 rounded-xl px-3 h-10 w-full bg-gray-50 text-sm"
                 value={formData.offsetDate || ""}
                 readOnly
                 disabled
@@ -271,7 +271,7 @@ const OffsetReview = ({ offsetData, onClose, refreshData }) => {
             </div>
 
             <div className="col-span-2">
-              <label className="block text-gray-700 text-sm mb-1 text-xs">
+              <label className="block font-semibold text-gray-700 text-sm mb-1">
                 Hours
               </label>
               <input
@@ -279,7 +279,7 @@ const OffsetReview = ({ offsetData, onClose, refreshData }) => {
                 step="0.01"
                 min="0"
                 name="offsetHrs"
-                className="border rounded-xl px-3 py-2 w-full text-xs"
+                className="border border-gray-200 rounded-xl px-3 h-10 w-full text-sm"
                 value={formData.offsetHrs}
                 inputMode="decimal"
                 disabled
@@ -289,27 +289,27 @@ const OffsetReview = ({ offsetData, onClose, refreshData }) => {
 
           {/* Employee Remarks */}
           <div className="mt-2">
-            <label className="block text-gray-700 text-sm mb-1 text-xs">
+            <label className="block font-semibold text-gray-700 text-sm mb-1">
               Remarks
             </label>
             <textarea
               name="offsetRemarks"
               value={formData.offsetRemarks}
-              className="w-full border rounded-xl px-3 py-2 min-h-16 resize-y text-xs"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 min-h-24 resize-y text-sm"
               disabled
             />
           </div>
 
           {/* Approver Remarks */}
           <div className="mt-2">
-            <label className="block text-gray-700 text-sm mb-1 text-xs">
+            <label className="block font-semibold text-gray-700 text-sm mb-1">
               Approver’s Remarks
             </label>
             <textarea
               name="approverRemarks"
               value={formData.approverRemarks}
               onChange={handleChange}
-              className="w-full border rounded-xl px-3 py-2 min-h-16 resize-y text-xs"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 min-h-24 resize-y text-sm"
               placeholder="Optional notes…"
             />
           </div>

@@ -67,7 +67,7 @@ const OffsetApproval = () => {
         </div>
 
         {/* PENDING SECTION */}
-        <div className="mt-4 bg-white p-4 shadow-lg rounded-xl">
+        <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-xl">
           <h2 className="text-lg font-bold mb-4">Pending Offset Applications</h2>
 
           {isError && <p className="text-red-500 font-semibold mb-2">Failed to load offset approvals.</p>}
@@ -101,7 +101,7 @@ const OffsetApproval = () => {
                         <td className="global-td-approval">{r.offsetRemarks || "N/A"}</td>
                         <td className="global-td-approval text-center space-x-2">
                           <button
-                            className="bg-blue-500 text-white px-4 py-1 rounded hover:bg-blue-600"
+                            className="bg-blue-800 text-white px-5 py-2 rounded-xl hover:bg-blue-700 text-sm"
                             onClick={() => handleReview(r)}
                           >
                             Review
@@ -121,7 +121,7 @@ const OffsetApproval = () => {
         </div>
 
         {/* HISTORY SECTION */}
-        <div className="mt-4 bg-white p-4 shadow-lg rounded-xl">
+        <div className="mt-4 bg-white p-4 sm:p-6 shadow-md rounded-xl">
           <h2 className="text-lg font-bold mb-4">Offset Approval History</h2>
 
           {isLoading ? (

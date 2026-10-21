@@ -149,23 +149,35 @@ function Register() {
         */
         @media (min-width: 1024px) and (max-height: 820px) {
           .portal-main {
-            padding-top: .35rem;
-            padding-bottom: .35rem;
+            padding-top: .5rem;
+            padding-bottom: .5rem;
           }
 
           .portal-brand-copy {
-            transform: scale(.90);
-            transform-origin: left top;
+            transform: scale(.92);
+            transform-origin: left center;
           }
 
           .portal-auth-wrap {
-            transform: scale(.84);
+            transform: scale(.86);
+            transform-origin: right center;
           }
         }
 
         @media (min-width: 1024px) and (min-height: 821px) and (max-height: 900px) {
           .portal-auth-wrap {
-            transform: scale(.93);
+            transform: scale(.94);
+            transform-origin: right center;
+          }
+        }
+
+        @media (min-width: 1024px) and (max-height: 700px) {
+          .portal-brand-copy {
+            transform: scale(.86);
+          }
+
+          .portal-auth-wrap {
+            transform: scale(.80);
           }
         }
       `}</style>
@@ -198,11 +210,11 @@ function Register() {
       {/* =========================================================
           MAIN
       ========================================================= */}
-      <main className="portal-main relative z-10 mx-auto grid min-h-[calc(100dvh-48px)] w-full max-w-7xl grid-cols-1 items-center gap-6 px-4 py-4 sm:px-6 lg:grid-cols-[1.08fr_.92fr] lg:px-8 lg:py-5">
+      <main className="portal-main relative z-10 mx-auto grid min-h-[calc(100dvh-48px)] w-full max-w-[1280px] grid-cols-1 items-center gap-4 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_.88fr] lg:px-8 lg:py-8 xl:px-10">
         {/* =======================================================
             LEFT BRANDING - DESKTOP
         ======================================================= */}
-        <section className="portal-brand-copy hidden lg:order-1 lg:block lg:self-start lg:pr-10 lg:pt-[7vh] xl:pr-16">
+        <section className="portal-brand-copy hidden lg:order-1 lg:block lg:self-center lg:pr-6 xl:pr-8">
           <div className="mb-5 inline-flex items-center rounded-full border border-white/30 bg-white/10 px-5 py-2 text-[11px] font-extrabold uppercase tracking-[0.22em] text-white shadow-xl backdrop-blur-md">
             {companyName}
           </div>
@@ -247,8 +259,8 @@ function Register() {
         {/* =======================================================
             REGISTER - RIGHT SIDE
         ======================================================= */}
-        <section className="flex items-center justify-center lg:order-2 lg:justify-end">
-          <div className="portal-auth-wrap w-full max-w-md origin-center transition-transform">
+        <section className="flex items-center justify-center lg:order-2 lg:self-center lg:justify-center">
+          <div className="portal-auth-wrap w-full max-w-[430px] origin-center transition-transform">
             {/* LOGO / PORTAL TITLE */}
             <div className="mb-2 flex flex-col items-center text-center">
               <div className="relative flex h-24 w-52 items-center justify-center sm:h-28 sm:w-60">

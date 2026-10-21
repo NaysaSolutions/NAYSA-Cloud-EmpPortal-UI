@@ -1105,42 +1105,119 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
       return;
     }
 
+    let cancelled = false;
+
+    const loadImageElement = (src) =>
+      new Promise((resolve, reject) => {
+        const img = new Image();
+
+        img.onload = () => resolve(img);
+        img.onerror = () =>
+          reject(new Error(`Unable to load image: ${src}`));
+
+        img.src = src;
+      });
+
     const loadCurrentUserDescriptor = async () => {
       if (!user?.empNo || !faceDetectionModelLoaded) return;
 
-      const empNo = user.empNo;
-      const imageUrl = `/images/${empNo}.jpg`;
+      const empNo = String(user.empNo).trim();
+
+      // Registered employee photos are served from the Vite public/images folder.
+      // face-api.js is still used for detection, landmarks, descriptor generation,
+      // and the actual face matching process.
+      const imageCandidates = [
+        `/images/${empNo}.jpg`,
+        `/images/${empNo}.jpeg`,
+        `/images/${empNo}.png`,
+      ];
 
       try {
-        const img = await faceapi.fetchImage(imageUrl);
+        let employeeImage = null;
+        let loadedUrl = "";
+        let lastError = null;
+
+        for (const imageUrl of imageCandidates) {
+          try {
+            console.log("Trying registered employee image:", imageUrl);
+
+            employeeImage = await loadImageElement(imageUrl);
+            loadedUrl = imageUrl;
+            break;
+          } catch (error) {
+            lastError = error;
+            console.warn(
+              "Registered employee image failed:",
+              imageUrl,
+              error?.message
+            );
+          }
+        }
+
+        if (!employeeImage) {
+          throw lastError || new Error(
+            `No registered employee image found for ${empNo}.`
+          );
+        }
+
+        if (cancelled) return;
+
+        console.log(
+          "Registered employee image loaded:",
+          loadedUrl,
+          `${employeeImage.naturalWidth}x${employeeImage.naturalHeight}`
+        );
+
         const detection = await faceapi
-          .detectSingleFace(img)
+          .detectSingleFace(
+            employeeImage,
+            new faceapi.SsdMobilenetv1Options({
+              minConfidence: 0.5,
+            })
+          )
           .withFaceLandmarks()
           .withFaceDescriptor();
 
-        if (detection) {
-          setCurrentUserFaceDescriptor(detection.descriptor);
-          console.log(`Loaded face descriptor for employee: ${empNo}`);
-        } else {
+        if (cancelled) return;
+
+        if (!detection) {
+          setCurrentUserFaceDescriptor(null);
+
           showWarningToast(
-  "Warning",
-  "No registered face found for your profile. Please contact HR/Admin."
-);
+            "Face Not Detected",
+            "The registered employee image loaded successfully, but face-api.js could not detect a face. Please use a clear front-facing photo."
+          );
+
+          return;
         }
-      } catch (err) {
-        console.warn("Face model not found:", err.message);
+
+        setCurrentUserFaceDescriptor(detection.descriptor);
+
+        console.log(
+          `Face API descriptor loaded successfully for employee ${empNo} from ${loadedUrl}`
+        );
+      } catch (error) {
+        if (cancelled) return;
+
+        console.error(
+          "Registered face loading error:",
+          error
+        );
+
+        setCurrentUserFaceDescriptor(null);
 
         showWarningToast(
-  "Face Model Not Found",
-  "You can still time-in/out but photo capture will be skipped."
-);
-
-        setIsImageCaptureRequired(false);
-        setCurrentUserFaceDescriptor(null);
+          "Registered Face Error",
+          `Unable to prepare the registered face for employee ${empNo}.`
+        );
       }
     };
 
     loadCurrentUserDescriptor();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user?.empNo, faceDetectionModelLoaded, isImageCaptureRequired]);
 
   useEffect(() => {

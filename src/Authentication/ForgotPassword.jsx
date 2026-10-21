@@ -30,11 +30,11 @@ function ForgotPassword() {
       if (data?.status === "success") {
         await Swal.fire({
           title: "Temporary Password Sent",
-          text: "Please check your registered email.",
+          text: "Please check your registered email, then enter the temporary password on the next screen.",
           icon: "success",
-          confirmButtonText: "OK",
+          confirmButtonText: "Continue",
         });
-        navigate("/");
+        navigate(`/reset-password?email=${encodeURIComponent(email.trim())}`);
       } else {
         Swal.fire("Error", data?.message || "Request failed.", "error");
       }
