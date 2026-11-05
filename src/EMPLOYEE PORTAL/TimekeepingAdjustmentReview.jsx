@@ -6,47 +6,97 @@ import dayjs from "dayjs";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 
-// Attachment values come from the DTR approval inquiry (ApprInq) response.
-const getAttachmentPath = (row) => {
-  const value = row?.attachment ?? row?.attachment_path ?? row?.ATTACHMENT_PATH ?? row?.attachmentPath;
-  return typeof value === "string" && value.trim() && !["null", "undefined"].includes(value.trim().toLowerCase())
-    ? value.trim() : null;
+// Shared DTR attachment helpers. Both Approval and Review import and use these
+// exact functions so the same record cannot produce different attachment states.
+export const getDTRAttachment = (row) => {
+  const candidates = [
+    row?.attachment,
+    row?.attachment_path,
+    row?.ATTACHMENT_PATH,
+    row?.attachmentPath,
+  ];
+  return candidates.find((value) =>
+    typeof value === "string" &&
+    value.trim() &&
+    !["null", "undefined", "n/a"].includes(value.trim().toLowerCase())
+  )?.trim() || null;
 };
 
-const getAttachmentUrl = (path) => {
+export const getDTRAttachmentUrl = (path) => {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
-  const cleanPath = path.replace(/\\/g, "/").replace(/^\/+/, "")
-    .replace(/^public\//i, "").replace(/^images\//i, "");
-  const backendUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000")
+
+  const clean = path.replace(/\\/g, "/")
+    .replace(/^\/+/, "")
+    .replace(/^public\//i, "")
+    .replace(/^images\//i, "");
+  const base = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000")
     .replace(/\/+$/, "").replace(/\/api$/i, "");
-  return `${backendUrl}/images/${cleanPath.split("/").map(encodeURIComponent).join("/")}`;
+  return `${base}/images/${clean.split("/").map(encodeURIComponent).join("/")}`;
 };
 
-const getAttachmentName = (path) => {
+const getDTRAttachmentName = (path) => {
   if (!path) return "";
-  const name = path.split(/[\\/]/).pop()?.split("?")[0] || "Supporting attachment";
-  try { return decodeURIComponent(name); } catch { return name; }
+  const file = path.split(/[?#]/)[0].replace(/\\/g, "/").split("/").pop();
+  try { return decodeURIComponent(file); } catch { return file; }
 };
 
-const getAttachmentKind = (path) => {
+const getDTRAttachmentKind = (path) => {
   const file = path?.split("?")[0].toLowerCase() || "";
   if (/\.(png|jpe?g|gif|webp|bmp)$/.test(file)) return "image";
   if (/\.pdf$/.test(file)) return "pdf";
   return "file";
 };
-const getAttachmentMeta = (path) => {
-  const kind = getAttachmentKind(path);
+
+const getDTRAttachmentMeta = (path) => {
+  const kind = getDTRAttachmentKind(path);
   if (kind === "image") return { label: "Image attachment", icon: FaImage };
   if (kind === "pdf") return { label: "PDF document", icon: FaFilePdf };
   return { label: "Supporting document", icon: FaFileAlt };
 };
 
+export const DTRAttachmentViewer = ({ row, compact = false }) => {
+  const path = getDTRAttachment(row);
+  if (!path) return <span className="text-xs text-slate-400">No attachment</span>;
+
+  const name = getDTRAttachmentName(path);
+  const url = getDTRAttachmentUrl(path);
+  const meta = getDTRAttachmentMeta(path);
+  const Icon = meta.icon;
+  const viewButton = (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={name}
+      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300"
+    >
+      <FaEye aria-hidden="true" />
+      <span>View File</span>
+    </a>
+  );
+
+  if (compact) return viewButton;
+  return (
+    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <Icon aria-hidden="true" />
+            <span>{meta.label}</span>
+          </div>
+          <div title={name} className="mt-1 break-all text-xs text-slate-700">{name}</div>
+        </div>
+        {viewButton}
+      </div>
+    </div>
+  );
+};
 
 /*********************************************************
  * TimekeepingAdjustmentReview — updated to match UI
  *********************************************************/
-const TimekeepingAdjustmentReview = ({ dtrData, attachmentPath = null, onClose, setPending, setHistory, refreshData, attachmentEnabled = false }) => {
+const TimekeepingAdjustmentReview = ({ dtrData, attachmentPath = null, attachmentUrl: suppliedAttachmentUrl = null, onClose, setPending, setHistory, refreshData, attachmentEnabled = false }) => {
   if (!dtrData) return null;
   const { user } = useAuth();
 
@@ -145,18 +195,20 @@ const TimekeepingAdjustmentReview = ({ dtrData, attachmentPath = null, onClose, 
     }
   };
 
-  // Prefer the same resolved path shown in the approval table.
-  const attachPath = getAttachmentPath({ attachment: attachmentPath }) || getAttachmentPath(dtrData);
-  const attachmentUrl = getAttachmentUrl(attachPath);
-  const attachmentName = getAttachmentName(attachPath);
-  const attachmentKind = getAttachmentKind(attachPath);
-  const safeAttachmentUrl = attachmentUrl && /^https?:\/\//i.test(attachmentUrl) ? attachmentUrl : null;
+  // The modal renders exactly the same viewer as the table, using the same row.
+  // Keep legacy explicit props supported, but they are not required.
+  const attachedPath = getDTRAttachment(dtrData) || getDTRAttachment({ attachment: attachmentPath });
+  const attachedRow = { ...dtrData, attachment: attachedPath, attachment_path: attachedPath };
+  const attachedUrl = getDTRAttachmentUrl(attachedPath) || suppliedAttachmentUrl;
+  const attachedType = getDTRAttachmentKind(attachedPath || attachedUrl);
+
   const formattedType = ({ timeIn: "Time In", timeOut: "Time Out", breakIn: "Break In", breakOut: "Break Out" })[dtrData.dtrType] || dtrData.dtrType || "Adjustment";
   const formattedDate = dtrData.dtrDate && dayjs(dtrData.dtrDate).isValid() ? dayjs(dtrData.dtrDate).format("MMM D, YYYY") : "—";
   const formattedActual = dtrData.dtrStart && dayjs(dtrData.dtrStart).isValid() ? dayjs(dtrData.dtrStart).format("MMM D, YYYY • hh:mm A") : "—";
 
   return (
     <div
+      data-dtr-attachment-build="shared-viewer-20261105"
       className="fixed inset-0 z-[1050] flex items-center justify-center bg-slate-950/60 backdrop-blur-[2px] p-3 sm:p-6"
       onMouseDown={handleBackdropClick}
       aria-modal="true"
@@ -213,48 +265,31 @@ const TimekeepingAdjustmentReview = ({ dtrData, attachmentPath = null, onClose, 
 
           {attachmentEnabled && (
             <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-              <div className="flex items-center justify-between gap-2">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <h3 className="text-sm font-bold text-slate-800">Supporting attachment</h3>
-                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${safeAttachmentUrl ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
-                  {safeAttachmentUrl ? "Attached" : "Not provided"}
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${attachedPath ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                  {attachedPath ? "Attached" : "Not provided"}
                 </span>
               </div>
-              {safeAttachmentUrl ? (
-                <div className="mt-3 space-y-3">
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-3.5">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-blue-900">
-                          {React.createElement(getAttachmentMeta(attachPath).icon, { className: "shrink-0", 'aria-hidden': true })}
-                          <span>{getAttachmentMeta(attachPath).label}</span>
-                        </div>
-                        <div className="mt-1 break-all text-sm text-blue-800" title={attachmentName}>{attachmentName}</div>
-                      </div>
-                      <a
-                        href={safeAttachmentUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-                      >
-                        <FaEye className="shrink-0" aria-hidden="true" />
-                        <span>View File</span>
-                      </a>
-                    </div>
-                  </div>
-                  {attachmentKind === "image" && (
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2">
-                      <div className="flex max-h-[280px] items-center justify-center overflow-hidden rounded-lg bg-white">
-                        <img src={safeAttachmentUrl} alt="Employee supporting attachment" className="max-h-[260px] max-w-full rounded object-contain" loading="lazy" />
-                      </div>
+              {attachedPath ? (
+                <>
+                  <DTRAttachmentViewer row={attachedRow} />
+                  {attachedUrl && attachedType === "image" && (
+                    <div className="mt-3 flex max-h-[280px] items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-2">
+                      <img src={attachedUrl} alt="DTR supporting attachment" className="max-h-[260px] max-w-full rounded object-contain" loading="lazy" />
                     </div>
                   )}
-                  {attachmentKind === "pdf" && (
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-                      <iframe src={safeAttachmentUrl} title="Attachment PDF preview" className="h-[240px] w-full sm:h-[300px]" />
+                  {attachedUrl && attachedType === "pdf" && (
+                    <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                      <iframe src={attachedUrl} title="DTR attachment PDF preview" className="h-[240px] w-full sm:h-[300px]" />
                     </div>
                   )}
+                </>
+              ) : (
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                  No supporting file was uploaded for this adjustment.
                 </div>
-              ) : <div className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-500">No supporting file was uploaded for this adjustment.</div>}
+              )}
             </div>
           )}
 

@@ -2,25 +2,13 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 import dayjs from "dayjs";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import { useAuth } from "./AuthContext.jsx";
-import TimekeepingAdjustmentReview from "./TimekeepingAdjustmentReview.jsx";
+import TimekeepingAdjustmentReview, { getDTRAttachment, DTRAttachmentViewer } from "./TimekeepingAdjustmentReview.jsx";
 import Swal from "sweetalert2";
-import { FaEye } from "react-icons/fa";
 import { cancelApprovedRecord, sendApprovalDecision } from "./approvalBatchUtils";
 import { applicationFileDate, approvalUser, approvalDateTime, approvalRemarks, approvalLabels } from "./approvalDisplayUtils";
 
-// Attachment helpers (compatible with existing DTR API response fields).
-const getAttachmentPath = (row) =>
-  row?.attachment ?? row?.attachment_path ?? row?.ATTACHMENT_PATH ?? row?.attachmentPath ?? null;
-
-const hasValidAttachment = (path) => typeof path === "string" && path.trim().length > 0;
-
-const getAttachmentUrl = (path) => {
-  if (!hasValidAttachment(path)) return null;
-  if (/^https?:\/\//i.test(path)) return path;
-  const cleanPath = path.replace(/\\/g, "/").replace(/^\/?public\//i, "").replace(/^\/?images\//i, "");
-  const backendUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "").replace(/\/api$/i, "");
-  return `${backendUrl}/images/${cleanPath}`;
-};
+// The attachment path and View File button are resolved by the same code used
+// inside TimekeepingAdjustmentReview.jsx (matching the working OB approach).
 
 // ---- Shared UI helpers (same look/feel as OT/Leave/OB) ----------------------
 
@@ -174,9 +162,8 @@ const TimekeepingAdjustmentApproval = () => {
   }, [user?.empNo]);
 
   const openReview = (row) => {
-    // Carry the exact path used by the approval table to the review modal.
-    const attachmentPath = getAttachmentPath(row);
-    setSelected({ ...row, attachment: attachmentPath, attachment_path: attachmentPath });
+    const path = getDTRAttachment(row);
+    setSelected({ ...row, attachment: path, attachment_path: path });
     setShowModal(true);
   };
 
@@ -325,11 +312,7 @@ const TimekeepingAdjustmentApproval = () => {
                     <Labeled label="Employee Remarks">
                       <div>{r.dtrRemarks || "N/A"}</div>
                     </Labeled>
-                    {attachmentEnabled && <Labeled label="Attachment">{hasValidAttachment(getAttachmentPath(r)) ? (
-                        <button type="button" onClick={() => window.open(getAttachmentUrl(getAttachmentPath(r)), "_blank", "noopener,noreferrer")}
-                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-                          title="View Attachment"><FaEye aria-hidden="true" />View File</button>
-                      ) : <span className="text-gray-400">—</span>}</Labeled>}
+                    {attachmentEnabled && <Labeled label="Attachment"><DTRAttachmentViewer row={r} compact /></Labeled>}
                   </div>
                 </details>
               ))
@@ -399,11 +382,7 @@ const TimekeepingAdjustmentApproval = () => {
                       <td className="global-td-approval text-left">
                         {r.dtrRemarks || "N/A"}
                       </td>
-                      {attachmentEnabled && <td className="global-td-approval min-w-[120px] px-3 text-center align-middle whitespace-nowrap">{hasValidAttachment(getAttachmentPath(r)) ? (
-                        <button type="button" onClick={() => window.open(getAttachmentUrl(getAttachmentPath(r)), "_blank", "noopener,noreferrer")}
-                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-                          title="View Attachment"><FaEye aria-hidden="true" />View File</button>
-                      ) : <span className="text-gray-400">—</span>}</td>}
+                      {attachmentEnabled && <td className="global-td-approval min-w-[120px] px-3 text-center align-middle whitespace-nowrap"><DTRAttachmentViewer row={r} compact /></td>}
                       <td className="global-td-approval text-center whitespace-nowrap">
                         <button
                           className={ReviewClass}
@@ -496,11 +475,7 @@ const TimekeepingAdjustmentApproval = () => {
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Labeled label="Employee Remarks">{r.dtrRemarks || "N/A"}</Labeled>
                     <Labeled label="Approver Remarks">{approvalRemarks(r)}</Labeled>
-                    {attachmentEnabled && <Labeled label="Attachment">{hasValidAttachment(getAttachmentPath(r)) ? (
-                        <button type="button" onClick={() => window.open(getAttachmentUrl(getAttachmentPath(r)), "_blank", "noopener,noreferrer")}
-                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-                          title="View Attachment"><FaEye aria-hidden="true" />View File</button>
-                      ) : <span className="text-gray-400">—</span>}</Labeled>}
+                    {attachmentEnabled && <Labeled label="Attachment"><DTRAttachmentViewer row={r} compact /></Labeled>}
                     <Labeled label={approvalLabels(r.dtrStatus).actor}>{approvalUser(r)}</Labeled>
                     <Labeled label={approvalLabels(r.dtrStatus).date}>{approvalDateTime(r)}</Labeled>
                   </div>
@@ -564,11 +539,7 @@ const TimekeepingAdjustmentApproval = () => {
                         <div className="text-xs text-slate-600">{approvalDateTime(r) || "N/A"}</div>
                       </td>
 
-                      {attachmentEnabled && <td className="global-td-approval min-w-[120px] px-3 text-center align-middle whitespace-nowrap">{hasValidAttachment(getAttachmentPath(r)) ? (
-                        <button type="button" onClick={() => window.open(getAttachmentUrl(getAttachmentPath(r)), "_blank", "noopener,noreferrer")}
-                          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
-                          title="View Attachment"><FaEye aria-hidden="true" />View File</button>
-                      ) : <span className="text-gray-400">—</span>}</td>}
+                      {attachmentEnabled && <td className="global-td-approval min-w-[120px] px-3 text-center align-middle whitespace-nowrap"><DTRAttachmentViewer row={r} compact /></td>}
                       <td className="global-td-approval text-center">
                         <div className="flex flex-col items-center justify-center gap-1 whitespace-nowrap">
                           <span className={badgeClass(r.dtrStatus)}>{r.dtrStatus}</span>
@@ -595,7 +566,6 @@ const TimekeepingAdjustmentApproval = () => {
         {showModal && selected && (
           <TimekeepingAdjustmentReview
             dtrData={selected}
-            attachmentPath={getAttachmentPath(selected)}
             attachmentEnabled={attachmentEnabled}
             onClose={() => {
               setShowModal(false);
