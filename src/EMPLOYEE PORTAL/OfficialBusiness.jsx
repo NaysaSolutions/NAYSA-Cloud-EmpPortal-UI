@@ -3,7 +3,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import dayjs from "dayjs";
 import Swal from "sweetalert2";
-import { FaCalendarAlt } from "react-icons/fa";
+import { FaCalendarAlt, FaEye, FaPaperclip } from "react-icons/fa";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import { approvalUser, approvalDateTime, approvalRemarks, applicationFileDate, approvalLabels } from "./approvalDisplayUtils";
@@ -15,6 +15,62 @@ import { approvalUser, approvalDateTime, approvalRemarks, applicationFileDate, a
  * - Submit flow unchanged
  * - NEW: Cancel action for Pending items using { empNo, obStamp }
  */
+
+// Official Business attachment display. Uses the same outlined View File control as DTR.
+const getOBAttachment = (row) => {
+  const value = row?.attachment ?? row?.attachment_path ?? row?.ATTACHMENT_PATH ?? row?.attachmentPath;
+  return typeof value === "string" && value.trim() && !["null", "undefined", "n/a"].includes(value.trim().toLowerCase()) ? value.trim() : null;
+};
+const getOBAttachmentName = (value) => {
+  if (!value) return "";
+  const file = value.split(/[?#]/)[0].replace(/\\/g, "/").split("/").pop();
+  try { return decodeURIComponent(file); } catch { return file; }
+};
+const getOBAttachmentUrl = (value) => {
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  const clean = value.replace(/\\/g, "/").replace(/^\/+/, "").replace(/^public\//i, "").replace(/^images\//i, "");
+  const base = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "").replace(/\/api$/i, "");
+  return `${base}/images/${clean.split("/").map(encodeURIComponent).join("/")}`;
+};
+const OBAttachmentViewer = ({ row, compact = false }) => {
+  const path = getOBAttachment(row);
+  if (!path) return <span className="text-xs text-slate-400">No attachment</span>;
+  const url = getOBAttachmentUrl(path);
+  const filename = getOBAttachmentName(path);
+  const viewButton = (
+    <a href={url} target="_blank" rel="noopener noreferrer" title={filename}
+      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300">
+      <FaEye aria-hidden="true" /><span>View File</span>
+    </a>
+  );
+  return compact ? viewButton : (
+    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600"><FaPaperclip aria-hidden="true" /> Supporting document</div>
+          <div title={filename} className="mt-1 truncate text-xs text-slate-700">{filename}</div>
+        </div>
+        {viewButton}
+      </div>
+    </div>
+  );
+};
+const useOBAttachmentEnabled = (endpoint) => {
+  const [attachmentEnabled, setAttachmentEnabled] = useState(false);
+  useEffect(() => {
+    if (!endpoint) return;
+    const abort = new AbortController();
+    fetch(endpoint, { signal: abort.signal, cache: "no-store" })
+      .then((r) => { if (!r.ok) throw Error("Attachment settings unavailable"); return r.json(); })
+      .then((r) => { if (!abort.signal.aborted) setAttachmentEnabled(r.attachmentEnabled === true || r.attachmentEnabled === 1); })
+      .catch((e) => { if (e.name !== "AbortError") setAttachmentEnabled(false); });
+    return () => abort.abort();
+  }, [endpoint]);
+  return attachmentEnabled;
+};
+const OB_ATTACHMENT_SETTINGS_ENDPOINT = API_ENDPOINTS.saveOfficialBusinessApplication
+  .replace(/\/?upsertOB\/?(?=[?#]|$)/i, "/ob/attachment-settings");
 
 const FIELD_MAP = {
   obDate: "obDate",
@@ -35,6 +91,8 @@ const OfficialBusiness = () => {
   const [selectedEndDate, setSelectedEndDate] = useState(null); // Date | string
   const [obHrs, setOBHrs] = useState("0"); // read-only, computed
   const [remarks, setRemarks] = useState("");
+  const [attachment, setAttachment] = useState(null);
+  const attachmentEnabled = useOBAttachmentEnabled(OB_ATTACHMENT_SETTINGS_ENDPOINT);
 
   const [obApplications, setOBApplications] = useState([]);
   const [filteredApplications, setFilteredApplications] = useState([]);
@@ -86,6 +144,7 @@ const OfficialBusiness = () => {
     appDateTime: row.appDateTime ?? row.appDatetime ?? row.APP_DATETIME ?? row.app_date_time ?? null,
     fileDate: row.fileDate ?? row.filedate ?? row.FILE_DATE ?? row.file_date ?? null,
     obStatus: (row.obStatus ?? row.OB_STATUS ?? row.status ?? "").toString().trim(),
+    attachment: getOBAttachment(row),
     // stamp variations we may receive from backend
     obStamp: row.obStamp || row.OB_STAMP || row.ob_stamp || row.stamp || row.guid || null,
   });
@@ -435,6 +494,7 @@ const handleShiftDateChange = (value) => {
     endStr: end.format("MM/DD/YYYY hh:mm A"),
     hours: hoursNum.toFixed(2),
     remarks: remarks.trim(),
+    attachment: attachmentEnabled ? attachment?.name : null,
   };
 
   // --- Step 1: Confirmation before save ---
@@ -449,6 +509,7 @@ const handleShiftDateChange = (value) => {
           <tr><td><b>End Datetime:</b></td><td>${display.endDay}, ${display.endStr}</td></tr>
           <tr><td><b>Total Hours:</b></td><td>${display.hours}</td></tr>
           <tr><td><b>Remarks:</b></td><td>${escapeHTML(display.remarks)}</td></tr>
+           ${attachmentEnabled ? `<tr><td><b>Attachment:</b></td><td>${escapeHTML(display.attachment || "None")}</td></tr>` : ""}
         </table>
       </div>
     `,
@@ -482,10 +543,12 @@ const handleShiftDateChange = (value) => {
   };
 
   try {
+    const formData = new FormData();
+    formData.append("json_data", JSON.stringify(payload.json_data));
+    if (attachmentEnabled && attachment) formData.append("attachment", attachment);
     const response = await fetch(API_ENDPOINTS.saveOfficialBusinessApplication, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: formData,
     });
 
     if (!response.ok) {
@@ -515,6 +578,7 @@ const handleShiftDateChange = (value) => {
             <tr><td><b>End:</b></td><td>${display.endDay}, ${display.endStr}</td></tr>
             <tr><td><b>Total Hours:</b></td><td>${display.hours}</td></tr>
             <tr><td><b>Remarks:</b></td><td>${escapeHTML(display.remarks)}</td></tr>
+             ${attachmentEnabled ? `<tr><td><b>Attachment:</b></td><td>${escapeHTML(display.attachment || "None")}</td></tr>` : ""}
           </table>
         </div>
       `,
@@ -532,6 +596,9 @@ const handleShiftDateChange = (value) => {
     setSelectedStartDate(now);
     setSelectedEndDate(now);
     setRemarks("");
+    setAttachment(null);
+    const fileInput = document.getElementById("ob-attachment");
+    if (fileInput) fileInput.value = "";
     setOBHrs("0");
 
     fetchOBApplications();
@@ -658,10 +725,36 @@ const handleShiftDateChange = (value) => {
             </div>
           </div>
 
-          {/* Remarks */}
-          <div className="mt-6">
-            <span className="block font-semibold mb-1">Remarks</span>
-            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={4} className="w-full p-2 border rounded-xl" placeholder="Enter Remarks" />
+          {/* Remarks and Supporting Attachment: same responsive layout as Timekeeping Adjustment */}
+          <div className={`mt-6 grid grid-cols-1 ${attachmentEnabled ? "md:grid-cols-2" : ""} gap-4`}>
+            <div className="min-w-0">
+              <label htmlFor="ob-remarks" className="mb-1 block font-semibold">Remarks</label>
+              <textarea
+                id="ob-remarks"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                rows={4}
+                className="w-full rounded-xl border p-2 resize-none"
+                placeholder="Enter Remarks"
+              />
+            </div>
+
+            {attachmentEnabled && (
+              <div className="min-w-0">
+                <label htmlFor="ob-attachment" className="mb-1 block font-semibold">Attachment (Optional)</label>
+                <div className="flex min-h-[106px] flex-col justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 p-3">
+                  <input
+                    id="ob-attachment"
+                    type="file"
+                    accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx"
+                    className="w-full text-sm text-gray-500 file:mr-3 file:rounded-xl file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+                    onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+                  />
+                  {attachment && <p className="mt-2 break-all text-xs text-green-700">Selected: {attachment.name}</p>}
+                  <p className="mt-1 text-xs text-slate-500">PDF, images, Word, and Excel; maximum 10 MB.</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Submit */}
@@ -750,7 +843,13 @@ const handleShiftDateChange = (value) => {
                           <span className="text-gray-500 font-semibold">OB End</span>
                           <span className="font-medium">{toDispDateTime(entry.obEnd)}</span>
                         </div>
-                        <br />
+                         {attachmentEnabled && (
+                           <div className="mt-3">
+                             <div className="mb-1.5 text-gray-500 font-semibold">Supporting Attachment</div>
+                             <OBAttachmentViewer row={entry} />
+                           </div>
+                         )}
+                         <br />
                         <div>
                           <div className="text-gray-500 font-semibold">Employee Remarks</div>
                           <div className="font-normal break-words text-black">{entry.obRemarks || "N/A"}</div>
@@ -792,7 +891,8 @@ const handleShiftDateChange = (value) => {
                       </summary>
                       <div className="mt-3 space-y-2">
                         <div><div className="text-gray-500 font-semibold">Filing Date</div><div>{applicationFileDate(entry)}</div></div>
-                        <div><div className="text-gray-500 font-semibold">Remarks</div><div>{entry.obRemarks}</div></div>
+                         {attachmentEnabled && <div><div className="mb-1.5 text-gray-500 font-semibold">Supporting Attachment</div><OBAttachmentViewer row={entry} /></div>}
+                         <div><div className="text-gray-500 font-semibold">Remarks</div><div>{entry.obRemarks}</div></div>
                         <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.obStatus).remarks}</div><div className="font-normal break-words text-blue-700">{approvalRemarks(entry)}</div></div>
                         <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.obStatus).actor}</div><div className="font-normal break-words text-blue-700">{approvalUser(entry)}</div></div>
                         <div><div className="text-gray-500 font-semibold">{approvalLabels(entry.obStatus).date}</div><div className="font-normal break-words text-blue-700">{approvalDateTime(entry)}</div></div>
@@ -819,10 +919,11 @@ const handleShiftDateChange = (value) => {
                       { key: "obEnd", label: "End" },
                       { key: "obHrs", label: "Duration" },
                       { key: "obRemarks", label: "Employee's Remarks" },
-                      { key: "appRemarks", label: "Approver's Remarks" },
+                       { key: "appRemarks", label: "Approver's Remarks" },
+                       ...(attachmentEnabled ? [{ key: "attachment", label: "Attachment" }] : []),
                       { key: "obStatus", label: "Status" },
                     ].map(({ key, label }) => (
-                      <th key={key} className="py-2 px-3 cursor-pointer whitespace-nowrap" onClick={() => sortData(key)}>
+                       <th key={key} className="py-2 px-3 cursor-pointer whitespace-nowrap" onClick={() => key !== "attachment" && sortData(key)}>
                         {label} {getSortIndicator(key)}
                       </th>
                     ))}
@@ -875,8 +976,9 @@ const handleShiftDateChange = (value) => {
                     <td className="px-1 py-2 bg-white whitespace-nowrap">
                       <input type="text" value={searchFields.appRemarks} onChange={(e) => handleSearchChange(e, "appRemarks")} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800" placeholder="Filter..." />
                     </td>
-                    <td className="px-1 py-2 bg-white whitespace-nowrap">
-                      <select value={searchFields.obStatus} onChange={(e) => handleSearchChange(e, "obStatus")} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-white">
+                     {attachmentEnabled && <td className="px-1 py-2 bg-white" />}
+                     <td className="px-1 py-2 bg-white whitespace-nowrap">
+                       <select value={searchFields.obStatus} onChange={(e) => handleSearchChange(e, "obStatus")} className="w-full px-2 py-1 border border-blue-200 rounded-xl text-xs text-gray-800 bg-white">
                         <option value="">All</option>
                         {statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}
                       </select>
@@ -905,7 +1007,8 @@ const handleShiftDateChange = (value) => {
                             <div className="global-td text-xs text-slate-600 font-semibold">{approvalLabels(entry.obStatus).date} </div>
                             <div className="global-td text-xs text-blue-700">{approvalDateTime(entry)} </div>
                           </td>
-                          <td className="global-td text-center whitespace-nowrap w-[100px] p-2">
+                           {attachmentEnabled && <td className="global-td text-center whitespace-nowrap min-w-[120px] p-2"><OBAttachmentViewer row={entry} compact /></td>}
+                           <td className="global-td text-center whitespace-nowrap w-[100px] p-2">
                             <div className="inline-flex flex-col items-center gap-2">
                               <span className={`inline-flex justify-center items-center text-xs w-[85px] py-1.5 rounded-xl ${badgeClass}`}>{entry.obStatus}</span>
                               {["Pending", "Approved"].includes(entry?.obStatus) && (
@@ -918,7 +1021,7 @@ const handleShiftDateChange = (value) => {
                     })
                   ) : (
                     <tr>
-                      <td colSpan="9" className="px-4 py-6 text-center text-gray-500">No official business applications found.</td>
+                      <td colSpan={attachmentEnabled ? 9 : 8} className="px-4 py-6 text-center text-gray-500">No official business applications found.</td>
                     </tr>
                   )}
                 </tbody>

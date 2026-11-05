@@ -5,8 +5,65 @@ import { useAuth } from "./AuthContext";
 import OBReview from "./OBReview.jsx";
 import API_ENDPOINTS from "@/apiConfig.jsx";
 import Swal from "sweetalert2";
+import { FaEye, FaPaperclip } from "react-icons/fa";
 import { cancelApprovedRecord, sendApprovalDecision } from "./approvalBatchUtils";
 import { applicationFileDate, approvalRemarks, approvalLabels } from "./approvalDisplayUtils";
+
+// Official Business attachment display. Uses the same outlined View File control as DTR.
+const getOBAttachment = (row) => {
+  const value = row?.attachment ?? row?.attachment_path ?? row?.ATTACHMENT_PATH ?? row?.attachmentPath;
+  return typeof value === "string" && value.trim() && !["null", "undefined", "n/a"].includes(value.trim().toLowerCase()) ? value.trim() : null;
+};
+const getOBAttachmentName = (value) => {
+  if (!value) return "";
+  const file = value.split(/[?#]/)[0].replace(/\\/g, "/").split("/").pop();
+  try { return decodeURIComponent(file); } catch { return file; }
+};
+const getOBAttachmentUrl = (value) => {
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return value;
+  const clean = value.replace(/\\/g, "/").replace(/^\/+/, "").replace(/^public\//i, "").replace(/^images\//i, "");
+  const base = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "").replace(/\/api$/i, "");
+  return `${base}/images/${clean.split("/").map(encodeURIComponent).join("/")}`;
+};
+const OBAttachmentViewer = ({ row, compact = false }) => {
+  const path = getOBAttachment(row);
+  if (!path) return <span className="text-xs text-slate-400">No attachment</span>;
+  const url = getOBAttachmentUrl(path);
+  const filename = getOBAttachmentName(path);
+  const viewButton = (
+    <a href={url} target="_blank" rel="noopener noreferrer" title={filename}
+      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-300">
+      <FaEye aria-hidden="true" /><span>View File</span>
+    </a>
+  );
+  return compact ? viewButton : (
+    <div className="min-w-0 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600"><FaPaperclip aria-hidden="true" /> Supporting document</div>
+          <div title={filename} className="mt-1 truncate text-xs text-slate-700">{filename}</div>
+        </div>
+        {viewButton}
+      </div>
+    </div>
+  );
+};
+const useOBAttachmentEnabled = (endpoint) => {
+  const [attachmentEnabled, setAttachmentEnabled] = useState(false);
+  useEffect(() => {
+    if (!endpoint) return;
+    const abort = new AbortController();
+    fetch(endpoint, { signal: abort.signal, cache: "no-store" })
+      .then((r) => { if (!r.ok) throw Error("Attachment settings unavailable"); return r.json(); })
+      .then((r) => { if (!abort.signal.aborted) setAttachmentEnabled(r.attachmentEnabled === true || r.attachmentEnabled === 1); })
+      .catch((e) => { if (e.name !== "AbortError") setAttachmentEnabled(false); });
+    return () => abort.abort();
+  }, [endpoint]);
+  return attachmentEnabled;
+};
+const OB_ATTACHMENT_SETTINGS_ENDPOINT = API_ENDPOINTS.saveOfficialBusinessApplication
+  .replace(/\/?upsertOB\/?(?=[?#]|$)/i, "/ob/attachment-settings");
 
 // ---- Shared UI helpers (same as OT/Leave) -----------------------------------
 const badgeClass = (status) => {
@@ -73,6 +130,7 @@ const obApprovalDateTime = (row) => {
 const OfficialBusinessApproval = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const attachmentEnabled = useOBAttachmentEnabled(OB_ATTACHMENT_SETTINGS_ENDPOINT);
 
   const [pendingOBs, setPendingOBs] = useState([]);
   const [history, setHistory] = useState([]);
@@ -133,7 +191,8 @@ const OfficialBusinessApproval = () => {
           fileDate: row.fileDate ?? row.filedate ?? row.FILE_DATE ?? row.file_date,
           appRemarks: row.appRemarks ?? row.appremarks ?? row.APP_REMARKS,
           appUser: row.appUser ?? row.appuser ?? row.APP_USER,
-          appDateTime: row.appDateTime ?? row.appDatetime ?? row.APP_DATETIME ?? row.app_date_time,
+           appDateTime: row.appDateTime ?? row.appDatetime ?? row.APP_DATETIME ?? row.app_date_time,
+           attachment: getOBAttachment(row),
         }));
 
         const seen = new Set();
@@ -350,7 +409,8 @@ const OfficialBusinessApproval = () => {
                   </summary>
 
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Labeled label="Remarks">{ob.obRemarks || "N/A"}</Labeled>
+                     <Labeled label="Remarks">{ob.obRemarks || "N/A"}</Labeled>
+                     {attachmentEnabled && <div className="sm:col-span-2"><Labeled label="Supporting Attachment"><OBAttachmentViewer row={ob} /></Labeled></div>}
                   </div>
                 </details>
               ))
@@ -373,7 +433,8 @@ const OfficialBusinessApproval = () => {
                   <th onClick={() => toggleSort(setPendingSort, pendingSort, "obend")} className="global-th text-left whitespace-nowrap cursor-pointer">End{sortIndicator(pendingSort, "obend")}</th>
                   <th onClick={() => toggleSort(setPendingSort, pendingSort, "duration")} className="global-th text-right whitespace-nowrap cursor-pointer">Duration{sortIndicator(pendingSort, "duration")}</th>
                   <th onClick={() => toggleSort(setPendingSort, pendingSort, "obRemarks")} className="global-th text-left whitespace-nowrap cursor-pointer">Remarks{sortIndicator(pendingSort, "obRemarks")}</th>
-                  <th className="global-th text-center whitespace-nowrap">Action</th>
+                   {attachmentEnabled && <th className="global-th text-center whitespace-nowrap min-w-[120px]">Attachment</th>}
+                   <th className="global-th text-center whitespace-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody className="global-tbody">
@@ -401,8 +462,9 @@ const OfficialBusinessApproval = () => {
                         <div className="text-xs text-slate-600"></div>
                         <div>{ob.obRemarks || "N/A"}</div>
                       </td>
-                      <td className="global-td-approval text-center whitespace-nowrap">
-                        <button
+                       {attachmentEnabled && <td className="global-td-approval text-center whitespace-nowrap"><OBAttachmentViewer row={ob} compact /></td>}
+                       <td className="global-td-approval text-center whitespace-nowrap">
+                         <button
                           className={ReviewClass}
                           onClick={() => handleReviewClick(ob)}
                         >
@@ -413,7 +475,7 @@ const OfficialBusinessApproval = () => {
                   ))
                 ) : !loading ? (
                   <tr>
-                    <td colSpan="8" className="p-2 text-center text-gray-500">
+                    <td colSpan={attachmentEnabled ? 9 : 8} className="p-2 text-center text-gray-500">
                       {pendingFiltersActive ? "No results match your filters." : "No pending Official Business applications."}
                     </td>
                   </tr>
@@ -512,7 +574,8 @@ const OfficialBusinessApproval = () => {
                   </summary>
 
                     <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <Labeled label="Employee Remarks">{rec.obRemarks || "N/A"}</Labeled>
+                     <Labeled label="Employee Remarks">{rec.obRemarks || "N/A"}</Labeled>
+                     {attachmentEnabled && <div className="sm:col-span-2"><Labeled label="Supporting Attachment"><OBAttachmentViewer row={rec} /></Labeled></div>}
                     <Labeled label="Approver's Remarks">{approvalRemarks(rec) || "N/A"}</Labeled>
                     <Labeled label={approvalLabels(rec.obstatus).actor}>{obApprovalUser(rec)}</Labeled>
                     <Labeled label={approvalLabels(rec.obstatus).date}>{obApprovalDateTime(rec)}</Labeled>
@@ -539,7 +602,8 @@ const OfficialBusinessApproval = () => {
                   {/* <th onClick={() => toggleSort(setHistorySort, historySort, "obend")} className="global-th text-left whitespace-nowrap cursor-pointer">End{sortIndicator(historySort, "obend")}</th> */}
                   <th onClick={() => toggleSort(setHistorySort, historySort, "obRemarks")} className="global-th text-left text-wrap min-w-[180px] cursor-pointer">Remarks{sortIndicator(historySort, "obRemarks")}</th>
                   <th onClick={() => toggleSort(setHistorySort, historySort, "appRemarks")} className="global-th text-left text-wrap min-w-[180px] cursor-pointer">Approver's Remarks{sortIndicator(historySort, "appRemarks")}</th>
-                  <th onClick={() => toggleSort(setHistorySort, historySort, "status")} className="global-th text-center whitespace-nowrap cursor-pointer">Status{sortIndicator(historySort, "status")}</th>
+                   {attachmentEnabled && <th className="global-th text-center whitespace-nowrap min-w-[120px]">Attachment</th>}
+                   <th onClick={() => toggleSort(setHistorySort, historySort, "status")} className="global-th text-center whitespace-nowrap cursor-pointer">Status{sortIndicator(historySort, "status")}</th>
                 </tr>
               </thead>
               <tbody className="global-tbody">
@@ -571,8 +635,9 @@ const OfficialBusinessApproval = () => {
                         <div className="text-xs text-slate-600 font-semibold">{approvalLabels(rec.obstatus).date}:</div>
                         <div className="text-xs text-slate-600">{obApprovalDateTime(rec)}</div>
                       </td>
-                      <td className="global-td-approval text-center">
-                        <div className="flex flex-col items-center justify-center gap-1 whitespace-nowrap">
+                       {attachmentEnabled && <td className="global-td-approval text-center whitespace-nowrap"><OBAttachmentViewer row={rec} compact /></td>}
+                       <td className="global-td-approval text-center">
+                         <div className="flex flex-col items-center justify-center gap-1 whitespace-nowrap">
                           <span className={badgeClass(rec.obstatus)}>{rec.obstatus}</span>
                           {isApproved(rec) && <button onClick={() => runBatch(filteredHistory, [index], "cancel")} className={CancelClass}>Cancel</button>}
                         </div>
@@ -581,7 +646,7 @@ const OfficialBusinessApproval = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="8" className="p-3 text-center text-gray-500">
+                    <td colSpan={attachmentEnabled ? 9 : 8} className="p-3 text-center text-gray-500">
                       {historyFiltersActive ? "No results match your filters." : "No approved or disapproved records found."}
                     </td>
                   </tr>
@@ -595,7 +660,8 @@ const OfficialBusinessApproval = () => {
       {/* OB REVIEW MODAL */}
       {showModal && selectedOB && (
         <OBReview
-          obData={selectedOB}
+           obData={selectedOB}
+           attachmentEnabled={attachmentEnabled}
           onClose={() => {
             setShowModal(false);
             setSelectedOB(null);

@@ -6,8 +6,85 @@ import Swal from "sweetalert2";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 import API_ENDPOINTS from "@/apiConfig.jsx";
+import { FaEye, FaPaperclip } from "react-icons/fa";
 import { approvalUser, approvalDateTime, approvalRemarks, applicationFileDate, approvalLabels } from "./approvalDisplayUtils";
 
+
+// Attachment helpers (compatible with existing DTR API response fields).
+const getAttachmentPath = (row) =>
+  row?.attachment ?? row?.attachment_path ?? row?.ATTACHMENT_PATH ?? row?.attachmentPath ?? null;
+
+const hasValidAttachment = (path) =>
+  typeof path === "string" && path.trim().length > 0 &&
+  !["null", "undefined", "n/a"].includes(path.trim().toLowerCase());
+
+const getAttachmentName = (path) => {
+  if (!hasValidAttachment(path)) return "";
+  try {
+    return decodeURIComponent(path.split(/[?#]/)[0].replace(/\\/g, "/").split("/").pop());
+  } catch {
+    return path.replace(/\\/g, "/").split("/").pop();
+  }
+};
+
+const AttachmentViewer = ({ row, compact = false }) => {
+  const path = getAttachmentPath(row);
+  if (!hasValidAttachment(path)) {
+    return compact
+      ? <span className="text-xs text-slate-400">No attachment</span>
+      : <div className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-500">No supporting file uploaded.</div>;
+  }
+
+  const name = getAttachmentName(path);
+  const href = getAttachmentUrl(path);
+
+  if (compact) {
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={name}
+        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+      >
+        <FaEye className="shrink-0" aria-hidden="true" />
+        <span>View File</span>
+      </a>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-sm font-semibold text-blue-900">
+            <FaPaperclip className="shrink-0" aria-hidden="true" />
+            <span>Supporting document</span>
+          </div>
+          <div className="mt-1 truncate text-sm text-blue-800" title={name}>{name}</div>
+        </div>
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={name}
+          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-sm border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+        >
+          <FaEye className="shrink-0" aria-hidden="true" />
+          <span>View File</span>
+        </a>
+      </div>
+    </div>
+  );
+};
+
+const getAttachmentUrl = (path) => {
+  if (!hasValidAttachment(path)) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  const cleanPath = path.replace(/\\/g, "/").replace(/^\/?public\//i, "").replace(/^\/?images\//i, "");
+  const backendUrl = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/+$/, "").replace(/\/api$/i, "");
+  return `${backendUrl}/images/${cleanPath}`;
+};
 
 const TimekeepingAdjustment = () => {
   const { user } = useAuth();
@@ -23,6 +100,20 @@ const TimekeepingAdjustment = () => {
   const [shiftDate, setShiftDate] = useState(dayjs().format("YYYY-MM-DD"));
   const [actualDateTime, setActualDateTime] = useState(dayjs().format("YYYY-MM-DDTHH:mm"));
   const [remarks, setRemarks] = useState("");
+  const [attachment, setAttachment] = useState(null);
+  // PAYPARM.DTR_ATTACHMENT_ENABLED (0=hidden, 1=enabled).
+  // Keep hidden until the setting has been loaded successfully.
+  const [attachmentEnabled, setAttachmentEnabled] = useState(false);
+  useEffect(() => {
+    const controller = new AbortController();
+    const url = API_ENDPOINTS.upsertDTR.replace(/\/?upsertDTR\/?(?=[?#]|$)/i, '/dtr/attachment-settings');
+    fetch(url, { signal: controller.signal, cache: 'no-store' })
+      .then((res) => { if (!res.ok) throw new Error('Unable to retrieve attachment setting'); return res.json(); })
+      .then((result) => { if (!controller.signal.aborted) setAttachmentEnabled(result.attachmentEnabled === true || result.attachmentEnabled === 1); })
+      .catch((error) => { if (error.name !== 'AbortError') setAttachmentEnabled(false); });
+    return () => controller.abort();
+  }, []);
+
 
   // view / pagination
   const [viewMode, setViewMode] = useState("card");
@@ -74,6 +165,7 @@ const TimekeepingAdjustment = () => {
       dtrStatus: String(read("dtrstatus", "dtr_status", "status") ?? "").trim(),
       appRemarks: read("appremarks", "app_remarks"),
       fileDate: read("filedate", "file_date"),
+      attachment: read("attachment", "attachment_path", "attachmentpath"),
       dtrStamp: read("dtrstamp", "dtr_stamp", "stamp"),
     };
   };
@@ -213,6 +305,7 @@ const TimekeepingAdjustment = () => {
             <td><b>Remarks:</b></td>
             <td>${escapeHTML(remarks.trim())}</td>
           </tr>
+          ${attachmentEnabled ? `<tr><td><b>Attachment:</b></td><td>${attachment ? escapeHTML(attachment.name) : "None"}</td></tr>` : ""}
         </table>
       </div>
     `,
@@ -233,10 +326,14 @@ const TimekeepingAdjustment = () => {
 
   // --- Step 2: Proceed with Save ---
   try {
+    const formData = new FormData();
+    formData.append("json_data", JSON.stringify(payload.json_data));
+    if (attachmentEnabled && attachment) formData.append("attachment", attachment);
+
     const res = await fetch(API_ENDPOINTS.upsertDTR, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      headers: { Accept: "application/json" },
+      body: formData
     });
 
     let body;
@@ -296,6 +393,9 @@ const TimekeepingAdjustment = () => {
     setRemarks("");
     setActualDateTime(dayjs().format("YYYY-MM-DDTHH:mm"));
     setDtrType("timeIn");
+    setAttachment(null);
+    const attachmentInput = document.getElementById("dtr-attachment");
+    if (attachmentInput) attachmentInput.value = "";
     fetchHistory();
 
   } catch (e) {
@@ -492,9 +592,19 @@ dtrType: ${dtrType}
               </div>
           </div>
         </div>
-        <div className="mt-6">
-          <label className="font-semibold mb-1 block">Remarks</label>
-          <textarea rows="4" className="w-full p-2 border rounded-xl resize-none" value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+        <div className={`mt-6 grid grid-cols-1 ${attachmentEnabled ? "md:grid-cols-2" : ""} gap-4`}>
+          <div>
+            <label className="font-semibold mb-1 block">Remarks</label>
+            <textarea rows="4" className="w-full p-2 border rounded-xl resize-none" value={remarks} onChange={(e) => setRemarks(e.target.value)} />
+          </div>
+          {attachmentEnabled && <div>
+            <label htmlFor="dtr-attachment" className="font-semibold mb-1 block">Attachment (Optional)</label>
+            <div className="flex flex-col justify-center min-h-[106px] p-3 border border-dashed border-gray-300 rounded-xl bg-gray-50">
+              <input id="dtr-attachment" type="file" onChange={(e) => setAttachment(e.target.files?.[0] || null)}
+                className="w-full text-sm text-gray-500 file:mr-3 file:rounded-xl file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:font-semibold file:text-blue-700" />
+              {attachment && <p className="mt-2 text-xs text-green-700 break-all">Selected: {attachment.name}</p>}
+            </div>
+          </div>}
         </div>
         <div className="mt-4 flex justify-center">
           <button className="bg-blue-800 text-white px-12 py-2 rounded-xl hover:bg-blue-700" onClick={handleSubmit}>Submit</button>
@@ -564,6 +674,12 @@ dtrType: ${dtrType}
                     <div className="flex justify-between"><span className="text-gray-500 font-semibold">Filing Date</span><span>{applicationFileDate(r)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-semibold">Type</span><span className="font-medium">{r.dtrType}</span></div>
                     <div className="flex justify-between"><span className="text-gray-500 font-semibold">Actual</span><span className="font-medium">{dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm a")}</span></div>
+                    {attachmentEnabled && (
+                      <div className="mt-3">
+                        <div className="mb-2 text-gray-500 font-semibold">Supporting Attachment</div>
+                        <AttachmentViewer row={r} />
+                      </div>
+                    )}
                     <div>
                         <br />
                       <div className="text-gray-500 font-semibold">Employee Remarks</div><div className="font-normal break-words text-black">{r.dtrRemarks || "N/A"}</div></div>
@@ -600,6 +716,7 @@ dtrType: ${dtrType}
                   </summary>
                   <div className="mt-3 space-y-2">
                     <div><div className="text-gray-500 font-semibold">Filing Date</div><div>{applicationFileDate(r)}</div></div>
+                    {attachmentEnabled && <div><div className="mb-1.5 text-gray-500 font-semibold">Supporting Attachment</div><AttachmentViewer row={r} /></div>}
                     <div><div className="text-gray-500 font-semibold">Remarks</div><div>{r.dtrRemarks || "N/A"}</div></div>
                     <div><div className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).remarks}</div><div className="font-normal break-words text-blue-700">{approvalRemarks(r) || "N/A"}</div></div>
                     <div><div className="text-gray-500 font-semibold">{approvalLabels(r.dtrStatus).actor}</div><div className="font-normal break-words text-blue-700">{approvalUser(r)}</div></div>
@@ -617,8 +734,8 @@ dtrType: ${dtrType}
             <table className="w-full text-sm text-center border ">
               <thead className="sticky top-0 z-10 bg-blue-800 text-white text-xs sm:text-sm lg:text-sm ">
                 <tr>
-                  {[{ key: "fileDate", label: "Filing Date" }, { key: "dtrDate", label: "Shift Date" }, { key: "dtrType", label: "Type" }, { key: "dtrStart", label: "Actual Time" }, { key: "dtrRemarks", label: "Employee's Remarks" }, { key: "appRemarks", label: "Approver's Remarks" }, { key: "dtrStatus", label: "Status" }].map(({ key, label }) => (
-                    <th key={key} className="py-2 px-3 whitespace-nowrap cursor-pointer" onClick={() => key !== "actions" && setSortConfig((s) => ({ key, direction: s.key === key && s.direction === "asc" ? "desc" : "asc" }))}>{label} {sortConfig.key === key ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}</th>
+                  {[{ key: "fileDate", label: "Filing Date" }, { key: "dtrDate", label: "Shift Date" }, { key: "dtrType", label: "Type" }, { key: "dtrStart", label: "Actual Time" }, { key: "dtrRemarks", label: "Employee's Remarks" }, { key: "appRemarks", label: "Approver's Remarks" }, ...(attachmentEnabled ? [{ key: "attachment", label: "Attachment" }] : []), { key: "dtrStatus", label: "Status" }].map(({ key, label }) => (
+                    <th key={key} className="py-2 px-3 whitespace-nowrap cursor-pointer" onClick={() => key !== "actions" && key !== "attachment" && setSortConfig((s) => ({ key, direction: s.key === key && s.direction === "asc" ? "desc" : "asc" }))}>{label} {sortConfig.key === key ? (sortConfig.direction === "asc" ? "↑" : "↓") : ""}</th>
                   ))}
                 </tr>
                 <tr>
@@ -628,6 +745,7 @@ dtrType: ${dtrType}
                   <td className="px-1 py-2 bg-white"></td>
                   <td className="px-1 py-2 bg-white"><input type="text" value={filters.empRemarks} onChange={(e) => setFilters((p) => ({ ...p, empRemarks: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs" placeholder="Filter..." /></td>
                   <td className="px-1 py-2 bg-white"><input type="text" value={filters.appRemarks} onChange={(e) => setFilters((p) => ({ ...p, appRemarks: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs" placeholder="Filter..." /></td>
+                  {attachmentEnabled && <td className="px-1 py-2 bg-white"></td>}
                   <td className="px-1 py-2 bg-white text-gray-800"><select value={filters.status} onChange={(e) => setFilters((p) => ({ ...p, status: e.target.value }))} className="w-full px-1 py-1 border border-blue-200 rounded-xl text-xs bg-white"><option value="">All</option>{statusOptions.map((s) => (<option key={s} value={s}>{s}</option>))}</select></td>
                 </tr>
               </thead>
@@ -642,10 +760,11 @@ dtrType: ${dtrType}
                       <td className="global-td whitespace-nowrap w-[100px]">{dayjs(r.dtrStart).format("MM/DD/YYYY hh:mm a")}</td>
                       <td className="global-td text-left max-w-[240px]"><div className="truncate">{r.dtrRemarks || "N/A"}</div></td>
                       <td className="global-td text-left max-w-[240px]" title={r.appRemarks || "N/A"}><div className="global-td text-slate-600 font-semibold">{approvalLabels(r.dtrStatus).remarks} </div><div className="global-td text-blue-700">{r.appRemarks || "N/A"} </div><div className="global-td text-slate-600 font-semibold">{approvalLabels(r.dtrStatus).actor} </div><div className="global-td text-xs text-blue-700">{approvalUser(r)} </div><div className="global-td text-xs text-slate-600 font-semibold">{approvalLabels(r.dtrStatus).date} </div><div className="global-td text-xs text-blue-700">{approvalDateTime(r)} </div></td>
+                      {attachmentEnabled && <td className="global-td text-center whitespace-nowrap"><AttachmentViewer row={r} compact /></td>}
                       <td className="global-td text-center whitespace-nowrap w-[100px] p-2"><div className="inline-flex flex-col items-center gap-2"><span className={`inline-flex justify-center items-center text-xs w-[85px] py-1.5 rounded-xl ${badge}`}>{r.dtrStatus || "N/A"}</span>{(["Pending", "Approved"].includes(r?.dtrStatus)) ? <button className="inline-flex justify-center items-center text-xs w-[85px] py-1.5 rounded-xl font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors" onClick={() => cancelApplication(r)}>Cancel</button> : ""}</div></td>
                     </tr>
                   );
-                }) : (<tr><td colSpan="8" className="px-4 py-6 text-center text-gray-500">No applications found.</td></tr>)}
+                }) : (<tr><td colSpan={attachmentEnabled ? 8 : 7} className="px-4 py-6 text-center text-gray-500">No applications found.</td></tr>)}
               </tbody>
             </table>
           </div>
