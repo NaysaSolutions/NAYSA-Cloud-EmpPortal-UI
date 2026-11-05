@@ -46,7 +46,7 @@ const getAttachmentMeta = (path) => {
 /*********************************************************
  * TimekeepingAdjustmentReview — updated to match UI
  *********************************************************/
-const TimekeepingAdjustmentReview = ({ dtrData, onClose, setPending, setHistory, refreshData, attachmentEnabled = false }) => {
+const TimekeepingAdjustmentReview = ({ dtrData, attachmentPath = null, onClose, setPending, setHistory, refreshData, attachmentEnabled = false }) => {
   if (!dtrData) return null;
   const { user } = useAuth();
 
@@ -145,7 +145,8 @@ const TimekeepingAdjustmentReview = ({ dtrData, onClose, setPending, setHistory,
     }
   };
 
-  const attachPath = getAttachmentPath(dtrData);
+  // Prefer the same resolved path shown in the approval table.
+  const attachPath = getAttachmentPath({ attachment: attachmentPath }) || getAttachmentPath(dtrData);
   const attachmentUrl = getAttachmentUrl(attachPath);
   const attachmentName = getAttachmentName(attachPath);
   const attachmentKind = getAttachmentKind(attachPath);

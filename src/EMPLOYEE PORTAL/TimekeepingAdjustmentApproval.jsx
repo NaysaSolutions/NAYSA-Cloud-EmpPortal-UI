@@ -174,7 +174,9 @@ const TimekeepingAdjustmentApproval = () => {
   }, [user?.empNo]);
 
   const openReview = (row) => {
-    setSelected(row);
+    // Carry the exact path used by the approval table to the review modal.
+    const attachmentPath = getAttachmentPath(row);
+    setSelected({ ...row, attachment: attachmentPath, attachment_path: attachmentPath });
     setShowModal(true);
   };
 
@@ -593,6 +595,7 @@ const TimekeepingAdjustmentApproval = () => {
         {showModal && selected && (
           <TimekeepingAdjustmentReview
             dtrData={selected}
+            attachmentPath={getAttachmentPath(selected)}
             attachmentEnabled={attachmentEnabled}
             onClose={() => {
               setShowModal(false);
