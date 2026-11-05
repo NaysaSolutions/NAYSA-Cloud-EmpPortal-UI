@@ -73,6 +73,31 @@ const OPEN_SHIFT_LOOKBACK_DAYS = 7;
 // approved changed shift / Rest Day controls the next Time In window.
 const SHIFT_REFERENCE_LOOKAHEAD_DAYS = 7;
 
+let faceModelsPromise;
+const loadFaceModels = () => {
+  if (!faceModelsPromise) {
+    const modelUrl = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+    const models = [
+      faceapi.nets.ssdMobilenetv1,
+      faceapi.nets.faceLandmark68Net,
+      faceapi.nets.faceRecognitionNet,
+    ];
+
+    faceModelsPromise = Promise.all(
+      models.map((model) => model.params ? Promise.resolve() : model.loadFromUri(modelUrl))
+    ).then(() => {
+      if (!models.every((model) => !!model.params)) {
+        throw new Error("Not all models were loaded.");
+      }
+    }).catch((error) => {
+      faceModelsPromise = null;
+      throw error;
+    });
+  }
+
+  return faceModelsPromise;
+};
+
 const parseServerDateTime = (value) => {
   if (value == null || value === "") return null;
 
@@ -1028,76 +1053,92 @@ const validateGeofenceLocation = (userCoords, branchLocation) => {
   useEffect(() => {
     if (!isImageCaptureRequired) return;
 
+    let cancelled = false;
+
     const loadModels = async () => {
       try {
-        const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
-
-        await Promise.all([
-          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        ]);
-
-        const allLoaded = [
-          faceapi.nets.ssdMobilenetv1,
-          faceapi.nets.faceLandmark68Net,
-          faceapi.nets.faceRecognitionNet,
-        ].every((net) => !!net.params);
-
-        if (!allLoaded) {
-          throw new Error("Not all models were loaded.");
-        }
+        await loadFaceModels();
+        if (cancelled) return;
 
         setFaceDetectionModelLoaded(true);
         console.log("Face-API.js models loaded successfully");
       } catch (error) {
+        if (cancelled) return;
         console.error("Model loading error:", error);
         showErrorToast("Error", "Face detection models failed to load. Please refresh.");
       }
     };
 
     loadModels();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isImageCaptureRequired]);
 
   useEffect(() => {
     if (!isImageCaptureRequired) return;
 
+    let cancelled = false;
+    let cameraStream = null;
+    const video = videoRef.current;
+    setCameraAccessReady(false);
+
+    const handleVideoReady = () => {
+      if (cancelled || !video || video.readyState < 2) return;
+
+      if (canvasRef.current) {
+        canvasRef.current.width = video.videoWidth;
+        canvasRef.current.height = video.videoHeight;
+      }
+      setCameraAccessReady(true);
+    };
+
     const initCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 320, height: 240 },
+          video: { width: { ideal: 320 }, height: { ideal: 240 } },
+          audio: false,
         });
 
-        streamRef.current = stream;
-        setCameraAccessReady(true);
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
 
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.onloadedmetadata = () => {
-            if (canvasRef.current) {
-              canvasRef.current.width = videoRef.current.videoWidth;
-              canvasRef.current.height = videoRef.current.videoHeight;
-            }
-          };
+        cameraStream = stream;
+        streamRef.current = stream;
+
+        if (video) {
+          video.addEventListener("loadeddata", handleVideoReady);
+          video.addEventListener("playing", handleVideoReady);
+          video.srcObject = stream;
+          await video.play();
+          handleVideoReady();
         }
       } catch (err) {
+        if (cancelled) return;
         setCameraAccessReady(false);
         console.error("Camera initialization error:", err);
         showErrorToast("Camera Error", "Could not access webcam. Please ensure it is connected and permissions are granted.");
       }
     };
 
-    if (faceDetectionModelLoaded) {
-      initCamera();
-    }
+    initCamera();
 
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
+      cancelled = true;
+      video?.removeEventListener("loadeddata", handleVideoReady);
+      video?.removeEventListener("playing", handleVideoReady);
+      cameraStream?.getTracks().forEach((track) => track.stop());
+      if (video?.srcObject === cameraStream) {
+        video.srcObject = null;
+      }
+      if (streamRef.current === cameraStream) {
         streamRef.current = null;
       }
     };
-  }, [faceDetectionModelLoaded, isImageCaptureRequired]);
+  }, [isImageCaptureRequired]);
 
   useEffect(() => {
     if (!isImageCaptureRequired) {
@@ -4921,7 +4962,11 @@ if (!confirm) return;
                     <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold backdrop-blur-sm ${
                       cameraReady ? "bg-emerald-500/80 text-white" : "bg-amber-500/85 text-white"
                     }`}>
-                      {cameraReady ? "Camera Ready" : "Preparing Camera"}
+                      {cameraReady
+                        ? "Camera Ready"
+                        : cameraAccessReady
+                          ? "Preparing Face Check"
+                          : "Opening Camera"}
                     </span>
                   </div>
 

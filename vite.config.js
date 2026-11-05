@@ -1,6 +1,6 @@
 import path from "path";
 import react from "@vitejs/plugin-react";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 
 const deployedAt = new Date();
 const buildId = deployedAt.toISOString().replace(/[-:.TZ]/g, "");
@@ -10,7 +10,7 @@ const deployedAtDisplay = new Intl.DateTimeFormat("en-PH", {
   timeZone: "Asia/Manila",
 }).format(deployedAt);
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
     {
@@ -49,7 +49,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8000",
+        target: loadEnv(mode, process.cwd(), "VITE_").VITE_API_URL || "http://127.0.0.1:8000",
         changeOrigin: true,
       },
     },
@@ -59,4 +59,4 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-});
+}));
