@@ -33,6 +33,7 @@ import EmployeeShiftApproval from "./EMPLOYEE PORTAL/EmployeeShiftApproval";
 import EmployeeAccessSettings from "./EMPLOYEE PORTAL/EmployeeAccessSettings";
 import Register from "./NAYSA Cloud/Register";
 import ForgotPassword from "./Authentication/ForgotPassword";
+import ResetPassword from "./Authentication/ResetPassword";
 import ScrollToTop from "./components/ScrollToTop";
 import { hasAccess } from "./EMPLOYEE PORTAL/accessRights";
 
@@ -102,6 +103,7 @@ const App = () => {
             <Route path="/" element={<LoginPortal />} />
             <Route path="/register" element={<Register />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
             <Route path="/timekeeping" element={<ProtectedRoute><Layout><Timekeeping /></Layout></ProtectedRoute>} />
