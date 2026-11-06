@@ -115,8 +115,8 @@ function ForgotPassword() {
       <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-sky-400/20 blur-3xl" />
       <div className="pointer-events-none absolute -right-24 bottom-10 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl" />
 
-      <main className="relative z-10 mx-auto grid min-h-[calc(100dvh-48px)] w-full max-w-7xl grid-cols-1 items-center gap-6 px-4 py-4 sm:px-6 lg:grid-cols-[1.08fr_.92fr] lg:px-8 lg:py-5">
-        <section className="hidden lg:order-1 lg:block lg:self-start lg:pr-10 lg:pt-[7vh] xl:pr-16">
+      <main className="relative z-10 mx-auto grid min-h-[calc(100dvh-48px)] w-full max-w-7xl grid-cols-1 items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[1.08fr_.92fr] lg:px-8 lg:py-8">
+        <section className="hidden lg:order-1 lg:block lg:self-center lg:pr-10 xl:pr-16">
           <div className="mb-5 inline-flex items-center rounded-full border border-white/30 bg-white/10 px-5 py-2 text-[11px] font-extrabold uppercase tracking-[0.22em] text-white shadow-xl backdrop-blur-md">
             {companyName}
           </div>
@@ -138,7 +138,7 @@ function ForgotPassword() {
           </div>
         </section>
 
-        <section className="flex items-center justify-center lg:order-2 lg:justify-end">
+        <section className="flex items-center justify-center lg:order-2 lg:justify-end lg:self-center">
           <div className="w-full max-w-md">
             <div className="mb-2 flex flex-col items-center text-center">
               <div className="relative flex h-24 w-52 items-center justify-center sm:h-28 sm:w-60">
